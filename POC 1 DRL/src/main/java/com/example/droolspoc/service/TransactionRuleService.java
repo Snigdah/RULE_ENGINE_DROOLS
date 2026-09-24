@@ -1,5 +1,6 @@
 package com.example.droolspoc.service;
 
+import com.example.droolspoc.context.GlobalContext;
 import com.example.droolspoc.dto.TransactionRequest;
 import com.example.droolspoc.dto.TransactionResponse;
 import com.example.droolspoc.exception.ContextNotFoundException;
@@ -19,13 +20,16 @@ public class TransactionRuleService {
     private final KieContainer kieContainer;
     private final UserLimitRepository userLimitRepository;
     private final ProductRepository productRepository;
+    private final GlobalContext globalContext;
 
     public TransactionRuleService(KieContainer kieContainer,
                                   UserLimitRepository userLimitRepository,
-                                  ProductRepository productRepository) {
+                                  ProductRepository productRepository,
+                                  GlobalContext globalContext) {
         this.kieContainer = kieContainer;
         this.userLimitRepository = userLimitRepository;
         this.productRepository = productRepository;
+        this.globalContext = globalContext;
     }
 
     public TransactionResponse validate(TransactionRequest request) {
@@ -51,9 +55,11 @@ public class TransactionRuleService {
         context.setUserLimit(userLimit);
         context.setProduct(product);
 
-        // 3. Fire the rules on a fresh, disposed-per-call session
+        // 3. Fire the rules. The global context (blocked users, loaded at
+        //    startup) is exposed so the DRL can enforce the blocked-user rule.
         KieSession kieSession = kieContainer.newKieSession();
         try {
+            kieSession.setGlobal("globalContext", globalContext);
             kieSession.insert(context);
             kieSession.fireAllRules();
         } finally {

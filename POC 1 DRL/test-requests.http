@@ -1,3 +1,16 @@
+### 0. Blocked user (USER-002 in user_block) -> rejected up front (global context)
+POST http://localhost:8080/api/transactions/validate
+Content-Type: application/json
+
+{
+  "userId": "USER-002",
+  "transactionMode": "TRANSFER",
+  "debitCredit": "DR",
+  "sourceAccount": "100001",
+  "currency": "BDT",
+  "amount": 10
+}
+
 ### 1. Over limit + debit-restricted + BDT -> BLOCKED
 # USER-001/TRANSFER/DR limit = 100; account 100001 drRes = 1
 POST http://localhost:8080/api/transactions/validate

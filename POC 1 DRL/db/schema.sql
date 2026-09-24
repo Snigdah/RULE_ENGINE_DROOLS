@@ -21,3 +21,13 @@ CREATE TABLE product (
     dr_res          SMALLINT     NOT NULL DEFAULT 0,   -- debit-restriction flag 0/1
     CONSTRAINT ck_product_dr_res CHECK (dr_res IN (0,1))
 );
+
+-- ---------------------------------------------------------------------------
+-- user_block : global reference data loaded once at startup.
+--              A user with blocked = TRUE cannot transact.
+-- ---------------------------------------------------------------------------
+CREATE TABLE user_block (
+    id       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id  VARCHAR(50) NOT NULL UNIQUE,
+    blocked  BOOLEAN     NOT NULL DEFAULT FALSE
+);

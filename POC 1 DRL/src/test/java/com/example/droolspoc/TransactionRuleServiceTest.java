@@ -1,6 +1,8 @@
 package com.example.droolspoc;
 
 import com.example.droolspoc.config.DroolsConfig;
+import com.example.droolspoc.context.GlobalContext;
+import com.example.droolspoc.context.data.BlockedUsers;
 import com.example.droolspoc.dto.TransactionRequest;
 import com.example.droolspoc.dto.TransactionResponse;
 import com.example.droolspoc.exception.ContextNotFoundException;
@@ -15,7 +17,9 @@ import org.kie.api.runtime.KieContainer;
 
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -27,6 +31,7 @@ class TransactionRuleServiceTest {
 
     private UserLimitRepository userLimitRepository;
     private ProductRepository productRepository;
+    private GlobalContext globalContext;
     private TransactionRuleService service;
 
     @BeforeEach
@@ -34,12 +39,15 @@ class TransactionRuleServiceTest {
         KieContainer container = new DroolsConfig().kieContainer();
         userLimitRepository = mock(UserLimitRepository.class);
         productRepository = mock(ProductRepository.class);
-        service = new TransactionRuleService(container, userLimitRepository, productRepository);
+        globalContext = new GlobalContext();
+        globalContext.register(BlockedUsers.class, new BlockedUsers(Set.of())); // no blocked users by default
+        service = new TransactionRuleService(
+                container, userLimitRepository, productRepository, globalContext);
     }
 
-    private TransactionRequest request(String currency, String amount) {
+    private TransactionRequest request(String userId, String currency, String amount) {
         TransactionRequest r = new TransactionRequest();
-        r.setUserId("USER-001");
+        r.setUserId(userId);
         r.setTransactionMode("TRANSFER");
         r.setDebitCredit("DR");
         r.setSourceAccount("100001");
@@ -50,25 +58,29 @@ class TransactionRuleServiceTest {
 
     private void stubContext(String limit, int drRes) {
         UserLimit ul = new UserLimit();
-        ul.setUserId("USER-001");
-        ul.setTransactionMode("TRANSFER");
-        ul.setDrCrType("DR");
         ul.setLimit(new BigDecimal(limit));
         when(userLimitRepository.findByUserIdAndTransactionModeAndDrCrType(any(), any(), any()))
                 .thenReturn(Optional.of(ul));
 
         Product p = new Product();
-        p.setSourceAccount("100001");
-        p.setProductType("DEPOSIT");
-        p.setFrequency("MONTHLY");
         p.setDrRes(drRes);
         when(productRepository.findBySourceAccount(any())).thenReturn(Optional.of(p));
     }
 
     @Test
+    void blockedUserIsRejectedByRule() {
+        globalContext.register(BlockedUsers.class, new BlockedUsers(Set.of("USER-002")));
+        stubContext("100", 1); // context exists; blocked-user rule fires first
+        TransactionResponse res = service.validate(request("USER-002", "BDT", "10"));
+        assertFalse(res.valid());
+        assertTrue(res.permissionDenied());
+        assertEquals("Blocked: user is blocked", res.message());
+    }
+
+    @Test
     void overLimitRestrictedBdtIsBlocked() {
         stubContext("100", 1);
-        TransactionResponse res = service.validate(request("BDT", "500"));
+        TransactionResponse res = service.validate(request("USER-001", "BDT", "500"));
         assertFalse(res.valid());
         assertTrue(res.permissionDenied());
     }
@@ -76,7 +88,7 @@ class TransactionRuleServiceTest {
     @Test
     void withinLimitIsAllowed() {
         stubContext("100", 1);
-        TransactionResponse res = service.validate(request("BDT", "50"));
+        TransactionResponse res = service.validate(request("USER-001", "BDT", "50"));
         assertTrue(res.valid());
         assertFalse(res.permissionDenied());
     }
@@ -84,14 +96,14 @@ class TransactionRuleServiceTest {
     @Test
     void nonBdtIsAllowed() {
         stubContext("100", 1);
-        TransactionResponse res = service.validate(request("USD", "500"));
+        TransactionResponse res = service.validate(request("USER-001", "USD", "500"));
         assertTrue(res.valid());
     }
 
     @Test
     void notDebitRestrictedIsAllowed() {
         stubContext("100", 0);
-        TransactionResponse res = service.validate(request("BDT", "500"));
+        TransactionResponse res = service.validate(request("USER-001", "BDT", "500"));
         assertTrue(res.valid());
     }
 
@@ -99,6 +111,7 @@ class TransactionRuleServiceTest {
     void missingUserLimitThrows() {
         when(userLimitRepository.findByUserIdAndTransactionModeAndDrCrType(any(), any(), any()))
                 .thenReturn(Optional.empty());
-        assertThrows(ContextNotFoundException.class, () -> service.validate(request("BDT", "500")));
+        assertThrows(ContextNotFoundException.class,
+                () -> service.validate(request("USER-001", "BDT", "500")));
     }
 }

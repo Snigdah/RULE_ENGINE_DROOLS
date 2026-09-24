@@ -1,16 +1,36 @@
 package com.example.droolspoc.rules
 
 import com.example.droolspoc.model.ValidationContext
+import com.example.droolspoc.context.data.BlockedUsers
 
-// Default state of a transaction is valid = true (allowed). This rule flips it
-// to blocked when ALL of the following hold:
-//   - currency is BDT
-//   - the product is debit-restricted (drRes == 1)
-//   - the amount exceeds the user's configured limit
-//
-// If it does not fire, the transaction stays allowed.
+// Global reference registry, set on the session by the service. Datasets inside
+// it are loaded once at application startup (see the context package).
+global com.example.droolspoc.context.GlobalContext globalContext;
 
+// -----------------------------------------------------------------------------
+// Business rule: a blocked user cannot transact.
+// Reads the BlockedUsers dataset from the global context.
+// Delete this whole rule to disable the block behaviour - no code change needed.
+// Highest salience + halt so it wins and stops further evaluation.
+// -----------------------------------------------------------------------------
+rule "Block transaction for a blocked user"
+    salience 100
+    when
+        $ctx : ValidationContext()
+        eval(globalContext.get(BlockedUsers.class)
+                          .isBlocked($ctx.getTransaction().getUserId()))
+    then
+        $ctx.getTransaction().setValid(false);
+        $ctx.getTransaction().setPermissionDenied(true);
+        $ctx.getTransaction().setValidationMessage("Blocked: user is blocked");
+        drools.halt();
+end
+
+// -----------------------------------------------------------------------------
+// Business rule: block an over-limit debit-restricted BDT transaction.
+// -----------------------------------------------------------------------------
 rule "Block over-limit debit-restricted BDT transaction"
+    salience 10
     when
         $ctx : ValidationContext(
             transaction.currency == "BDT",

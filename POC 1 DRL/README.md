@@ -42,6 +42,28 @@ Otherwise it is allowed. Sample data limits for `USER-001`:
 | CREDIT          | DR    | 12323  |
 | CREDIT          | CR    | 123213 |
 
+## Global context (startup)
+
+`user_block` rows are loaded once at startup by `GlobalContextLoader`
+(`ApplicationRunner`) into `GlobalContext` (in-memory, immutable for the POC).
+The service exposes it to each session as a Drools `global`, and the
+**blocked-user rule lives in `transaction-rules.drl`** - so an admin can turn
+the block off by deleting that rule from the file, no code change or redeploy.
+
+A blocked user gets:
+```json
+{"valid":false,"permissionDenied":true,"message":"Blocked: user is blocked"}
+```
+
+Notes:
+- The blocked-user rule has the highest salience and calls `drools.halt()`,
+  so it wins over the limit rule.
+- Context (limit/product) is still loaded before the rules fire, so a blocked
+  user needs valid context rows or the request returns 422 first. The seed
+  gives USER-002 limits for this reason.
+- Blocked status is cached at startup; a newly blocked user is not picked up
+  until restart. For production, refresh it (scheduled reload / TTL / eviction).
+
 ## Endpoints
 - `POST /api/transactions/validate`
 - `GET  /actuator/health`
