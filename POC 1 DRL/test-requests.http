@@ -1,0 +1,74 @@
+### 1. DEVIR over 5000 -> permission denied
+POST http://localhost:8080/api/transactions/validate
+Content-Type: application/json
+
+{
+  "sourceAccount": "100001",
+  "sourceBranch": "DHAKA-001",
+  "destinationAccount": "200001",
+  "amount": 6000,
+  "debitCredit": "DEBIT",
+  "currency": "BDT",
+  "exchangeRate": 1,
+  "remarks": "Test transfer",
+  "userId": "USER-001",
+  "transferMode": "DEVIR"
+}
+
+### 2. DEVIR at/under 5000 -> allowed, flagged as > 500
+POST http://localhost:8080/api/transactions/validate
+Content-Type: application/json
+
+{
+  "amount": 4000,
+  "currency": "BDT",
+  "transferMode": "DEVIR"
+}
+
+### 3. NORMAL over 500 -> flagged but valid
+POST http://localhost:8080/api/transactions/validate
+Content-Type: application/json
+
+{
+  "amount": 800,
+  "currency": "BDT",
+  "transferMode": "NORMAL"
+}
+
+### 4. Small amount (<= 500) -> no rule fires
+POST http://localhost:8080/api/transactions/validate
+Content-Type: application/json
+
+{
+  "amount": 100,
+  "currency": "BDT",
+  "transferMode": "NORMAL"
+}
+
+### 5. Missing amount -> 400 validation error
+POST http://localhost:8080/api/transactions/validate
+Content-Type: application/json
+
+{
+  "transferMode": "NORMAL"
+}
+
+### 6. Missing transferMode -> 400 validation error
+POST http://localhost:8080/api/transactions/validate
+Content-Type: application/json
+
+{
+  "amount": 800
+}
+
+### 7. Zero / negative amount -> 400 (@Positive)
+POST http://localhost:8080/api/transactions/validate
+Content-Type: application/json
+
+{
+  "amount": 0,
+  "transferMode": "NORMAL"
+}
+
+### 8. Health check
+GET http://localhost:8080/actuator/health

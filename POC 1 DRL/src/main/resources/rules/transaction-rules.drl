@@ -1,0 +1,48 @@
+package com.example.droolspoc.rules
+
+import com.example.droolspoc.model.Transaction
+
+
+rule "Transaction amount greater than 500"
+
+    when
+        $transaction : Transaction(
+            amount > 500
+        )
+
+    then
+
+        System.out.println(
+            "Rule 1 fired: Amount is greater than 500"
+        );
+
+        $transaction.setValidationMessage(
+            "Transaction amount is greater than 500"
+        );
+
+end
+
+
+rule "DEVIR amount greater than 5000 - permission denied"
+
+    when
+        $transaction : Transaction(
+            transferMode == "DEVIR",
+            amount > 5000
+        )
+
+    then
+
+        System.out.println(
+            "Rule 2 fired: DEVIR transaction above 5000"
+        );
+
+        $transaction.setValid(false);
+
+        $transaction.setPermissionDenied(true);
+
+        $transaction.setValidationMessage(
+            "Permission denied: DEVIR transaction amount cannot be greater than 5000"
+        );
+
+end
