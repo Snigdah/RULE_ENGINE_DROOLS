@@ -1,74 +1,80 @@
-### 1. DEVIR over 5000 -> permission denied
+### 1. Over limit + debit-restricted + BDT -> BLOCKED
+# USER-001/TRANSFER/DR limit = 100; account 100001 drRes = 1
 POST http://localhost:8080/api/transactions/validate
 Content-Type: application/json
 
 {
-  "sourceAccount": "100001",
-  "sourceBranch": "DHAKA-001",
-  "destinationAccount": "200001",
-  "amount": 6000,
-  "debitCredit": "DEBIT",
-  "currency": "BDT",
-  "exchangeRate": 1,
-  "remarks": "Test transfer",
   "userId": "USER-001",
-  "transferMode": "DEVIR"
-}
-
-### 2. DEVIR at/under 5000 -> allowed, flagged as > 500
-POST http://localhost:8080/api/transactions/validate
-Content-Type: application/json
-
-{
-  "amount": 4000,
+  "transactionMode": "TRANSFER",
+  "debitCredit": "DR",
+  "sourceAccount": "100001",
   "currency": "BDT",
-  "transferMode": "DEVIR"
+  "amount": 500
 }
 
-### 3. NORMAL over 500 -> flagged but valid
+### 2. Within limit -> ALLOWED
 POST http://localhost:8080/api/transactions/validate
 Content-Type: application/json
 
 {
-  "amount": 800,
+  "userId": "USER-001",
+  "transactionMode": "TRANSFER",
+  "debitCredit": "DR",
+  "sourceAccount": "100001",
   "currency": "BDT",
-  "transferMode": "NORMAL"
+  "amount": 50
 }
 
-### 4. Small amount (<= 500) -> no rule fires
+### 3. Not BDT -> ALLOWED (rule needs BDT)
 POST http://localhost:8080/api/transactions/validate
 Content-Type: application/json
 
 {
-  "amount": 100,
+  "userId": "USER-001",
+  "transactionMode": "TRANSFER",
+  "debitCredit": "DR",
+  "sourceAccount": "100001",
+  "currency": "USD",
+  "amount": 500
+}
+
+### 4. Not debit-restricted product (200001, drRes = 0) -> ALLOWED
+POST http://localhost:8080/api/transactions/validate
+Content-Type: application/json
+
+{
+  "userId": "USER-001",
+  "transactionMode": "CREDIT",
+  "debitCredit": "DR",
+  "sourceAccount": "200001",
   "currency": "BDT",
-  "transferMode": "NORMAL"
+  "amount": 999999
 }
 
-### 5. Missing amount -> 400 validation error
+### 5. Missing context (unknown account) -> 422
 POST http://localhost:8080/api/transactions/validate
 Content-Type: application/json
 
 {
-  "transferMode": "NORMAL"
+  "userId": "USER-001",
+  "transactionMode": "TRANSFER",
+  "debitCredit": "DR",
+  "sourceAccount": "999999",
+  "currency": "BDT",
+  "amount": 500
 }
 
-### 6. Missing transferMode -> 400 validation error
+### 6. Missing amount -> 400 validation error
 POST http://localhost:8080/api/transactions/validate
 Content-Type: application/json
 
 {
-  "amount": 800
+  "userId": "USER-001",
+  "transactionMode": "TRANSFER",
+  "debitCredit": "DR",
+  "sourceAccount": "100001",
+  "currency": "BDT"
 }
 
-### 7. Zero / negative amount -> 400 (@Positive)
-POST http://localhost:8080/api/transactions/validate
-Content-Type: application/json
-
-{
-  "amount": 0,
-  "transferMode": "NORMAL"
-}
-
-### 8. Health check
+### 7. Health
 GET http://localhost:8080/actuator/health

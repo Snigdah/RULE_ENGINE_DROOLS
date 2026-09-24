@@ -1,66 +1,78 @@
 # Drools Transaction POC
 
-Spring Boot 3.5 + Java 21 + Maven. Compiles the DRL rules under
-`resources/rules/` into a Drools `KieContainer` at startup and validates
-transactions over REST.
+Spring Boot 3.5 + Java 21 + Maven + Drools + PostgreSQL.
+
+The engine validates a transaction using **context building**: the request
+carries lookup keys, the service loads `UserLimit` and `Product` from the DB,
+wraps everything in one `ValidationContext` fact, and fires the rules against
+it. DB lookups happen in the service (never inside a rule).
 
 ## Requirements
-- JDK 21
-- Maven 3.9+
+- JDK 21, Maven 3.9+
+- PostgreSQL running locally
 
-## Build & run
+## 1. Database
+```bash
+createdb -U postgres ruleengine
+psql -U postgres -d ruleengine -f db/schema.sql
+psql -U postgres -d ruleengine -f db/data.sql
+```
+Datasource is configured in `src/main/resources/application.yml`
+(url `jdbc:postgresql://localhost:5432/ruleengine`, user/pass `postgres`).
+`ddl-auto` is `validate` — Hibernate checks the entities against your
+hand-created tables and never auto-creates them.
+
+## 2. Run
 ```bash
 mvn clean spring-boot:run
 ```
 
+## The rule
+A transaction is **blocked** only when all three hold:
+- `currency == "BDT"`
+- product `drRes == 1` (debit-restricted)
+- `amount > userLimit.limit`
+
+Otherwise it is allowed. Sample data limits for `USER-001`:
+
+| transactionMode | DR/CR | limit  |
+|-----------------|-------|--------|
+| TRANSFER        | DR    | 100    |
+| TRANSFER        | CR    | 2323   |
+| CREDIT          | DR    | 12323  |
+| CREDIT          | CR    | 123213 |
+
 ## Endpoints
-- `POST /api/transactions/validate` - run the rules on a transaction
-- `GET  /actuator/health`           - health / readiness probe
+- `POST /api/transactions/validate`
+- `GET  /actuator/health`
 
 ## Try it
-DEVIR over 5000 -> permission denied:
+See `test-requests.http` (IntelliJ HTTP client). Example — blocked:
 ```bash
 curl -X POST http://localhost:8080/api/transactions/validate \
   -H "Content-Type: application/json" \
-  -d "{\"transferMode\":\"DEVIR\",\"amount\":6000}"
+  -d "{\"userId\":\"USER-001\",\"transactionMode\":\"TRANSFER\",\"debitCredit\":\"DR\",\"sourceAccount\":\"100001\",\"currency\":\"BDT\",\"amount\":500}"
 ```
-Response:
 ```json
-{"valid":false,"permissionDenied":true,
- "message":"Permission denied: DEVIR transaction amount cannot be greater than 5000"}
+{"valid":false,"permissionDenied":true,"message":"Blocked: amount exceeds limit on a debit-restricted BDT account"}
 ```
 
-Normal transfer over 500 -> flagged but valid:
-```bash
-curl -X POST http://localhost:8080/api/transactions/validate \
-  -H "Content-Type: application/json" \
-  -d "{\"transferMode\":\"NORMAL\",\"amount\":800}"
-```
+Responses: `200` with `{valid, permissionDenied, message}`;
+`400` on bad input; `422` when a limit/product row is missing.
 
-Invalid input (missing amount) -> 400:
-```json
-{"timestamp":"...","status":400,"error":"Validation failed",
- "fieldErrors":{"amount":"amount is required"}}
-```
-
-## Design notes
-- `dto/TransactionRequest.java`  - API input; Bean Validation on required fields
-- `dto/TransactionResponse.java` - API output; the rule outcome only
-- `model/Transaction.java`       - internal Drools fact (mutated by the rules); never exposed at the API
-- `config/DroolsConfig.java`     - builds the KieContainer via the public KieResources API
-- `service/TransactionRuleService.java` - maps request -> fact, fires rules in a fresh KieSession (disposed per call), returns response
-- `controller/TransactionController.java` - `@Valid` request, delegates to the service
-- `controller/GlobalExceptionHandler.java` - clean 400 on validation failure
-- `resources/rules/transaction-rules.drl` - the rules
+## Design
+- `dto/TransactionRequest` / `dto/TransactionResponse` - API contract
+- `model/Transaction`      - internal fact (holds result fields)
+- `model/UserLimit`, `model/Product` - JPA entities + context facts
+- `model/ValidationContext` - the single fact the rule reads
+- `repository/*`           - the two DB lookups
+- `service/TransactionRuleService` - context building + rule firing
+- `exception/ContextNotFoundException` + handler -> 422
+- `resources/rules/transaction-rules.drl` - the rule
 
 ## Tests
 ```bash
 mvn test
 ```
-- `TransactionRuleServiceTest` - rule logic
-- `TransactionControllerTest`  - endpoint happy path + validation 400
-
-## Notes
-- Confirm the exact patch versions resolve (spring-boot 3.5.10, drools 10.2.0);
-  bump to the latest patch if either fails to download.
-- Drools 10 requires Java 17+, satisfied by Java 21.
+- `TransactionRuleServiceTest` - rule logic with real KieContainer + mocked repos (no DB)
+- `TransactionControllerTest`  - web layer, mocked service (no DB)

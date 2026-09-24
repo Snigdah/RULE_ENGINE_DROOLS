@@ -6,9 +6,8 @@ import lombok.Setter;
 import java.math.BigDecimal;
 
 /**
- * Internal Drools fact inserted into the KieSession. The rules read the input
- * fields and mutate the result fields. Not exposed at the API boundary — see
- * TransactionRequest / TransactionResponse for the API contract.
+ * Internal Drools fact (inside ValidationContext). The rules read the input
+ * fields and mutate the result fields. Never exposed at the API boundary.
  */
 @Getter
 @Setter
@@ -19,12 +18,12 @@ public class Transaction {
     private String sourceBranch;
     private String destinationAccount;
     private BigDecimal amount;
-    private String debitCredit;
+    private String debitCredit;      // DR | CR
     private String currency;
     private BigDecimal exchangeRate;
     private String remarks;
     private String userId;
-    private String transferMode;
+    private String transactionMode;  // TRANSFER | CREDIT
 
     // Rule result fields (written by the rules)
     private boolean valid = true;

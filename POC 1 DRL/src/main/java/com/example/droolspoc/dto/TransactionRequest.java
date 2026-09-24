@@ -9,26 +9,35 @@ import lombok.Setter;
 import java.math.BigDecimal;
 
 /**
- * Incoming API payload. Input fields only — no rule-result state.
+ * Incoming API payload. Input only. The fields marked required are the keys
+ * used to look up UserLimit and Product.
  */
 @Getter
 @Setter
 public class TransactionRequest {
 
+    @NotBlank(message = "userId is required")
+    private String userId;
+
+    @NotBlank(message = "transactionMode is required")
+    private String transactionMode;   // TRANSFER | CREDIT
+
+    @NotBlank(message = "debitCredit is required")
+    private String debitCredit;       // DR | CR
+
+    @NotBlank(message = "sourceAccount is required")
     private String sourceAccount;
-    private String sourceBranch;
-    private String destinationAccount;
+
+    @NotBlank(message = "currency is required")
+    private String currency;
 
     @NotNull(message = "amount is required")
     @Positive(message = "amount must be greater than 0")
     private BigDecimal amount;
 
-    private String debitCredit;
-    private String currency;
+    // Optional / informational
+    private String sourceBranch;
+    private String destinationAccount;
     private BigDecimal exchangeRate;
     private String remarks;
-    private String userId;
-
-    @NotBlank(message = "transferMode is required")
-    private String transferMode;
 }

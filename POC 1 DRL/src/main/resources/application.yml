@@ -4,6 +4,17 @@ server:
 spring:
   application:
     name: drools-transaction-poc
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ruleengine
+    username: postgres
+    password: 12345
+  jpa:
+    hibernate:
+      ddl-auto: update     # Hibernate auto-creates/updates the tables from the entities
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
 
 management:
   endpoints:

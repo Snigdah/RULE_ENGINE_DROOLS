@@ -1,48 +1,25 @@
 package com.example.droolspoc.rules
 
-import com.example.droolspoc.model.Transaction
+import com.example.droolspoc.model.ValidationContext
 
+// Default state of a transaction is valid = true (allowed). This rule flips it
+// to blocked when ALL of the following hold:
+//   - currency is BDT
+//   - the product is debit-restricted (drRes == 1)
+//   - the amount exceeds the user's configured limit
+//
+// If it does not fire, the transaction stays allowed.
 
-rule "Transaction amount greater than 500"
-
+rule "Block over-limit debit-restricted BDT transaction"
     when
-        $transaction : Transaction(
-            amount > 500
+        $ctx : ValidationContext(
+            transaction.currency == "BDT",
+            product.drRes == 1,
+            transaction.amount > userLimit.limit
         )
-
     then
-
-        System.out.println(
-            "Rule 1 fired: Amount is greater than 500"
-        );
-
-        $transaction.setValidationMessage(
-            "Transaction amount is greater than 500"
-        );
-
-end
-
-
-rule "DEVIR amount greater than 5000 - permission denied"
-
-    when
-        $transaction : Transaction(
-            transferMode == "DEVIR",
-            amount > 5000
-        )
-
-    then
-
-        System.out.println(
-            "Rule 2 fired: DEVIR transaction above 5000"
-        );
-
-        $transaction.setValid(false);
-
-        $transaction.setPermissionDenied(true);
-
-        $transaction.setValidationMessage(
-            "Permission denied: DEVIR transaction amount cannot be greater than 5000"
-        );
-
+        $ctx.getTransaction().setValid(false);
+        $ctx.getTransaction().setPermissionDenied(true);
+        $ctx.getTransaction().setValidationMessage(
+            "Blocked: amount exceeds limit on a debit-restricted BDT account");
 end
