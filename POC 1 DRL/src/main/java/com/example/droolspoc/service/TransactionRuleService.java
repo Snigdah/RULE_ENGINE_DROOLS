@@ -1,6 +1,5 @@
 package com.example.droolspoc.service;
 
-import com.example.droolspoc.context.GlobalContext;
 import com.example.droolspoc.dto.TransactionRequest;
 import com.example.droolspoc.dto.TransactionResponse;
 import com.example.droolspoc.exception.ContextNotFoundException;
@@ -10,67 +9,86 @@ import com.example.droolspoc.model.UserLimit;
 import com.example.droolspoc.model.ValidationContext;
 import com.example.droolspoc.repository.ProductRepository;
 import com.example.droolspoc.repository.UserLimitRepository;
-import org.kie.api.runtime.KieContainer;
-import org.kie.api.runtime.KieSession;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
 
 @Service
 public class TransactionRuleService {
 
-    private final KieContainer kieContainer;
     private final UserLimitRepository userLimitRepository;
     private final ProductRepository productRepository;
-    private final GlobalContext globalContext;
+    private final ExecutorService virtualThreadExecutor;
+    private final RuleExecutionService ruleExecutionService;
 
-    public TransactionRuleService(KieContainer kieContainer,
-                                  UserLimitRepository userLimitRepository,
+    public TransactionRuleService(UserLimitRepository userLimitRepository,
                                   ProductRepository productRepository,
-                                  GlobalContext globalContext) {
-        this.kieContainer = kieContainer;
+                                  ExecutorService virtualThreadExecutor,
+                                  RuleExecutionService ruleExecutionService) {
         this.userLimitRepository = userLimitRepository;
         this.productRepository = productRepository;
-        this.globalContext = globalContext;
+        this.virtualThreadExecutor = virtualThreadExecutor;
+        this.ruleExecutionService = ruleExecutionService;
     }
 
+    /** Three steps: build the context, run the decision flow, map the result. */
     public TransactionResponse validate(TransactionRequest request) {
-        // 1. Context building: DB lookups (error if either is missing)
-        UserLimit userLimit = userLimitRepository
-                .findByUserIdAndTransactionModeAndDrCrType(
-                        request.getUserId(),
-                        request.getTransactionMode(),
-                        request.getDebitCredit())
-                .orElseThrow(() -> new ContextNotFoundException(
-                        "No user limit for userId=" + request.getUserId()
-                                + ", transactionMode=" + request.getTransactionMode()
-                                + ", drCrType=" + request.getDebitCredit()));
+        ValidationContext context = buildContext(request);
 
-        Product product = productRepository
-                .findBySourceAccount(request.getSourceAccount())
-                .orElseThrow(() -> new ContextNotFoundException(
-                        "No product for sourceAccount=" + request.getSourceAccount()));
-
-        // 2. Assemble the single fact
-        ValidationContext context = new ValidationContext();
-        context.setTransaction(toFact(request));
-        context.setUserLimit(userLimit);
-        context.setProduct(product);
-
-        // 3. Fire the rules. The global context (blocked users, loaded at
-        //    startup) is exposed so the DRL can enforce the blocked-user rule.
-        KieSession kieSession = kieContainer.newKieSession();
-        try {
-            kieSession.setGlobal("globalContext", globalContext);
-            kieSession.insert(context);
-            kieSession.fireAllRules();
-        } finally {
-            kieSession.dispose();
-        }
+        // This API only names the flow; RuleExecutionService runs the right groups.
+        ruleExecutionService.execute(context, "TRANSFER_TRANSACTION");
 
         Transaction result = context.getTransaction();
         return new TransactionResponse(
                 result.isValid(),
                 result.isPermissionDenied(),
                 result.getValidationMessage());
+    }
+
+    /**
+     * Context building. The two DB lookups are independent, so they run in
+     * PARALLEL on virtual threads. A missing row surfaces as ContextNotFoundException
+     * (unwrapped from CompletionException) -> handled as HTTP 422.
+     */
+    private ValidationContext buildContext(TransactionRequest request) {
+        CompletableFuture<UserLimit> userLimitFuture = CompletableFuture.supplyAsync(
+                () -> userLimitRepository
+                        .findByUserIdAndTransactionModeAndDrCrType(
+                                request.getUserId(),
+                                request.getTransactionMode(),
+                                request.getDebitCredit())
+                        .orElseThrow(() -> new ContextNotFoundException(
+                                "No user limit for userId=" + request.getUserId()
+                                        + ", transactionMode=" + request.getTransactionMode()
+                                        + ", drCrType=" + request.getDebitCredit())),
+                virtualThreadExecutor);
+
+        CompletableFuture<Product> productFuture = CompletableFuture.supplyAsync(
+                () -> productRepository
+                        .findBySourceAccount(request.getSourceAccount())
+                        .orElseThrow(() -> new ContextNotFoundException(
+                                "No product for sourceAccount=" + request.getSourceAccount())),
+                virtualThreadExecutor);
+
+        UserLimit userLimit;
+        Product product;
+        try {
+            userLimit = userLimitFuture.join();
+            product = productFuture.join();
+        } catch (CompletionException ex) {
+            if (ex.getCause() instanceof ContextNotFoundException cnfe) {
+                throw cnfe;
+            }
+            throw ex;
+        }
+
+        ValidationContext context = new ValidationContext();
+        context.setTransaction(toFact(request));
+        context.setUserLimit(userLimit);
+        context.setProduct(product);
+        return context;
     }
 
     private Transaction toFact(TransactionRequest r) {

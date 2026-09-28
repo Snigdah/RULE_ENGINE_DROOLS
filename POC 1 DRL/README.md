@@ -64,6 +64,24 @@ Notes:
 - Blocked status is cached at startup; a newly blocked user is not picked up
   until restart. For production, refresh it (scheduled reload / TTL / eviction).
 
+## Rule grouping (agenda groups + decision flow)
+
+Rules are tagged with Drools `agenda-group` so a request only fires the groups
+it needs, not the whole rule set:
+
+- `COMMON`   - cross-cutting gates (e.g. blocked user), run for every flow
+- `TRANSFER` - transfer-specific rules
+
+A flow name maps to an ordered list of groups inside RuleExecutionService
+(`"TRANSFER_TRANSACTION" -> [COMMON, TRANSFER]`). `RuleExecutionService` is the
+only class that touches `KieSession`/agenda groups: it focuses the groups in
+reverse (focus is a LIFO stack) so the first group in the flow (`COMMON`) fires
+first and gates the rest. The API/service just names the flow.
+
+To add a use case later: add rules under a new `agenda-group`, add one line
+to the FLOWS map in RuleExecutionService, done. (The flow->groups map can move to the DB when there
+are several use cases.)
+
 ## Endpoints
 - `POST /api/transactions/validate`
 - `GET  /actuator/health`

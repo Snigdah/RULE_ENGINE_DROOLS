@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: drools-transaction-poc
+  threads:
+    virtual:
+      enabled: true   # Java 21 virtual threads for request handling
   datasource:
     url: jdbc:postgresql://localhost:5432/ruleengine
     username: postgres

@@ -10,10 +10,13 @@ import com.example.droolspoc.model.Product;
 import com.example.droolspoc.model.UserLimit;
 import com.example.droolspoc.repository.ProductRepository;
 import com.example.droolspoc.repository.UserLimitRepository;
+import com.example.droolspoc.service.RuleExecutionService;
 import com.example.droolspoc.service.TransactionRuleService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.kie.api.runtime.KieContainer;
+
+import java.util.concurrent.Executors;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -41,8 +44,11 @@ class TransactionRuleServiceTest {
         productRepository = mock(ProductRepository.class);
         globalContext = new GlobalContext();
         globalContext.register(BlockedUsers.class, new BlockedUsers(Set.of())); // no blocked users by default
+        RuleExecutionService ruleExecutionService =
+                new RuleExecutionService(container, globalContext);
         service = new TransactionRuleService(
-                container, userLimitRepository, productRepository, globalContext);
+                userLimitRepository, productRepository,
+                Executors.newVirtualThreadPerTaskExecutor(), ruleExecutionService);
     }
 
     private TransactionRequest request(String userId, String currency, String amount) {

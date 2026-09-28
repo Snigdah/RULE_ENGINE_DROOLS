@@ -3,17 +3,17 @@ package com.example.droolspoc.rules
 import com.example.droolspoc.model.ValidationContext
 import com.example.droolspoc.context.data.BlockedUsers
 
-// Global reference registry, set on the session by the service. Datasets inside
-// it are loaded once at application startup (see the context package).
+// Global reference registry, set on the session by RuleExecutionService.
 global com.example.droolspoc.context.GlobalContext globalContext;
 
-// -----------------------------------------------------------------------------
-// Business rule: a blocked user cannot transact.
-// Reads the BlockedUsers dataset from the global context.
-// Delete this whole rule to disable the block behaviour - no code change needed.
-// Highest salience + halt so it wins and stops further evaluation.
-// -----------------------------------------------------------------------------
+// =============================================================================
+// COMMON group - cross-cutting gates that run for every transaction type.
+// RuleExecutionService focuses COMMON last, so it fires FIRST.
+// =============================================================================
+
+// A blocked user cannot transact. Delete this rule to disable the block.
 rule "Block transaction for a blocked user"
+    agenda-group "COMMON"
     salience 100
     when
         $ctx : ValidationContext()
@@ -23,13 +23,15 @@ rule "Block transaction for a blocked user"
         $ctx.getTransaction().setValid(false);
         $ctx.getTransaction().setPermissionDenied(true);
         $ctx.getTransaction().setValidationMessage("Blocked: user is blocked");
-        drools.halt();
+        drools.halt();   // stop all groups - a blocked user is rejected outright
 end
 
-// -----------------------------------------------------------------------------
-// Business rule: block an over-limit debit-restricted BDT transaction.
-// -----------------------------------------------------------------------------
+// =============================================================================
+// TRANSFER group - rules specific to the transfer use case.
+// =============================================================================
+
 rule "Block over-limit debit-restricted BDT transaction"
+    agenda-group "a"
     salience 10
     when
         $ctx : ValidationContext(
