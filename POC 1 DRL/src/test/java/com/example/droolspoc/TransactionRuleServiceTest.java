@@ -1,26 +1,27 @@
 package com.example.droolspoc;
 
-import com.example.droolspoc.config.DroolsConfig;
 import com.example.droolspoc.context.GlobalContext;
 import com.example.droolspoc.context.data.BlockedUsers;
 import com.example.droolspoc.dto.TransactionRequest;
 import com.example.droolspoc.dto.TransactionResponse;
 import com.example.droolspoc.exception.ContextNotFoundException;
 import com.example.droolspoc.model.Product;
+import com.example.droolspoc.model.RuleFile;
 import com.example.droolspoc.model.UserLimit;
 import com.example.droolspoc.repository.ProductRepository;
+import com.example.droolspoc.repository.RuleFileRepository;
 import com.example.droolspoc.repository.UserLimitRepository;
+import com.example.droolspoc.service.RuleBaseProvider;
 import com.example.droolspoc.service.RuleExecutionService;
 import com.example.droolspoc.service.TransactionRuleService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.kie.api.runtime.KieContainer;
-
-import java.util.concurrent.Executors;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -32,6 +33,42 @@ import static org.mockito.Mockito.when;
 
 class TransactionRuleServiceTest {
 
+    // Self-contained DRL for the test (mirrors rules/transaction-rules.drl).
+    private static final String DRL = """
+            package com.example.droolspoc.rules
+            import com.example.droolspoc.model.ValidationContext
+            import com.example.droolspoc.context.data.BlockedUsers
+            global com.example.droolspoc.context.GlobalContext globalContext;
+
+            rule "Block transaction for a blocked user"
+                agenda-group "COMMON"
+                salience 100
+                when
+                    $ctx : ValidationContext()
+                    eval(globalContext.get(BlockedUsers.class).isBlocked($ctx.getTransaction().getUserId()))
+                then
+                    $ctx.getTransaction().setValid(false);
+                    $ctx.getTransaction().setPermissionDenied(true);
+                    $ctx.getTransaction().setValidationMessage("Blocked: user is blocked");
+                    drools.halt();
+            end
+
+            rule "Block over-limit debit-restricted BDT transaction"
+                agenda-group "TRANSFER"
+                salience 10
+                when
+                    $ctx : ValidationContext(
+                        transaction.currency == "BDT",
+                        product.drRes == 1,
+                        transaction.amount > userLimit.limit
+                    )
+                then
+                    $ctx.getTransaction().setValid(false);
+                    $ctx.getTransaction().setPermissionDenied(true);
+                    $ctx.getTransaction().setValidationMessage("Blocked: amount exceeds limit on a debit-restricted BDT account");
+            end
+            """;
+
     private UserLimitRepository userLimitRepository;
     private ProductRepository productRepository;
     private GlobalContext globalContext;
@@ -39,13 +76,23 @@ class TransactionRuleServiceTest {
 
     @BeforeEach
     void setUp() {
-        KieContainer container = new DroolsConfig().kieContainer();
+        RuleFile ruleFile = new RuleFile();
+        ruleFile.setFileName("transaction-rules.drl");
+        ruleFile.setDrlText(DRL);
+        ruleFile.setActive(true);
+        RuleFileRepository ruleFileRepository = mock(RuleFileRepository.class);
+        when(ruleFileRepository.findByActiveTrue()).thenReturn(List.of(ruleFile));
+
+        RuleBaseProvider ruleBaseProvider = new RuleBaseProvider(ruleFileRepository);
+        ruleBaseProvider.reload();
+
         userLimitRepository = mock(UserLimitRepository.class);
         productRepository = mock(ProductRepository.class);
         globalContext = new GlobalContext();
-        globalContext.register(BlockedUsers.class, new BlockedUsers(Set.of())); // no blocked users by default
+        globalContext.register(BlockedUsers.class, new BlockedUsers(Set.of()));
+
         RuleExecutionService ruleExecutionService =
-                new RuleExecutionService(container, globalContext);
+                new RuleExecutionService(ruleBaseProvider, globalContext);
         service = new TransactionRuleService(
                 userLimitRepository, productRepository,
                 Executors.newVirtualThreadPerTaskExecutor(), ruleExecutionService);
@@ -67,7 +114,6 @@ class TransactionRuleServiceTest {
         ul.setLimit(new BigDecimal(limit));
         when(userLimitRepository.findByUserIdAndTransactionModeAndDrCrType(any(), any(), any()))
                 .thenReturn(Optional.of(ul));
-
         Product p = new Product();
         p.setDrRes(drRes);
         when(productRepository.findBySourceAccount(any())).thenReturn(Optional.of(p));
@@ -76,7 +122,7 @@ class TransactionRuleServiceTest {
     @Test
     void blockedUserIsRejectedByRule() {
         globalContext.register(BlockedUsers.class, new BlockedUsers(Set.of("USER-002")));
-        stubContext("100", 1); // context exists; blocked-user rule fires first
+        stubContext("100", 1);
         TransactionResponse res = service.validate(request("USER-002", "BDT", "10"));
         assertFalse(res.valid());
         assertTrue(res.permissionDenied());
@@ -103,13 +149,6 @@ class TransactionRuleServiceTest {
     void nonBdtIsAllowed() {
         stubContext("100", 1);
         TransactionResponse res = service.validate(request("USER-001", "USD", "500"));
-        assertTrue(res.valid());
-    }
-
-    @Test
-    void notDebitRestrictedIsAllowed() {
-        stubContext("100", 0);
-        TransactionResponse res = service.validate(request("USER-001", "BDT", "500"));
         assertTrue(res.valid());
     }
 

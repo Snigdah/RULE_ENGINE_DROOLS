@@ -31,3 +31,17 @@ CREATE TABLE user_block (
     user_id  VARCHAR(50) NOT NULL UNIQUE,
     blocked  BOOLEAN     NOT NULL DEFAULT FALSE
 );
+
+-- ---------------------------------------------------------------------------
+-- rule_file : DRL files stored in the DB. The engine is built from all rows
+--             where active = true. Upload/update + reload changes rules at
+--             runtime with no application restart.
+-- ---------------------------------------------------------------------------
+CREATE TABLE rule_file (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    file_name   VARCHAR(200) NOT NULL UNIQUE,
+    drl_text    TEXT         NOT NULL,
+    active      BOOLEAN      NOT NULL DEFAULT TRUE,
+    version     INTEGER      NOT NULL DEFAULT 1,
+    updated_at  TIMESTAMP
+);

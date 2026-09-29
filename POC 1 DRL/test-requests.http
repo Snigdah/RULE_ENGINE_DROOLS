@@ -91,3 +91,20 @@ Content-Type: application/json
 
 ### 7. Health
 GET http://localhost:8080/actuator/health
+
+### --- Runtime rule management ---
+
+### List rule files
+GET http://localhost:8080/admin/rules
+
+### Upload / update a DRL file by JSON (auto-reloads)
+POST http://localhost:8080/admin/rules
+Content-Type: application/json
+
+{
+  "fileName": "extra-rules.drl",
+  "drl": "package com.example.droolspoc.rules\nimport com.example.droolspoc.model.ValidationContext\nrule \"Block USD transactions\"\n    agenda-group \"TRANSFER\"\n    salience 5\nwhen\n    $ctx : ValidationContext(transaction.currency == \"USD\")\nthen\n    $ctx.getTransaction().setValid(false);\n    $ctx.getTransaction().setPermissionDenied(true);\n    $ctx.getTransaction().setValidationMessage(\"Blocked: USD not allowed\");\nend\n"
+}
+
+### Deactivate a rule file (auto-reloads)
+DELETE http://localhost:8080/admin/rules/extra-rules.drl

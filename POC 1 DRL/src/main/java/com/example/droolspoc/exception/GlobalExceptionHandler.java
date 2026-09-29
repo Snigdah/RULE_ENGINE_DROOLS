@@ -1,6 +1,5 @@
-package com.example.droolspoc.controller;
+package com.example.droolspoc.exception;
 
-import com.example.droolspoc.exception.ContextNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -24,6 +23,15 @@ public class GlobalExceptionHandler {
 
         Map<String, Object> body = base(HttpStatus.BAD_REQUEST, "Validation failed");
         body.put("fieldErrors", fieldErrors);
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(RuleCompilationException.class)
+    public ResponseEntity<Map<String, Object>> handleRuleCompilation(
+            RuleCompilationException ex) {
+
+        Map<String, Object> body = base(HttpStatus.BAD_REQUEST, "Rule compilation failed");
+        body.put("message", ex.getMessage());
         return ResponseEntity.badRequest().body(body);
     }
 
