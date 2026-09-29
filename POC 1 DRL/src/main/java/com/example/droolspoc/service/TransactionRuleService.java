@@ -36,7 +36,8 @@ public class TransactionRuleService {
     /** Three steps: build the context, run the decision flow, map the result. */
     public TransactionResponse validate(TransactionRequest request) {
         ValidationContext context = buildContext(request);
-
+// What are the rules present for this particular function or service
+      //In memory / DB where method name = Service.TransactionRuleSevice.Validate
         // This API only names the flow; RuleExecutionService runs the right groups.
         ruleExecutionService.execute(context, "TRANSFER_TRANSACTION");
 

@@ -31,7 +31,7 @@ end
 // =============================================================================
 
 rule "Block over-limit debit-restricted BDT transaction"
-    agenda-group "a"
+    agenda-group "TRANSFER"
     salience 10
     when
         $ctx : ValidationContext(
