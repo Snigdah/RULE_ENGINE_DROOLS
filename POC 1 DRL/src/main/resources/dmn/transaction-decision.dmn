@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/" xmlns:feel="https://www.omg.org/spec/DMN/20230324/FEEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20230324/DMNDI/" xmlns:kie="https://kie.org/dmn/extensions/1.0" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" xmlns:di="http://www.omg.org/spec/DMN/20180521/DI/" namespace="https://leads-bd.com/dmn/transaction" name="TransactionValidation" id="def_transaction_validation">
+  <inputData id="in_blocked" name="blocked">
+    <variable id="v_blocked" name="blocked" typeRef="boolean" />
+  </inputData>
+  <inputData id="in_amount" name="amount">
+    <variable id="v_amount" name="amount" typeRef="number" />
+  </inputData>
+  <inputData id="in_currency" name="currency">
+    <variable id="v_currency" name="currency" typeRef="string" />
+  </inputData>
+  <inputData id="in_userLimit" name="userLimit">
+    <variable id="v_userLimit" name="userLimit" typeRef="number" />
+  </inputData>
+  <inputData id="in_productDrRes" name="productDrRes">
+    <variable id="v_productDrRes" name="productDrRes" typeRef="number" />
+  </inputData>
+  <decision id="dec_blockedUserRule" name="blockedUserRule">
+    <variable id="v_r1" name="blockedUserRule" typeRef="string" />
+    <informationRequirement id="ir_r1_blocked">
+      <requiredInput href="#in_blocked" />
+    </informationRequirement>
+    <literalExpression id="le_r1">
+      <text>if blocked = true then &quot;Blocked: user is blocked&quot; else null</text>
+    </literalExpression>
+  </decision>
+  <decision id="dec_overLimitRule" name="overLimitRule">
+    <variable id="v_r2" name="overLimitRule" typeRef="string" />
+    <informationRequirement id="ir_r2_currency">
+      <requiredInput href="#in_currency" />
+    </informationRequirement>
+    <informationRequirement id="ir_r2_drres">
+      <requiredInput href="#in_productDrRes" />
+    </informationRequirement>
+    <informationRequirement id="ir_r2_amount">
+      <requiredInput href="#in_amount" />
+    </informationRequirement>
+    <informationRequirement id="ir_r2_limit">
+      <requiredInput href="#in_userLimit" />
+    </informationRequirement>
+    <literalExpression id="le_r2">
+      <text>if currency = &quot;BDT&quot; and productDrRes = 1 and amount &gt; userLimit then &quot;Blocked: amount exceeds limit on a debit-restricted BDT account&quot; else null</text>
+    </literalExpression>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="_813A40DB-1AE9-4BF4-975A-2C6E7402A578" name="Default DRD" useAlternativeInputDataShape="false">
+      <di:extension>
+        <kie:ComponentsWidthsExtension>
+          <kie:ComponentWidths />
+        </kie:ComponentsWidthsExtension>
+      </di:extension>
+      <dmndi:DMNShape id="_B2284E61-CA69-42D8-A6B3-59677DE38B1C" dmnElementRef="in_blocked">
+        <dc:Bounds x="112" y="292" width="160" height="80" />
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_D9701C0C-A9B3-4F52-9BB8-73DF7CE5DE90" dmnElementRef="in_amount">
+        <dc:Bounds x="1132" y="292" width="160" height="80" />
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_BE160263-3C16-432C-B763-9E97A11D9040" dmnElementRef="in_currency">
+        <dc:Bounds x="912" y="292" width="160" height="80" />
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_1027CAB0-C8A0-43E6-9DA3-41459C6506AE" dmnElementRef="in_userLimit">
+        <dc:Bounds x="692" y="292" width="160" height="80" />
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_F03024D1-D81E-4B48-9B59-DCFE950AC668" dmnElementRef="in_productDrRes">
+        <dc:Bounds x="472" y="292" width="160" height="80" />
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_48DCCD1C-CC69-47D7-BFAC-8FE2B6BF2CFA" dmnElementRef="dec_blockedUserRule">
+        <dc:Bounds x="112" y="112" width="160" height="80" />
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_92DCFA53-B615-4EEA-B7D1-2170A948E4BA" dmnElementRef="dec_overLimitRule">
+        <dc:Bounds x="692" y="112" width="160" height="80" />
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="_68EF68B9-F4DC-4CE1-8396-DAB13F565C5B" dmnElementRef="ir_r1_blocked" sourceElement="_B2284E61-CA69-42D8-A6B3-59677DE38B1C" targetElement="_48DCCD1C-CC69-47D7-BFAC-8FE2B6BF2CFA">
+        <di:waypoint x="192" y="292" />
+        <di:waypoint x="192" y="192" />
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_2BB49A9B-F7EC-44EB-B1CF-6E36539BBCE0" dmnElementRef="ir_r2_currency" sourceElement="_BE160263-3C16-432C-B763-9E97A11D9040" targetElement="_92DCFA53-B615-4EEA-B7D1-2170A948E4BA">
+        <di:waypoint x="992" y="292" />
+        <di:waypoint x="772" y="192" />
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_9AAA82B8-F8C1-4640-833F-7CAB45052DA4" dmnElementRef="ir_r2_drres" sourceElement="_F03024D1-D81E-4B48-9B59-DCFE950AC668" targetElement="_92DCFA53-B615-4EEA-B7D1-2170A948E4BA">
+        <di:waypoint x="552" y="292" />
+        <di:waypoint x="772" y="192" />
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_61A776E6-353F-4A99-91C1-4609E61F9589" dmnElementRef="ir_r2_amount" sourceElement="_D9701C0C-A9B3-4F52-9BB8-73DF7CE5DE90" targetElement="_92DCFA53-B615-4EEA-B7D1-2170A948E4BA">
+        <di:waypoint x="1212" y="292" />
+        <di:waypoint x="772" y="192" />
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_204F10DF-A202-4D4A-A61E-0DC7A61DC1B7" dmnElementRef="ir_r2_limit" sourceElement="_1027CAB0-C8A0-43E6-9DA3-41459C6506AE" targetElement="_92DCFA53-B615-4EEA-B7D1-2170A948E4BA">
+        <di:waypoint x="772" y="292" />
+        <di:waypoint x="772" y="192" />
+      </dmndi:DMNEdge>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

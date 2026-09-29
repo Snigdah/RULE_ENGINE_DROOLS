@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/" xmlns:feel="https://www.omg.org/spec/DMN/20230324/FEEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20230324/DMNDI/" xmlns:kie="https://kie.org/dmn/extensions/1.0" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" xmlns:di="http://www.omg.org/spec/DMN/20180521/DI/" namespace="https://leads-bd.com/dmn/loan" name="LoanValidation" id="def_loan_validation">
+  <inputData id="in_age" name="age">
+    <variable id="v_age" name="age" typeRef="number" />
+  </inputData>
+  <inputData id="in_income" name="monthlyIncome">
+    <variable id="v_income" name="monthlyIncome" typeRef="number" />
+  </inputData>
+  <decision id="dec_loanEligibilityRule" name="loanEligibilityRule">
+    <variable id="v_loan" name="loanEligibilityRule" typeRef="string" />
+    <informationRequirement id="ir_loan_age">
+      <requiredInput href="#in_age" />
+    </informationRequirement>
+    <informationRequirement id="ir_loan_income">
+      <requiredInput href="#in_income" />
+    </informationRequirement>
+    <decisionTable id="dt_loan" hitPolicy="FIRST">
+      <input id="dt_loan_in1" label="age 18+">
+        <inputExpression id="dt_loan_in1_e" typeRef="boolean">
+          <text>age &gt;= 18</text>
+        </inputExpression>
+      </input>
+      <input id="dt_loan_in2" label="income 30000+">
+        <inputExpression id="dt_loan_in2_e" typeRef="boolean">
+          <text>monthlyIncome &gt;= 30000</text>
+        </inputExpression>
+      </input>
+      <output id="dt_loan_out" name="message" typeRef="string" />
+      <rule id="dt_loan_rule1">
+        <inputEntry id="dt_loan_rule1_i1">
+          <text>false</text>
+        </inputEntry>
+        <inputEntry id="dt_loan_rule1_i2">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="dt_loan_rule1_o1">
+          <text>&quot;Rejected: applicant must be 18 or older&quot;</text>
+        </outputEntry>
+      </rule>
+      <rule id="dt_loan_rule2">
+        <inputEntry id="dt_loan_rule2_i1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="dt_loan_rule2_i2">
+          <text>false</text>
+        </inputEntry>
+        <outputEntry id="dt_loan_rule2_o1">
+          <text>&quot;Rejected: monthly income must be at least 30000&quot;</text>
+        </outputEntry>
+      </rule>
+      <rule id="dt_loan_rule3">
+        <inputEntry id="dt_loan_rule3_i1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="dt_loan_rule3_i2">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="dt_loan_rule3_o1">
+          <text>null</text>
+        </outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="_DA7F98D3-3FA5-4D1E-AAA8-7C6BCE50095E" name="Default DRD" useAlternativeInputDataShape="false">
+      <di:extension>
+        <kie:ComponentsWidthsExtension>
+          <kie:ComponentWidths />
+        </kie:ComponentsWidthsExtension>
+      </di:extension>
+      <dmndi:DMNShape id="_FAD2E8F6-01DE-4BE3-BFD3-2E73FD03966B" dmnElementRef="in_age">
+        <dc:Bounds x="332" y="292" width="160" height="80" />
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_8D3B5D68-5739-409A-807D-2998CBBAD8FF" dmnElementRef="in_income">
+        <dc:Bounds x="112" y="292" width="160" height="80" />
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_9E9B2423-2366-439E-A6E6-374FC5AA0D1C" dmnElementRef="dec_loanEligibilityRule">
+        <dc:Bounds x="112" y="112" width="160" height="80" />
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="_01B51626-D3A1-403D-9A99-7727EA3A7022" dmnElementRef="ir_loan_age" sourceElement="_FAD2E8F6-01DE-4BE3-BFD3-2E73FD03966B" targetElement="_9E9B2423-2366-439E-A6E6-374FC5AA0D1C">
+        <di:waypoint x="412" y="292" />
+        <di:waypoint x="192" y="192" />
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_A395C22D-3B33-4135-9549-DE3DBFEB4F7A" dmnElementRef="ir_loan_income" sourceElement="_8D3B5D68-5739-409A-807D-2998CBBAD8FF" targetElement="_9E9B2423-2366-439E-A6E6-374FC5AA0D1C">
+        <di:waypoint x="192" y="292" />
+        <di:waypoint x="192" y="192" />
+      </dmndi:DMNEdge>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

@@ -60,22 +60,10 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Drools -->
-        <dependency>
-            <groupId>org.drools</groupId>
-            <artifactId>drools-engine</artifactId>
-            <version>${drools.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.drools</groupId>
-            <artifactId>drools-mvel</artifactId>
-            <version>${drools.version}</version>
-        </dependency>
-
+        <!-- DMN engine (kie-dmn) -->
         <dependency>
             <groupId>org.kie</groupId>
-            <artifactId>kie-api</artifactId>
+            <artifactId>kie-dmn-core</artifactId>
             <version>${drools.version}</version>
         </dependency>
 
