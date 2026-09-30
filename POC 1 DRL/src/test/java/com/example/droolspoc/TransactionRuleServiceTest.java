@@ -6,11 +6,16 @@ import com.example.droolspoc.dto.TransactionRequest;
 import com.example.droolspoc.dto.TransactionResponse;
 import com.example.droolspoc.exception.ContextNotFoundException;
 import com.example.droolspoc.model.Product;
+import com.example.droolspoc.model.FlowGroup;
+import com.example.droolspoc.model.RequestFlowMap;
 import com.example.droolspoc.model.RuleFile;
 import com.example.droolspoc.model.UserLimit;
 import com.example.droolspoc.repository.ProductRepository;
+import com.example.droolspoc.repository.FlowGroupRepository;
+import com.example.droolspoc.repository.RequestFlowMapRepository;
 import com.example.droolspoc.repository.RuleFileRepository;
 import com.example.droolspoc.repository.UserLimitRepository;
+import com.example.droolspoc.service.DecisionFlowResolver;
 import com.example.droolspoc.service.RuleBaseProvider;
 import com.example.droolspoc.service.RuleExecutionService;
 import com.example.droolspoc.service.TransactionRuleService;
@@ -91,8 +96,30 @@ class TransactionRuleServiceTest {
         globalContext = new GlobalContext();
         globalContext.register(BlockedUsers.class, new BlockedUsers(Set.of()));
 
+        // DB-driven flow config (mocked): TransactionRequest -> TRANSFER_TRANSACTION -> [COMMON, TRANSFER]
+        RequestFlowMap mapping = new RequestFlowMap();
+        mapping.setRequestClass("com.example.droolspoc.dto.TransactionRequest");
+        mapping.setFlowName("TRANSFER_TRANSACTION");
+        RequestFlowMapRepository requestFlowMapRepository = mock(RequestFlowMapRepository.class);
+        when(requestFlowMapRepository.findAll()).thenReturn(List.of(mapping));
+
+        FlowGroup common = new FlowGroup();
+        common.setFlowName("TRANSFER_TRANSACTION");
+        common.setAgendaGroup("COMMON");
+        common.setOrderNo(1);
+        FlowGroup transfer = new FlowGroup();
+        transfer.setFlowName("TRANSFER_TRANSACTION");
+        transfer.setAgendaGroup("TRANSFER");
+        transfer.setOrderNo(2);
+        FlowGroupRepository flowGroupRepository = mock(FlowGroupRepository.class);
+        when(flowGroupRepository.findAll()).thenReturn(List.of(common, transfer));
+
+        DecisionFlowResolver flowResolver =
+                new DecisionFlowResolver(requestFlowMapRepository, flowGroupRepository);
+        flowResolver.reload();
+
         RuleExecutionService ruleExecutionService =
-                new RuleExecutionService(ruleBaseProvider, globalContext);
+                new RuleExecutionService(ruleBaseProvider, globalContext, flowResolver);
         service = new TransactionRuleService(
                 userLimitRepository, productRepository,
                 Executors.newVirtualThreadPerTaskExecutor(), ruleExecutionService);

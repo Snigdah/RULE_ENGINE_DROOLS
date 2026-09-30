@@ -45,3 +45,19 @@ CREATE TABLE rule_file (
     version     INTEGER      NOT NULL DEFAULT 1,
     updated_at  TIMESTAMP
 );
+
+-- ---------------------------------------------------------------------------
+-- Flow routing config (DB-driven, cached in memory; reload via /admin/flows/reload)
+-- ---------------------------------------------------------------------------
+CREATE TABLE request_flow_map (
+    id             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    request_class  VARCHAR(200) NOT NULL UNIQUE,
+    flow_name      VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE flow_group (
+    id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    flow_name     VARCHAR(100) NOT NULL,
+    agenda_group  VARCHAR(100) NOT NULL,
+    order_no      INTEGER      NOT NULL
+);

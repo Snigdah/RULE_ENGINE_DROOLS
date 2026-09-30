@@ -6,53 +6,52 @@ import org.kie.api.runtime.KieSession;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 
 /**
- * Runs a named decision flow against the rule engine. The KieContainer comes
- * from RuleBaseProvider, so it always reflects the latest uploaded rules.
+ * Runs the rule engine. The flow is resolved from the REQUEST DTO class via the
+ * DB (DecisionFlowResolver); the ValidationContext is the fact inserted into the
+ * session. No flow name is hardcoded in the calling service.
  */
 @Service
 public class RuleExecutionService {
 
-    // Flow name -> agenda groups it runs, in order (first one runs first).
-    private static final Map<String, List<String>> FLOWS = Map.of(
-            "TRANSFER_TRANSACTION", List.of("COMMON", "TRANSFER")
-    );
-
     private final RuleBaseProvider ruleBaseProvider;
     private final GlobalContext globalContext;
+    private final DecisionFlowResolver flowResolver;
 
-    public RuleExecutionService(RuleBaseProvider ruleBaseProvider, GlobalContext globalContext) {
+    public RuleExecutionService(RuleBaseProvider ruleBaseProvider,
+                                GlobalContext globalContext,
+                                DecisionFlowResolver flowResolver) {
         this.ruleBaseProvider = ruleBaseProvider;
         this.globalContext = globalContext;
+        this.flowResolver = flowResolver;
     }
 
-    public void execute(ValidationContext context, String flow) {
-        execute(context, flow, true);
-    }
+    /**
+     * @param context     the fact inserted into the session
+     * @param requestType the request DTO class - decides the flow (from DB)
+     */
+    public void execute(ValidationContext context, Class<?> requestType) {
+        String flow = flowResolver.flowFor(requestType.getName());
+        List<String> groups = flowResolver.groupsFor(flow);
 
-    public void execute(ValidationContext context, String flow, boolean withGlobalContext) {
-        List<String> groups = FLOWS.get(flow);
-        if (groups == null) {
-            throw new IllegalArgumentException("Unknown decision flow: " + flow);
-        }
-
-        // Fresh session from the CURRENT container (picks up any reloaded rules).
         KieSession session = ruleBaseProvider.getContainer().newKieSession();
         try {
-            if (withGlobalContext) {
+            // set the global only if the loaded rules declare it (uploaded DRLs may not)
+            try {
                 session.setGlobal("globalContext", globalContext);
+            } catch (RuntimeException ignored) {
+                // no 'global globalContext' declared in the active rules - fine
             }
             session.insert(context);
 
+            // focus in reverse so the FIRST group in the flow fires first (focus is a stack)
             for (int i = groups.size() - 1; i >= 0; i--) {
                 var group = session.getAgenda().getAgendaGroup(groups.get(i));
                 if (group != null) {
-                    group.setFocus();   // group may not exist if no rule uses it yet
+                    group.setFocus();
                 }
             }
-
             session.fireAllRules();
         } finally {
             session.dispose();
