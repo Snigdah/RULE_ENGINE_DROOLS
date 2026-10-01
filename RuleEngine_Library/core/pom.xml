@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<distributionManagement>
+		<snapshotRepository>
+			<id>nexus-microcube-repository</id>
+			<url>http://192.168.10.64:8081/repository/maven-snapshots/</url>
+		</snapshotRepository>
+
+		<repository>
+			<id>nexus-microcube-repository</id>
+			<url>http://192.168.10.64:8081/repository/maven-releases/</url>
+		</repository>
+	</distributionManagement>
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<!--
+	  Same house pattern as the AuthZ library: inherit the Spring Boot parent
+	  directly (dependency versions managed for us), Java 21, no application
+	  packaging.
+
+	  NOTE ON VERSION ALIGNMENT: this is pinned to Spring Boot 3.5.10 to match the
+	  rule-engine code and Drools 10.2.0 it was validated against. A consuming
+	  microservice MUST be on the same Spring Boot line (3.5.x) as this library.
+	  The AuthZ library is on Boot 4.0.2 - if a service pulls in BOTH libraries,
+	  the two must share one Boot line, so this would need bumping to 4.x.
+	-->
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.5.10</version>
+		<relativePath/>
+	</parent>
+
+	<groupId>com.leads</groupId>
+	<artifactId>rule-engine</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>core</name>
+	<description>Drools rule engine (runtime rule upload + DB-driven flow routing) as a shared starter for Microcube services</description>
+
+	<developers>
+		<developer>
+			<name>K M Farhat Snigdah</name>
+			<organization>LEADS Corporation Limited</organization>
+		</developer>
+	</developers>
+
+	<properties>
+		<java.version>21</java.version>
+		<drools.version>10.2.0</drools.version>
+	</properties>
+
+	<dependencies>
+		<!-- Core Spring (no web/app packaging by itself) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter</artifactId>
+		</dependency>
+
+		<!-- REST admin endpoints (rule upload, flow CRUD) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<!-- Bean Validation on admin DTOs -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+
+		<!--
+		  JPA for the engine's OWN tables (rule_file, flow_group, request_flow_map).
+		  The consuming microservice supplies the DataSource and JDBC driver
+		  (Oracle ojdbc) - this library ships NO driver and NO dialect override,
+		  so Hibernate auto-detects Oracle from the live connection.
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+
+		<!-- Drools rule engine -->
+		<dependency>
+			<groupId>org.drools</groupId>
+			<artifactId>drools-engine</artifactId>
+			<version>${drools.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.drools</groupId>
+			<artifactId>drools-mvel</artifactId>
+			<version>${drools.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.kie</groupId>
+			<artifactId>kie-api</artifactId>
+			<version>${drools.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<!--
+		  Intentionally NO spring-boot-maven-plugin: this is a plain library jar,
+		  not an executable application (same as the AuthZ library). Build & publish
+		  with `mvn clean deploy`.
+		-->
+	</build>
+
+</project>
