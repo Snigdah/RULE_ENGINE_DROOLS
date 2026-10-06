@@ -5,30 +5,35 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.Data;
 
 import java.math.BigDecimal;
 
+/**
+ * Per-user transaction limit. Business data owned by this POC, not the library.
+ * PostgreSQL form of the Oracle RE_USER_LIMIT table.
+ */
 @Data
 @Entity
-@Table(
-        name = "user_limit",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uq_user_limit",
-                columnNames = {"user_id", "transaction_mode", "dr_cr_type"})
-)
+@Table(name = "re_user_limit")
 public class UserLimit {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "re_user_limit_seq")
+    @SequenceGenerator(name = "re_user_limit_seq", sequenceName = "re_user_limit_seq", allocationSize = 1)
     private Long id;
 
-    private String userId;           // user_id
-    private String transactionMode;  // transaction_mode : TRANSFER | CREDIT
-    private String drCrType;         // dr_cr_type       : DR | CR
+    @Column(name = "user_id", nullable = false)
+    private String userId;
 
-    @Column(name = "limit_amount")
+    @Column(name = "transaction_mode")
+    private String transactionMode;
+
+    @Column(name = "dr_cr_type")
+    private String drCrType;
+
+    @Column(name = "limit_amount", nullable = false)
     private BigDecimal limit;
 }

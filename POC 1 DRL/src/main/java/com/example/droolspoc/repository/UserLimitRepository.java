@@ -7,6 +7,5 @@ import java.util.Optional;
 
 public interface UserLimitRepository extends JpaRepository<UserLimit, Long> {
 
-    Optional<UserLimit> findByUserIdAndTransactionModeAndDrCrType(
-            String userId, String transactionMode, String drCrType);
+    Optional<UserLimit> findFirstByUserId(String userId);
 }

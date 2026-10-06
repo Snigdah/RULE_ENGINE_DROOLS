@@ -1,5 +1,6 @@
 package com.example.droolspoc.exception;
 
+import leads.ruleengine.core.exception.FlowNotConfiguredException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -26,23 +27,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(body);
     }
 
-    @ExceptionHandler(RuleCompilationException.class)
-    public ResponseEntity<Map<String, Object>> handleRuleCompilation(
-            RuleCompilationException ex) {
+    /** Missing flow mapping or agenda groups. The library leaves this to the host. */
+    @ExceptionHandler(FlowNotConfiguredException.class)
+    public ResponseEntity<Map<String, Object>> handleFlowNotConfigured(
+            FlowNotConfiguredException ex) {
 
-        Map<String, Object> body = base(HttpStatus.BAD_REQUEST, "Rule compilation failed");
+        Map<String, Object> body = base(HttpStatus.BAD_REQUEST, "Flow not configured");
         body.put("message", ex.getMessage());
         return ResponseEntity.badRequest().body(body);
-    }
-
-    @ExceptionHandler(ContextNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleContextNotFound(
-            ContextNotFoundException ex) {
-
-        Map<String, Object> body =
-                base(HttpStatus.UNPROCESSABLE_ENTITY, "Context not found");
-        body.put("message", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
     }
 
     private Map<String, Object> base(HttpStatus status, String error) {

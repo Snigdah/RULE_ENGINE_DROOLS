@@ -1,9 +1,9 @@
 package com.example.droolspoc.context.data;
 
-import com.example.droolspoc.context.GlobalContext;
-import com.example.droolspoc.context.GlobalReferenceLoader;
 import com.example.droolspoc.model.UserBlock;
 import com.example.droolspoc.repository.UserBlockRepository;
+import leads.ruleengine.core.context.GlobalContext;
+import leads.ruleengine.core.context.GlobalReferenceLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -12,9 +12,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Loads the blocked-user list from the {@code user_block} table into the global
- * context at startup. This is one concrete example of the extension point —
- * copy its shape to add another global dataset.
+ * Loads blocked users from re_user_block into the library GlobalContext.
+ * The library's GlobalContextLoader calls every GlobalReferenceLoader at startup
+ * and again on POST /admin/global-context/reload.
  */
 @Component
 public class BlockedUsersLoader implements GlobalReferenceLoader {

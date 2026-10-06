@@ -1,28 +1,55 @@
-### 0. Blocked user (USER-002 in user_block) -> rejected up front (global context)
+### Upload the DRL (auto-reloads the engine)
+POST http://localhost:8080/admin/rules
+Content-Type: application/json
+
+{
+  "fileName": "transaction-rules.drl",
+  "drl": "package com.example.droolspoc.rules\nimport com.example.droolspoc.model.ValidationContext\nimport com.example.droolspoc.context.data.BlockedUsers\nglobal leads.ruleengine.core.context.GlobalContext globalContext;\nrule \"Block transaction for a blocked user\"\n    agenda-group \"COMMON\"\n    salience 100\nwhen\n    $ctx : ValidationContext()\n    eval(globalContext.get(BlockedUsers.class).isBlocked($ctx.getTransaction().getUserId()))\nthen\n    $ctx.getTransaction().setValid(false);\n    $ctx.getTransaction().setPermissionDenied(true);\n    $ctx.getTransaction().setValidationMessage(\"Blocked: user is blocked\");\n    drools.halt();\nend\nrule \"Block over-limit debit-restricted BDT transaction\"\n    agenda-group \"TRANSFER\"\n    salience 10\nwhen\n    $ctx : ValidationContext(\n        transaction.currency == \"BDT\",\n        product.drRes == 1,\n        transaction.amount > userLimit.limit\n    )\nthen\n    $ctx.getTransaction().setValid(false);\n    $ctx.getTransaction().setPermissionDenied(true);\n    $ctx.getTransaction().setValidationMessage(\"Blocked: amount exceeds limit on a debit-restricted BDT account\");\nend\n"
+}
+
+### Define the flow (COMMON fires first)
+POST http://localhost:8080/admin/flows
+Content-Type: application/json
+
+{
+  "flowName": "TRANSFER_TRANSACTION",
+  "groups": ["COMMON", "TRANSFER"]
+}
+
+### Map TransactionRequest to that flow
+POST http://localhost:8080/admin/flows/mappings
+Content-Type: application/json
+
+{
+  "requestClass": "com.example.droolspoc.dto.TransactionRequest",
+  "flowName": "TRANSFER_TRANSACTION"
+}
+
+### 0. Blocked user (USER-002) -> rejected by the COMMON rule
 POST http://localhost:8080/api/transactions/validate
 Content-Type: application/json
 
 {
   "userId": "USER-002",
-  "transactionMode": "TRANSFER",
-  "debitCredit": "DR",
+  "transactionMode": "ONLINE",
+  "debitCredit": "D",
   "sourceAccount": "100001",
   "currency": "BDT",
   "amount": 10
 }
 
 ### 1. Over limit + debit-restricted + BDT -> BLOCKED
-# USER-001/TRANSFER/DR limit = 100; account 100001 drRes = 1
+# USER-001 limit = 10000; account 100001 drRes = 1
 POST http://localhost:8080/api/transactions/validate
 Content-Type: application/json
 
 {
   "userId": "USER-001",
-  "transactionMode": "TRANSFER",
-  "debitCredit": "DR",
+  "transactionMode": "ONLINE",
+  "debitCredit": "D",
   "sourceAccount": "100001",
   "currency": "BDT",
-  "amount": 500
+  "amount": 15000
 }
 
 ### 2. Within limit -> ALLOWED
@@ -31,24 +58,24 @@ Content-Type: application/json
 
 {
   "userId": "USER-001",
-  "transactionMode": "TRANSFER",
-  "debitCredit": "DR",
+  "transactionMode": "ONLINE",
+  "debitCredit": "D",
   "sourceAccount": "100001",
   "currency": "BDT",
   "amount": 50
 }
 
-### 3. Not BDT -> ALLOWED (rule needs BDT)
+### 3. Not BDT -> ALLOWED (limit rule needs BDT)
 POST http://localhost:8080/api/transactions/validate
 Content-Type: application/json
 
 {
   "userId": "USER-001",
-  "transactionMode": "TRANSFER",
-  "debitCredit": "DR",
+  "transactionMode": "ONLINE",
+  "debitCredit": "D",
   "sourceAccount": "100001",
   "currency": "USD",
-  "amount": 500
+  "amount": 15000
 }
 
 ### 4. Not debit-restricted product (200001, drRes = 0) -> ALLOWED
@@ -57,8 +84,8 @@ Content-Type: application/json
 
 {
   "userId": "USER-001",
-  "transactionMode": "CREDIT",
-  "debitCredit": "DR",
+  "transactionMode": "ONLINE",
+  "debitCredit": "D",
   "sourceAccount": "200001",
   "currency": "BDT",
   "amount": 999999
@@ -70,8 +97,8 @@ Content-Type: application/json
 
 {
   "userId": "USER-001",
-  "transactionMode": "TRANSFER",
-  "debitCredit": "DR",
+  "transactionMode": "ONLINE",
+  "debitCredit": "D",
   "sourceAccount": "999999",
   "currency": "BDT",
   "amount": 500
@@ -83,8 +110,8 @@ Content-Type: application/json
 
 {
   "userId": "USER-001",
-  "transactionMode": "TRANSFER",
-  "debitCredit": "DR",
+  "transactionMode": "ONLINE",
+  "debitCredit": "D",
   "sourceAccount": "100001",
   "currency": "BDT"
 }
@@ -92,19 +119,8 @@ Content-Type: application/json
 ### 7. Health
 GET http://localhost:8080/actuator/health
 
-### --- Runtime rule management ---
-
 ### List rule files
 GET http://localhost:8080/admin/rules
 
-### Upload / update a DRL file by JSON (auto-reloads)
-POST http://localhost:8080/admin/rules
-Content-Type: application/json
-
-{
-  "fileName": "extra-rules.drl",
-  "drl": "package com.example.droolspoc.rules\nimport com.example.droolspoc.model.ValidationContext\nrule \"Block USD transactions\"\n    agenda-group \"TRANSFER\"\n    salience 5\nwhen\n    $ctx : ValidationContext(transaction.currency == \"USD\")\nthen\n    $ctx.getTransaction().setValid(false);\n    $ctx.getTransaction().setPermissionDenied(true);\n    $ctx.getTransaction().setValidationMessage(\"Blocked: USD not allowed\");\nend\n"
-}
-
-### Deactivate a rule file (auto-reloads)
-DELETE http://localhost:8080/admin/rules/extra-rules.drl
+### Routing overview
+GET http://localhost:8080/admin/flows/overview

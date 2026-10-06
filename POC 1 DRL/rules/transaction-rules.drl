@@ -3,12 +3,12 @@ package com.example.droolspoc.rules
 import com.example.droolspoc.model.ValidationContext
 import com.example.droolspoc.context.data.BlockedUsers
 
-// Global reference registry, set on the session by RuleExecutionService.
-global com.example.droolspoc.context.GlobalContext globalContext;
+// Global reference registry, set on the session by the library RuleExecutionService.
+global leads.ruleengine.core.context.GlobalContext globalContext;
 
 // =============================================================================
 // COMMON group - cross-cutting gates that run for every transaction type.
-// RuleExecutionService focuses COMMON last, so it fires FIRST.
+// The library focuses COMMON last, so it fires FIRST.
 // =============================================================================
 
 // A blocked user cannot transact. Delete this rule to disable the block.

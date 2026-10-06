@@ -1,15 +1,27 @@
 # Drools Transaction POC
 
-Spring Boot 3.5 + Java 21 + Maven + Drools + PostgreSQL.
+Spring Boot 3.5 + Java 21 + PostgreSQL. This app does **not** embed Drools.
+It is a business consumer of `com.leads:rule-engine` (the sibling `RuleEngine_Library`).
 
-The engine validates a transaction using **context building**: the request
-carries lookup keys, the service loads `UserLimit` and `Product` from the DB,
-wraps everything in one `ValidationContext` fact, and fires the rules against
-it. DB lookups happen in the service (never inside a rule).
+The service loads `UserLimit` and `Product`, wraps them in one `ValidationContext`
+fact, and calls:
+
+```java
+ruleEngine.execute(context, TransactionRequest.class, globalContext);
+```
+
+The library compiles DRL from `rule_file`, picks the flow from `request_flow_map`
+and `flow_group`, and mutates the fact. This service reads `valid`,
+`permissionDenied`, and the message off that fact.
 
 ## Requirements
 - JDK 21, Maven 3.9+
 - PostgreSQL running locally
+- The rule-engine library installed into the local Maven repo (once):
+
+```bash
+mvn -f "../RuleEngine_Library/core/pom.xml" install
+```
 
 ## 1. Database
 ```bash
@@ -17,102 +29,62 @@ createdb -U postgres ruleengine
 psql -U postgres -d ruleengine -f db/schema.sql
 psql -U postgres -d ruleengine -f db/data.sql
 ```
-Datasource is configured in `src/main/resources/application.yml`
-(url `jdbc:postgresql://localhost:5432/ruleengine`, user/pass `postgres`).
-`ddl-auto` is `validate` — Hibernate checks the entities against your
-hand-created tables and never auto-creates them.
+Datasource is in `src/main/resources/application.yml`
+(`jdbc:postgresql://localhost:5432/ruleengine`, user `postgres`).
+`ddl-auto` is `update`. Hibernate also creates these tables from the entities
+if you skip the scripts. Seed data still has to be loaded.
+
+Library tables: `rule_file`, `flow_group`, `request_flow_map`.
+Business tables: `re_user_limit`, `re_product`, `re_user_block`.
 
 ## 2. Run
 ```bash
 mvn clean spring-boot:run
 ```
 
+On a fresh database there are no rules and no flow mapping. Upload them before
+calling validate (see `test-requests.http`):
+
+1. `POST /admin/rules` with `rules/transaction-rules.drl`
+2. `POST /admin/flows` — flow `TRANSFER_TRANSACTION`, groups `COMMON` then `TRANSFER`
+3. `POST /admin/flows/mappings` — request class
+   `com.example.droolspoc.dto.TransactionRequest`
+
 ## The rule
-A transaction is **blocked** only when all three hold:
+A transaction is **blocked** when the user is in `re_user_block`, or when all
+three hold:
+
 - `currency == "BDT"`
 - product `drRes == 1` (debit-restricted)
 - `amount > userLimit.limit`
 
-Otherwise it is allowed. Sample data limits for `USER-001`:
+Otherwise it is allowed. Seed data:
 
-| transactionMode | DR/CR | limit  |
-|-----------------|-------|--------|
-| TRANSFER        | DR    | 100    |
-| TRANSFER        | CR    | 2323   |
-| CREDIT          | DR    | 12323  |
-| CREDIT          | CR    | 123213 |
+| user / account | meaning |
+|----------------|---------|
+| USER-001       | limit 10000, ONLINE / D, not blocked |
+| USER-002       | limit 10000, blocked |
+| 100001         | debit-restricted (`dr_res = 1`) |
+| 200001         | not restricted |
 
-## Global context (startup)
-
-`user_block` rows are loaded once at startup by `GlobalContextLoader`
-(`ApplicationRunner`) into `GlobalContext` (in-memory, immutable for the POC).
-The service exposes it to each session as a Drools `global`, and the
-**blocked-user rule lives in `transaction-rules.drl`** - so an admin can turn
-the block off by deleting that rule from the file, no code change or redeploy.
-
-A blocked user gets:
-```json
-{"valid":false,"permissionDenied":true,"message":"Blocked: user is blocked"}
-```
-
-Notes:
-- The blocked-user rule has the highest salience and calls `drools.halt()`,
-  so it wins over the limit rule.
-- Context (limit/product) is still loaded before the rules fire, so a blocked
-  user needs valid context rows or the request returns 422 first. The seed
-  gives USER-002 limits for this reason.
-- Blocked status is cached at startup; a newly blocked user is not picked up
-  until restart. For production, refresh it (scheduled reload / TTL / eviction).
-
-## Rule grouping (agenda groups + decision flow)
-
-Rules are tagged with Drools `agenda-group` so a request only fires the groups
-it needs, not the whole rule set:
-
-- `COMMON`   - cross-cutting gates (e.g. blocked user), run for every flow
-- `TRANSFER` - transfer-specific rules
-
-A flow name maps to an ordered list of groups inside RuleExecutionService
-(`"TRANSFER_TRANSACTION" -> [COMMON, TRANSFER]`). `RuleExecutionService` is the
-only class that touches `KieSession`/agenda groups: it focuses the groups in
-reverse (focus is a LIFO stack) so the first group in the flow (`COMMON`) fires
-first and gates the rest. The API/service just names the flow.
-
-To add a use case later: add rules under a new `agenda-group`, add one line
-to the FLOWS map in RuleExecutionService, done. (The flow->groups map can move to the DB when there
-are several use cases.)
+Blocked users are loaded at startup by `BlockedUsersLoader` into the library
+`GlobalContext`. `POST /admin/global-context/reload` picks up new block rows
+without a restart.
 
 ## Endpoints
-- `POST /api/transactions/validate`
-- `GET  /actuator/health`
-
-## Try it
-See `test-requests.http` (IntelliJ HTTP client). Example — blocked:
-```bash
-curl -X POST http://localhost:8080/api/transactions/validate \
-  -H "Content-Type: application/json" \
-  -d "{\"userId\":\"USER-001\",\"transactionMode\":\"TRANSFER\",\"debitCredit\":\"DR\",\"sourceAccount\":\"100001\",\"currency\":\"BDT\",\"amount\":500}"
-```
-```json
-{"valid":false,"permissionDenied":true,"message":"Blocked: amount exceeds limit on a debit-restricted BDT account"}
-```
+- `POST /api/transactions/validate` — this service
+- `GET/POST/DELETE /admin/rules` — library
+- `GET/POST/DELETE /admin/flows` and `/admin/flows/mappings` — library
+- `POST /admin/global-context/reload` — library
+- `GET /actuator/health`
 
 Responses: `200` with `{valid, permissionDenied, message}`;
-`400` on bad input; `422` when a limit/product row is missing.
-
-## Design
-- `dto/TransactionRequest` / `dto/TransactionResponse` - API contract
-- `model/Transaction`      - internal fact (holds result fields)
-- `model/UserLimit`, `model/Product` - JPA entities + context facts
-- `model/ValidationContext` - the single fact the rule reads
-- `repository/*`           - the two DB lookups
-- `service/TransactionRuleService` - context building + rule firing
-- `exception/ContextNotFoundException` + handler -> 422
-- `resources/rules/transaction-rules.drl` - the rule
+`400` on bad input or a missing flow mapping;
+`422` when a limit or product row is missing.
 
 ## Tests
 ```bash
 mvn test
 ```
-- `TransactionRuleServiceTest` - rule logic with real KieContainer + mocked repos (no DB)
-- `TransactionControllerTest`  - web layer, mocked service (no DB)
+- `TransactionRuleServiceTest` — context building and the library `execute` call (no DB, no Drools)
+- `TransactionControllerTest` — web layer, mocked service
