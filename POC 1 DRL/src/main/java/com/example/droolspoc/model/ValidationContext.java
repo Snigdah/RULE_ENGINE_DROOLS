@@ -1,16 +1,17 @@
 package com.example.droolspoc.model;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
- * Single fact the rules operate on. Assembled by the service from the request
- * plus the two DB lookups, so all three parts are guaranteed non-null when the
- * rules run.
+ * Transfer-flow fact. Extends {@link RuleContext} (userId, user, result) and adds the
+ * transfer-specific inputs the TRANSFER rule reads: transaction, userLimit, product.
  */
-@Data
-public class ValidationContext {
+@Getter
+@Setter
+public class ValidationContext extends RuleContext {
 
-    private Transaction transaction;  // built from the request; holds the result fields
-    private UserLimit userLimit;      // loaded from DB
-    private Product product;          // loaded from DB
+    private Transaction transaction;
+    private UserLimit userLimit;
+    private Product product;
 }

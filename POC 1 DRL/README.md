@@ -1,90 +1,75 @@
-# Drools Transaction POC
+# Drools Rule-Engine POC — 3 flows
 
-Spring Boot 3.5 + Java 21 + PostgreSQL. This app does **not** embed Drools.
-It is a business consumer of `com.leads:rule-engine` (the sibling `RuleEngine_Library`).
+Spring Boot 3.5 + Java 21 + PostgreSQL. This app does **not** embed Drools — it is a
+business consumer of `com.leads:rule-engine` (the sibling `RuleEngine_Library`, **0.0.2**).
 
-The service loads `UserLimit` and `Product`, wraps them in one `ValidationContext`
-fact, and calls:
+It demonstrates the full design: **one engine, three flows** (transfer, loan, account-closure),
+with the two **COMMON** rules (blocked-user, KYC) **shared across all three** and each flow
+adding its own rule.
 
-```java
-ruleEngine.execute(context, TransactionRequest.class, globalContext);
+## How the reuse works
+
+Every flow's context extends a shared base, `RuleContext` (holds `userId`, `user`, and the
+decision result). The COMMON rules are written against `RuleContext`, so they fire for any
+flow; the flow-specific rules match the concrete context.
+
+```
+request class ──▶ flow ──▶ ordered groups ──▶ rules
+TransactionRequest ▶ TRANSFER_TRANSACTION ▶ [COMMON, TRANSFER] ▶ blocked-user, KYC (shared) + over-limit
+LoanRequest        ▶ LOAN_APPLICATION     ▶ [COMMON, LOAN]     ▶ blocked-user, KYC (shared) + credit-score
+AccountCloseRequest▶ ACCOUNT_CLOSURE       ▶ [COMMON, CLOSURE]  ▶ blocked-user, KYC (shared) + outstanding-balance
 ```
 
-The library compiles DRL from `rule_file`, picks the flow from `request_flow_map`
-and `flow_group`, and mutates the fact. This service reads `valid`,
-`permissionDenied`, and the message off that fact.
+## Rules (stored in `rule_definition`)
 
-## Requirements
-- JDK 21, Maven 3.9+
-- PostgreSQL running locally
-- The rule-engine library installed into the local Maven repo (once):
+| Rule | Group | Source |
+|------|-------|--------|
+| Block blocked user | COMMON (shared) | DRL (uses `eval` + a global) |
+| Block if KYC not verified | COMMON (shared) | DRL (halts on block) |
+| Over-limit debit-restricted BDT | TRANSFER | BUILDER (JSON → DRL) |
+| Loan below credit score | LOAN | BUILDER |
+| Closure with outstanding balance | CLOSURE | BUILDER |
+
+Builder rules store both `source_json` (editable) and the generated `drl_text` (what runs).
+The engine only ever executes `drl_text`.
+
+## Run
 
 ```bash
+# 1. install the library (once), if not already in your ~/.m2
 mvn -f "../RuleEngine_Library/core/pom.xml" install
-```
 
-## 1. Database
-```bash
+# 2. database
 createdb -U postgres ruleengine
-psql -U postgres -d ruleengine -f db/schema.sql
-psql -U postgres -d ruleengine -f db/data.sql
-```
-Datasource is in `src/main/resources/application.yml`
-(`jdbc:postgresql://localhost:5432/ruleengine`, user `postgres`).
-`ddl-auto` is `update`. Hibernate also creates these tables from the entities
-if you skip the scripts. Seed data still has to be loaded.
+psql -U postgres -d ruleengine -f db/schema.sql   # or let ddl-auto=update create tables
+psql -U postgres -d ruleengine -f db/data.sql     # rules + routing + demo rows
 
-Library tables: `rule_file`, `flow_group`, `request_flow_map`.
-Business tables: `re_user_limit`, `re_product`, `re_user_block`.
-
-## 2. Run
-```bash
+# 3. run
 mvn clean spring-boot:run
 ```
 
-On a fresh database there are no rules and no flow mapping. Upload them before
-calling validate (see `test-requests.http`):
-
-1. `POST /admin/rules` with `rules/transaction-rules.drl`
-2. `POST /admin/flows` — flow `TRANSFER_TRANSACTION`, groups `COMMON` then `TRANSFER`
-3. `POST /admin/flows/mappings` — request class
-   `com.example.droolspoc.dto.TransactionRequest`
-
-## The rule
-A transaction is **blocked** when the user is in `re_user_block`, or when all
-three hold:
-
-- `currency == "BDT"`
-- product `drRes == 1` (debit-restricted)
-- `amount > userLimit.limit`
-
-Otherwise it is allowed. Seed data:
-
-| user / account | meaning |
-|----------------|---------|
-| USER-001       | limit 10000, ONLINE / D, not blocked |
-| USER-002       | limit 10000, blocked |
-| 100001         | debit-restricted (`dr_res = 1`) |
-| 200001         | not restricted |
-
-Blocked users are loaded at startup by `BlockedUsersLoader` into the library
-`GlobalContext`. `POST /admin/global-context/reload` picks up new block rows
-without a restart.
-
 ## Endpoints
-- `POST /api/transactions/validate` — this service
-- `GET/POST/DELETE /admin/rules` — library
+- `POST /api/transactions/validate` — transfer
+- `POST /api/loans/validate` — loan
+- `POST /api/account-closures/validate` — account closure
+- `GET /admin/rules`, `GET /admin/rules/fields?flow=…`, `POST /admin/rules` — library
 - `GET/POST/DELETE /admin/flows` and `/admin/flows/mappings` — library
-- `POST /admin/global-context/reload` — library
-- `GET /actuator/health`
+- `POST /admin/global-context/reload` — reload the blocked-user set
 
-Responses: `200` with `{valid, permissionDenied, message}`;
-`400` on bad input or a missing flow mapping;
-`422` when a limit or product row is missing.
+## Test personas (seeded)
+
+| user | kyc | blocked | credit | note |
+|------|-----|---------|--------|------|
+| USER-001 | yes | no | 700 | the "happy" user |
+| USER-002 | yes | **yes** | 700 | blocked — rejected by COMMON in every flow |
+| USER-003 | **no** | no | — | fails KYC |
+| USER-004 | yes | no | **550** | fails the loan credit-score rule |
+
+Accounts: `100001` debit-restricted, `200001` not. `ACC-901` has a balance, `ACC-900` is zero.
+
+See `test-requests.http` for ready-to-run calls (T1–T5 transfer, L1–L3 loan, C1–C3 closure).
 
 ## Tests
 ```bash
 mvn test
 ```
-- `TransactionRuleServiceTest` — context building and the library `execute` call (no DB, no Drools)
-- `TransactionControllerTest` — web layer, mocked service

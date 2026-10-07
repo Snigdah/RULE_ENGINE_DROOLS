@@ -64,7 +64,7 @@
         <dependency>
             <groupId>com.leads</groupId>
             <artifactId>rule-engine</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <version>0.0.5-SNAPSHOT</version>
         </dependency>
 
         <!-- Test -->

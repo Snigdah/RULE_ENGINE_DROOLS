@@ -6,14 +6,13 @@ import lombok.Setter;
 import java.math.BigDecimal;
 
 /**
- * Internal Drools fact (inside ValidationContext). The rules read the input
- * fields and mutate the result fields. Never exposed at the API boundary.
+ * Transfer input fact (inside {@link ValidationContext}). Input only - the decision result
+ * now lives on {@link RuleContext}, where every flow writes it the same way.
  */
 @Getter
 @Setter
 public class Transaction {
 
-    // Input
     private String sourceAccount;
     private String sourceBranch;
     private String destinationAccount;
@@ -24,9 +23,4 @@ public class Transaction {
     private String remarks;
     private String userId;
     private String transactionMode;  // TRANSFER | CREDIT
-
-    // Rule result fields (written by the rules)
-    private boolean valid = true;
-    private boolean permissionDenied = false;
-    private String validationMessage;
 }

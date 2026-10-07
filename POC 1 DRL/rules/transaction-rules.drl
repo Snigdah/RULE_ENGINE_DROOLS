@@ -1,47 +1,87 @@
+// =============================================================================
+// REFERENCE copy of the rules. The authoritative rules live in RULE_DEFINITION
+// (see db/data.sql). COMMON rules are hand-written DRL that match the shared
+// RuleContext base, so they fire for transfer, loan AND closure. The flow rules
+// are BUILDER rules (generated from SOURCE_JSON) that match one concrete context.
+// =============================================================================
+
+// ---- COMMON (shared across all flows) ---------------------------------------
+
 package com.example.droolspoc.rules
 
-import com.example.droolspoc.model.ValidationContext
+import com.example.droolspoc.model.RuleContext
 import com.example.droolspoc.context.data.BlockedUsers
 
-// Global reference registry, set on the session by the library RuleExecutionService.
 global leads.ruleengine.core.context.GlobalContext globalContext;
 
-// =============================================================================
-// COMMON group - cross-cutting gates that run for every transaction type.
-// The library focuses COMMON last, so it fires FIRST.
-// =============================================================================
-
-// A blocked user cannot transact. Delete this rule to disable the block.
 rule "Block transaction for a blocked user"
     agenda-group "COMMON"
     salience 100
     when
-        $ctx : ValidationContext()
-        eval(globalContext.get(BlockedUsers.class)
-                          .isBlocked($ctx.getTransaction().getUserId()))
+        $ctx : RuleContext()
+        eval(globalContext.get(BlockedUsers.class).isBlocked($ctx.getUserId()))
     then
-        $ctx.getTransaction().setValid(false);
-        $ctx.getTransaction().setPermissionDenied(true);
-        $ctx.getTransaction().setValidationMessage("Blocked: user is blocked");
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: user is blocked");
         drools.halt();
 end
 
-// =============================================================================
-// TRANSFER group - rules specific to the transfer use case.
-// =============================================================================
+rule "Block if KYC not verified"
+    agenda-group "COMMON"
+    salience 90
+    when
+        $ctx : RuleContext(user != null, user.kycVerified == false)
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: KYC not verified");
+        drools.halt();
+end
+
+// ---- TRANSFER ---------------------------------------------------------------
 
 rule "Block over-limit debit-restricted BDT transaction"
     agenda-group "TRANSFER"
     salience 10
     when
-        $ctx : ValidationContext(
+        $ctx : com.example.droolspoc.model.ValidationContext(
             transaction.currency == "BDT",
             product.drRes == 1,
             transaction.amount > userLimit.limit
         )
     then
-        $ctx.getTransaction().setValid(false);
-        $ctx.getTransaction().setPermissionDenied(true);
-        $ctx.getTransaction().setValidationMessage(
-            "Blocked: amount exceeds limit on a debit-restricted BDT account");
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: amount exceeds limit on a debit-restricted BDT account");
+end
+
+// ---- LOAN -------------------------------------------------------------------
+
+rule "Block loan below credit-score threshold"
+    agenda-group "LOAN"
+    salience 10
+    when
+        $ctx : com.example.droolspoc.model.LoanValidationContext(
+            customer.creditScore < 600
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: credit score below 600");
+end
+
+// ---- CLOSURE ----------------------------------------------------------------
+
+rule "Block closure with outstanding balance"
+    agenda-group "CLOSURE"
+    salience 10
+    when
+        $ctx : com.example.droolspoc.model.ClosureValidationContext(
+            account.balance > 0
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: account has an outstanding balance");
 end

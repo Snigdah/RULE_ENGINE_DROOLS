@@ -11,6 +11,9 @@ spring:
     url: jdbc:postgresql://localhost:5432/ruleengine
     username: postgres
     password: 12345
+    hikari:
+      auto-commit: false   # PostgreSQL large objects (CLOB/oid) must be read in a
+                           # transaction; the engine loads rule CLOBs at startup.
   jpa:
     hibernate:
       ddl-auto: update     # Hibernate auto-creates/updates the tables from the entities
@@ -18,6 +21,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
 
 management:
   endpoints:
