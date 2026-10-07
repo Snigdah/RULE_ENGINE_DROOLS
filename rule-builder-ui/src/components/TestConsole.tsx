@@ -9,11 +9,14 @@ type Expect = 'allow' | 'block'
 interface Preset<T> { label: string; expect: Expect; data: T }
 
 const TX_PRESETS: Preset<TransactionTest>[] = [
-  { label: 'Clean transfer', expect: 'allow', data: { userId: 'USER-001', transactionMode: 'ONLINE', debitCredit: 'D', sourceAccount: '200001', currency: 'BDT', amount: 5000 } },
-  { label: 'Over-limit · debit-restricted', expect: 'block', data: { userId: 'USER-001', transactionMode: 'ONLINE', debitCredit: 'D', sourceAccount: '100001', currency: 'BDT', amount: 20000 } },
-  { label: 'Blocked user', expect: 'block', data: { userId: 'USER-002', transactionMode: 'ONLINE', debitCredit: 'D', sourceAccount: '200001', currency: 'BDT', amount: 5000 } },
-  { label: 'KYC not verified', expect: 'block', data: { userId: 'USER-003', transactionMode: 'ONLINE', debitCredit: 'D', sourceAccount: '200001', currency: 'BDT', amount: 5000 } },
+  { label: 'Clean transfer', expect: 'allow', data: { userId: 'USER-001', transactionMode: 'ONLINE', debitCredit: 'D', sourceAccount: '200001', currency: 'BDT', amount: 5000, channel: 'ONLINE', country: 'BD', dailyTxnCount: 1 } },
+  { label: 'Over-limit · debit-restricted', expect: 'block', data: { userId: 'USER-001', transactionMode: 'ONLINE', debitCredit: 'D', sourceAccount: '100001', currency: 'BDT', amount: 20000, channel: 'ONLINE', country: 'BD', dailyTxnCount: 1 } },
+  { label: 'Rapid agent transfers (VELOCITY)', expect: 'block', data: { userId: 'USER-001', transactionMode: 'ONLINE', debitCredit: 'D', sourceAccount: '200001', currency: 'BDT', amount: 60000, channel: 'AGENT', country: 'BD', dailyTxnCount: 6 } },
+  { label: 'Cross-border high-value (COMPLIANCE)', expect: 'block', data: { userId: 'USER-001', transactionMode: 'ONLINE', debitCredit: 'D', sourceAccount: '200001', currency: 'USD', amount: 150000, channel: 'ONLINE', country: 'OTHER', dailyTxnCount: 1 } },
+  { label: 'Blocked user', expect: 'block', data: { userId: 'USER-002', transactionMode: 'ONLINE', debitCredit: 'D', sourceAccount: '200001', currency: 'BDT', amount: 5000, channel: 'ONLINE', country: 'BD', dailyTxnCount: 1 } },
+  { label: 'KYC not verified', expect: 'block', data: { userId: 'USER-003', transactionMode: 'ONLINE', debitCredit: 'D', sourceAccount: '200001', currency: 'BDT', amount: 5000, channel: 'ONLINE', country: 'BD', dailyTxnCount: 1 } },
 ]
+
 const LOAN_PRESETS: Preset<LoanTest>[] = [
   { label: 'Good credit (700)', expect: 'allow', data: { userId: 'USER-001', amount: 50000, tenureMonths: 24, purpose: 'Home' } },
   { label: 'Low credit (550)', expect: 'block', data: { userId: 'USER-004', amount: 50000, tenureMonths: 24, purpose: 'Car' } },
@@ -133,6 +136,19 @@ export default function TestConsole() {
                       </select>
                     </Field>
                   </div>
+                  <div className="field-grid">
+                    <Field label="Channel">
+                      <select className="select" value={tx.channel} onChange={e => setTx({ ...tx, channel: e.target.value })}>
+                        {['ATM', 'POS', 'ONLINE', 'BRANCH', 'AGENT'].map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Destination country">
+                      <select className="select" value={tx.country} onChange={e => setTx({ ...tx, country: e.target.value })}>
+                        {['BD', 'US', 'UK', 'AE', 'SG', 'OTHER'].map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </Field>
+                  </div>
+                  <Field label="Daily txn count"><input className="input" type="number" value={tx.dailyTxnCount} onChange={e => setTx({ ...tx, dailyTxnCount: Number(e.target.value) })} /></Field>
                 </>
               )}
 

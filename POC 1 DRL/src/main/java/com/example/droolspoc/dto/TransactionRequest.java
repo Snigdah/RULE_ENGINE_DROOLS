@@ -40,4 +40,9 @@ public class TransactionRequest {
     private String destinationAccount;
     private BigDecimal exchangeRate;
     private String remarks;
+
+    // Risk / compliance inputs (used by VELOCITY and COMPLIANCE rules)
+    private String channel;          // ATM | POS | ONLINE | BRANCH | AGENT
+    private String country;          // BD, US, UK, AE, SG, OTHER
+    private Integer dailyTxnCount;   // transfers the user already made today
 }

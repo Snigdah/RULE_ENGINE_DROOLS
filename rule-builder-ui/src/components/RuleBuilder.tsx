@@ -133,17 +133,29 @@ export default function RuleBuilder({
             </div>
             <div className="field-grid">
               <div className="field">
-                <label>Flow</label>
-                <select className="select" value={flow} onChange={e => changeFlow(e.target.value)}>
-                  {flows.map(f => <option key={f.flowName} value={f.flowName}>{f.label} · {f.flowName}</option>)}
-                </select>
+                <label>Flow {editing && <span className="sub">— fixed for an existing rule</span>}</label>
+                {editing ? (
+                  <div className="input" style={{ display: 'flex', alignItems: 'center', background: 'var(--surface-2)', color: 'var(--text-2)', cursor: 'not-allowed' }}>
+                    {flowMeta.label} · {flow}
+                  </div>
+                ) : (
+                  <select className="select" value={flow} onChange={e => changeFlow(e.target.value)}>
+                    {flows.map(f => <option key={f.flowName} value={f.flowName}>{f.label} · {f.flowName}</option>)}
+                  </select>
+                )}
                 {flowMeta.factType && <span className="sub mono" style={{ marginTop: 2 }}>routes on {flowMeta.factSimpleName}</span>}
               </div>
               <div className="field">
-                <label>Agenda group</label>
-                <select className="select" value={agendaGroup} onChange={e => setGroup(e.target.value)}>
-                  {groupsOf(flow).map(g => <option key={g} value={g}>{g}{g === 'COMMON' ? ' (shared)' : ''}</option>)}
-                </select>
+                <label>Agenda group {editing && <span className="sub">— fixed for an existing rule</span>}</label>
+                {editing ? (
+                  <div className="input" style={{ display: 'flex', alignItems: 'center', background: 'var(--surface-2)', color: 'var(--text-2)', cursor: 'not-allowed' }}>
+                    {agendaGroup}{agendaGroup === 'COMMON' ? ' (shared)' : ''}
+                  </div>
+                ) : (
+                  <select className="select" value={agendaGroup} onChange={e => setGroup(e.target.value)}>
+                    {groupsOf(flow).map(g => <option key={g} value={g}>{g}{g === 'COMMON' ? ' (shared)' : ''}</option>)}
+                  </select>
+                )}
               </div>
             </div>
             <div className="field" style={{ maxWidth: 220, marginBottom: 0 }}>

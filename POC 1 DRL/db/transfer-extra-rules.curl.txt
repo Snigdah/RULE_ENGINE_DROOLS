@@ -1,0 +1,14 @@
+# =============================================================================
+#  TRANSFER flow extension — run in ORDER, after the backend is rebuilt and
+#  transfer-extra-catalog.sql has been applied.
+#  (On Windows PowerShell use curl.exe, not the curl alias; Git Bash / cmd are fine.)
+# =============================================================================
+
+# 1) Redefine the TRANSFER flow with 4 ordered agenda groups
+curl -X POST http://localhost:8080/admin/flows -H "Content-Type: application/json" -d "{\"flowName\":\"TRANSFER_TRANSACTION\",\"groups\":[\"COMMON\",\"TRANSFER\",\"VELOCITY\",\"COMPLIANCE\"]}"
+
+# 2) Rule X — VELOCITY (enum + number, 3 conditions)
+curl -X POST http://localhost:8080/admin/rules -H "Content-Type: application/json" -d "{\"ruleName\":\"Block rapid high-value agent transfers\",\"agendaGroup\":\"VELOCITY\",\"sourceType\":\"BUILDER\",\"createdBy\":\"farhat\",\"sourceJson\":\"{\\\"ruleName\\\":\\\"Block rapid high-value agent transfers\\\",\\\"flow\\\":\\\"TRANSFER_TRANSACTION\\\",\\\"agendaGroup\\\":\\\"VELOCITY\\\",\\\"salience\\\":20,\\\"match\\\":\\\"all\\\",\\\"conditions\\\":[{\\\"field\\\":\\\"transaction.channel\\\",\\\"operator\\\":\\\"==\\\",\\\"value\\\":\\\"AGENT\\\"},{\\\"field\\\":\\\"transaction.amount\\\",\\\"operator\\\":\\\">\\\",\\\"value\\\":50000},{\\\"field\\\":\\\"transaction.dailyTxnCount\\\",\\\"operator\\\":\\\">=\\\",\\\"value\\\":5}],\\\"then\\\":{\\\"decision\\\":\\\"block\\\",\\\"message\\\":\\\"Blocked: too many high-value agent transfers today\\\"}}\"}"
+
+# 3) Rule Y — COMPLIANCE (enum + number, 3 conditions)
+curl -X POST http://localhost:8080/admin/rules -H "Content-Type: application/json" -d "{\"ruleName\":\"Block high-value cross-border non-BDT transfer\",\"agendaGroup\":\"COMPLIANCE\",\"sourceType\":\"BUILDER\",\"createdBy\":\"farhat\",\"sourceJson\":\"{\\\"ruleName\\\":\\\"Block high-value cross-border non-BDT transfer\\\",\\\"flow\\\":\\\"TRANSFER_TRANSACTION\\\",\\\"agendaGroup\\\":\\\"COMPLIANCE\\\",\\\"salience\\\":20,\\\"match\\\":\\\"all\\\",\\\"conditions\\\":[{\\\"field\\\":\\\"transaction.currency\\\",\\\"operator\\\":\\\"!=\\\",\\\"value\\\":\\\"BDT\\\"},{\\\"field\\\":\\\"transaction.amount\\\",\\\"operator\\\":\\\">=\\\",\\\"value\\\":100000},{\\\"field\\\":\\\"transaction.country\\\",\\\"operator\\\":\\\"==\\\",\\\"value\\\":\\\"OTHER\\\"}],\\\"then\\\":{\\\"decision\\\":\\\"block\\\",\\\"message\\\":\\\"Blocked: cross-border high-value transfer needs manual review\\\"}}\"}"

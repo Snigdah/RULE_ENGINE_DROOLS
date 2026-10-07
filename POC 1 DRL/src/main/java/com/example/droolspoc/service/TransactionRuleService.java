@@ -89,6 +89,9 @@ public class TransactionRuleService {
         t.setAmount(r.getAmount());
         t.setExchangeRate(r.getExchangeRate());
         t.setRemarks(r.getRemarks());
+        t.setChannel(r.getChannel());
+        t.setCountry(r.getCountry());
+        t.setDailyTxnCount(r.getDailyTxnCount() == null ? 0 : r.getDailyTxnCount());
         return t;
     }
 }

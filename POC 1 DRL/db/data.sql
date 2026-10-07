@@ -15,6 +15,8 @@ INSERT INTO request_flow_map (id, fact_type, flow_name) VALUES
 -- ---- flow -> ordered agenda groups (COMMON first, then the flow's own) ------
 INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'TRANSFER_TRANSACTION', 'COMMON',   1);
 INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'TRANSFER_TRANSACTION', 'TRANSFER', 2);
+INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'TRANSFER_TRANSACTION', 'VELOCITY',   3);
+INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'TRANSFER_TRANSACTION', 'COMPLIANCE', 4);
 INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'LOAN_APPLICATION',     'COMMON',   1);
 INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'LOAN_APPLICATION',     'LOAN',     2);
 INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'ACCOUNT_CLOSURE',      'COMMON',   1);
@@ -172,3 +174,48 @@ INSERT INTO re_customer (id, user_id, credit_score, full_name) VALUES (nextval('
 -- closure: accounts (ACC-901 has an outstanding balance)
 INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_account_seq'), 'ACC-900', 0,       'ACTIVE');
 INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_account_seq'), 'ACC-901', 1500.00, 'ACTIVE');
+
+-- VELOCITY: rapid high-value agent transfers (BUILDER, 3 conditions: enum + number) ----
+INSERT INTO rule_definition (id, rule_name, agenda_group, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at)
+VALUES (nextval('rule_definition_seq'), 'Block rapid high-value agent transfers', 'VELOCITY', 'BUILDER',
+'{"ruleName":"Block rapid high-value agent transfers","flow":"TRANSFER_TRANSACTION","agendaGroup":"VELOCITY","salience":20,"match":"all","conditions":[{"field":"transaction.channel","operator":"==","value":"AGENT"},{"field":"transaction.amount","operator":">","value":50000},{"field":"transaction.dailyTxnCount","operator":">=","value":5}],"then":{"decision":"block","message":"Blocked: too many high-value agent transfers today"}}',
+'package com.example.droolspoc.model;
+
+rule "Block rapid high-value agent transfers"
+    agenda-group "VELOCITY"
+    salience 20
+    when
+        $ctx : com.example.droolspoc.model.ValidationContext(
+            transaction.channel == "AGENT",
+            transaction.amount > 50000,
+            transaction.dailyTxnCount >= 5
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: too many high-value agent transfers today");
+end',
+1, 'ACTIVE', TRUE, 'farhat', now());
+
+-- COMPLIANCE: cross-border high-value non-BDT transfer (BUILDER, 3 conditions: enum + number) ----
+INSERT INTO rule_definition (id, rule_name, agenda_group, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at)
+VALUES (nextval('rule_definition_seq'), 'Block high-value cross-border non-BDT transfer', 'COMPLIANCE', 'BUILDER',
+'{"ruleName":"Block high-value cross-border non-BDT transfer","flow":"TRANSFER_TRANSACTION","agendaGroup":"COMPLIANCE","salience":20,"match":"all","conditions":[{"field":"transaction.currency","operator":"!=","value":"BDT"},{"field":"transaction.amount","operator":">=","value":100000},{"field":"transaction.country","operator":"==","value":"OTHER"}],"then":{"decision":"block","message":"Blocked: cross-border high-value transfer needs manual review"}}',
+'package com.example.droolspoc.model;
+
+rule "Block high-value cross-border non-BDT transfer"
+    agenda-group "COMPLIANCE"
+    salience 20
+    when
+        $ctx : com.example.droolspoc.model.ValidationContext(
+            transaction.currency != "BDT",
+            transaction.amount >= 100000,
+            transaction.country == "OTHER"
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: cross-border high-value transfer needs manual review");
+end',
+1, 'ACTIVE', TRUE, 'farhat', now());
+

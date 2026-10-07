@@ -23,4 +23,7 @@ public class Transaction {
     private String remarks;
     private String userId;
     private String transactionMode;  // TRANSFER | CREDIT
+    private String channel;          // ATM | POS | ONLINE | BRANCH | AGENT
+    private String country;          // destination country: BD, US, UK, AE, SG, OTHER
+    private Integer dailyTxnCount;   // number of transfers the user already made today
 }

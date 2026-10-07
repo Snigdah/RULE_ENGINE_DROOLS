@@ -88,6 +88,9 @@ export interface TransactionTest {
   sourceAccount: string
   currency: string
   amount: number
+  channel: string
+  country: string
+  dailyTxnCount: number
   destinationAccount?: string
   remarks?: string
 }
