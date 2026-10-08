@@ -2,44 +2,40 @@ package com.example.droolspoc.service;
 
 import com.example.droolspoc.dto.TransactionRequest;
 import com.example.droolspoc.dto.TransactionResponse;
-import com.example.droolspoc.model.Product;
 import com.example.droolspoc.model.Transaction;
-import com.example.droolspoc.model.User;
-import com.example.droolspoc.model.UserLimit;
 import com.example.droolspoc.model.ValidationContext;
-import com.example.droolspoc.repository.ProductRepository;
-import com.example.droolspoc.repository.UserLimitRepository;
-import com.example.droolspoc.repository.UserRepository;
+import com.example.droolspoc.lookup.TransferLookupService;
 import leads.ruleengine.core.context.GlobalContext;
 import leads.ruleengine.core.service.RuleExecutionService;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+
 /**
  * Transfer flow. Builds a {@link ValidationContext} from this POC's tables and hands it to the
- * rule-engine library. The COMMON rules (blocked-user, KYC) and the TRANSFER rule mutate the
- * context; the outcome is read straight off it.
+ * rule-engine library. The three independent lookups (user limit, product, user) run in PARALLEL
+ * on virtual threads via {@link TransferLookupService} — each in its own read-only transaction.
  */
 @Service
 public class TransactionRuleService {
 
     private final RuleExecutionService ruleEngine;
     private final GlobalContext globalContext;
-    private final UserLimitRepository userLimitRepository;
-    private final ProductRepository productRepository;
-    private final UserRepository userRepository;
+    private final ExecutorService lookupExecutor;
+    private final TransferLookupService lookup;
 
     public TransactionRuleService(RuleExecutionService ruleEngine,
                                   GlobalContext globalContext,
-                                  UserLimitRepository userLimitRepository,
-                                  ProductRepository productRepository,
-                                  UserRepository userRepository) {
+                                  @Qualifier("lookupExecutor") ExecutorService lookupExecutor,
+                                  TransferLookupService lookup) {
         this.ruleEngine = ruleEngine;
         this.globalContext = globalContext;
-        this.userLimitRepository = userLimitRepository;
-        this.productRepository = productRepository;
-        this.userRepository = userRepository;
+        this.lookupExecutor = lookupExecutor;
+        this.lookup = lookup;
     }
 
     public TransactionResponse validate(TransactionRequest request) {
@@ -53,27 +49,23 @@ public class TransactionRuleService {
     }
 
     private ValidationContext buildContext(TransactionRequest request) {
-        UserLimit userLimit = userLimitRepository.findFirstByUserId(request.getUserId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNPROCESSABLE_ENTITY,
-                        "No user limit for userId=" + request.getUserId()));
+        var limitF   = CompletableFuture.supplyAsync(() -> lookup.userLimit(request.getUserId()), lookupExecutor);
+        var productF = CompletableFuture.supplyAsync(() -> lookup.product(request.getSourceAccount()), lookupExecutor);
+        var userF    = CompletableFuture.supplyAsync(() -> lookup.user(request.getUserId()), lookupExecutor);
 
-        Product product = productRepository.findBySourceAccount(request.getSourceAccount())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNPROCESSABLE_ENTITY,
-                        "No product for sourceAccount=" + request.getSourceAccount()));
-
-        User user = userRepository.findFirstByUserId(request.getUserId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNPROCESSABLE_ENTITY,
-                        "No user for userId=" + request.getUserId()));
+        try {
+            CompletableFuture.allOf(limitF, productF, userF).join();   // run in parallel, await all
+        } catch (CompletionException e) {
+            if (e.getCause() instanceof ResponseStatusException rse) throw rse;  // keep the 422
+            throw e;
+        }
 
         ValidationContext context = new ValidationContext();
         context.setUserId(request.getUserId());   // for the COMMON blocked-user rule
-        context.setUser(user);                     // for the COMMON KYC rule
+        context.setUser(userF.join());             // for the COMMON KYC rule
         context.setTransaction(toFact(request));
-        context.setUserLimit(userLimit);
-        context.setProduct(product);
+        context.setUserLimit(limitF.join());
+        context.setProduct(productF.join());
         return context;
     }
 

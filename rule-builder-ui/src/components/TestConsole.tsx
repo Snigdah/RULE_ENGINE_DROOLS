@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import type { ReactNode } from 'react'
+import type { ReactNode, CSSProperties } from 'react'
 import type { TransactionTest, LoanTest, ClosureTest, ValidateResult } from '../api/ruleEngineApi'
 import { api } from '../api/ruleEngineApi'
-import { IconBolt, IconCheck, IconClose, IconShield } from './icons'
+import { IconBolt, IconCheck, IconClose, IconShield, IconFlows } from './icons'
 
 type Flow = 'transfer' | 'loan' | 'closure'
 type Expect = 'allow' | 'block'
@@ -26,6 +26,12 @@ const CLO_PRESETS: Preset<ClosureTest>[] = [
   { label: 'Zero balance', expect: 'allow', data: { userId: 'USER-001', accountNo: 'ACC-900', reason: 'Switching bank' } },
   { label: 'Remaining balance', expect: 'block', data: { userId: 'USER-001', accountNo: 'ACC-901', reason: 'Switching bank' } },
   { label: 'Blocked user', expect: 'block', data: { userId: 'USER-002', accountNo: 'ACC-900', reason: 'Closure' } },
+]
+
+const FLOW_CARDS: { key: Flow; label: string; flow: string; acc: string }[] = [
+  { key: 'transfer', label: 'Transfer', flow: 'TRANSFER_TRANSACTION', acc: '#2056d6' },
+  { key: 'loan',     label: 'Loan',     flow: 'LOAN_APPLICATION',     acc: '#b5790b' },
+  { key: 'closure',  label: 'Closure',  flow: 'ACCOUNT_CLOSURE',      acc: '#6d49d4' },
 ]
 
 const FLOW_META: Record<Flow, { label: string; endpoint: string }> = {
@@ -84,10 +90,17 @@ export default function TestConsole() {
             <div className="card-body">
               <div className="field" style={{ marginBottom: 16 }}>
                 <label>Flow</label>
-                <div className="seg">
-                  <button className={flow === 'transfer' ? 'on' : ''} onClick={() => pickFlow('transfer')}>Transfer</button>
-                  <button className={flow === 'loan' ? 'on' : ''} onClick={() => pickFlow('loan')}>Loan</button>
-                  <button className={flow === 'closure' ? 'on' : ''} onClick={() => pickFlow('closure')}>Closure</button>
+                <div className="tc-pick">
+                  {FLOW_CARDS.map(c => (
+                    <button key={c.key} className={'fl-card mini' + (flow === c.key ? ' on' : '')}
+                      style={{ '--acc': c.acc } as CSSProperties} onClick={() => pickFlow(c.key)}>
+                      <div className="fl-ico"><IconFlows width={17} height={17} /></div>
+                      <div>
+                        <div className="mini-label">{c.label}</div>
+                        <div className="mini-sub">{c.flow}</div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
 

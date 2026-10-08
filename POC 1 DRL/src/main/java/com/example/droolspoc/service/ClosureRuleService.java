@@ -2,36 +2,38 @@ package com.example.droolspoc.service;
 
 import com.example.droolspoc.dto.AccountCloseRequest;
 import com.example.droolspoc.dto.AccountCloseResponse;
-import com.example.droolspoc.model.Account;
 import com.example.droolspoc.model.ClosureValidationContext;
-import com.example.droolspoc.model.User;
-import com.example.droolspoc.repository.AccountRepository;
-import com.example.droolspoc.repository.UserRepository;
+import com.example.droolspoc.lookup.ClosureLookupService;
 import leads.ruleengine.core.context.GlobalContext;
 import leads.ruleengine.core.service.RuleExecutionService;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+
 /**
- * Account-closure flow. Runs the shared COMMON rules plus the CLOSURE rule (outstanding balance).
+ * Account-closure flow. The account + user lookups run in PARALLEL on virtual threads via
+ * {@link ClosureLookupService}. Runs the shared COMMON rules plus the CLOSURE rule.
  */
 @Service
 public class ClosureRuleService {
 
     private final RuleExecutionService ruleEngine;
     private final GlobalContext globalContext;
-    private final AccountRepository accountRepository;
-    private final UserRepository userRepository;
+    private final ExecutorService lookupExecutor;
+    private final ClosureLookupService lookup;
 
     public ClosureRuleService(RuleExecutionService ruleEngine,
                               GlobalContext globalContext,
-                              AccountRepository accountRepository,
-                              UserRepository userRepository) {
+                              @Qualifier("lookupExecutor") ExecutorService lookupExecutor,
+                              ClosureLookupService lookup) {
         this.ruleEngine = ruleEngine;
         this.globalContext = globalContext;
-        this.accountRepository = accountRepository;
-        this.userRepository = userRepository;
+        this.lookupExecutor = lookupExecutor;
+        this.lookup = lookup;
     }
 
     public AccountCloseResponse validate(AccountCloseRequest request) {
@@ -45,20 +47,20 @@ public class ClosureRuleService {
     }
 
     private ClosureValidationContext buildContext(AccountCloseRequest request) {
-        Account account = accountRepository.findFirstByAccountNo(request.getAccountNo())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNPROCESSABLE_ENTITY,
-                        "No account for accountNo=" + request.getAccountNo()));
+        var accountF = CompletableFuture.supplyAsync(() -> lookup.account(request.getAccountNo()), lookupExecutor);
+        var userF    = CompletableFuture.supplyAsync(() -> lookup.user(request.getUserId()), lookupExecutor);
 
-        User user = userRepository.findFirstByUserId(request.getUserId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNPROCESSABLE_ENTITY,
-                        "No user for userId=" + request.getUserId()));
+        try {
+            CompletableFuture.allOf(accountF, userF).join();
+        } catch (CompletionException e) {
+            if (e.getCause() instanceof ResponseStatusException rse) throw rse;
+            throw e;
+        }
 
         ClosureValidationContext context = new ClosureValidationContext();
         context.setUserId(request.getUserId());
-        context.setUser(user);
-        context.setAccount(account);
+        context.setUser(userF.join());
+        context.setAccount(accountF.join());
         return context;
     }
 }

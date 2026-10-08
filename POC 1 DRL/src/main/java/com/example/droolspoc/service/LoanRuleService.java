@@ -2,21 +2,22 @@ package com.example.droolspoc.service;
 
 import com.example.droolspoc.dto.LoanRequest;
 import com.example.droolspoc.dto.LoanResponse;
-import com.example.droolspoc.model.Customer;
 import com.example.droolspoc.model.Loan;
 import com.example.droolspoc.model.LoanValidationContext;
-import com.example.droolspoc.model.User;
-import com.example.droolspoc.repository.CustomerRepository;
-import com.example.droolspoc.repository.UserRepository;
+import com.example.droolspoc.lookup.LoanLookupService;
 import leads.ruleengine.core.context.GlobalContext;
 import leads.ruleengine.core.service.RuleExecutionService;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+
 /**
- * Loan flow. Same shape as the transfer service - only the request class and the context type
- * differ. The shared COMMON rules (blocked-user, KYC) fire here too, because
+ * Loan flow. The customer + user lookups run in PARALLEL on virtual threads via
+ * {@link LoanLookupService}. Shared COMMON rules (blocked-user, KYC) still fire here because
  * {@link LoanValidationContext} extends {@code RuleContext}.
  */
 @Service
@@ -24,17 +25,17 @@ public class LoanRuleService {
 
     private final RuleExecutionService ruleEngine;
     private final GlobalContext globalContext;
-    private final CustomerRepository customerRepository;
-    private final UserRepository userRepository;
+    private final ExecutorService lookupExecutor;
+    private final LoanLookupService lookup;
 
     public LoanRuleService(RuleExecutionService ruleEngine,
                            GlobalContext globalContext,
-                           CustomerRepository customerRepository,
-                           UserRepository userRepository) {
+                           @Qualifier("lookupExecutor") ExecutorService lookupExecutor,
+                           LoanLookupService lookup) {
         this.ruleEngine = ruleEngine;
         this.globalContext = globalContext;
-        this.customerRepository = customerRepository;
-        this.userRepository = userRepository;
+        this.lookupExecutor = lookupExecutor;
+        this.lookup = lookup;
     }
 
     public LoanResponse validate(LoanRequest request) {
@@ -48,20 +49,20 @@ public class LoanRuleService {
     }
 
     private LoanValidationContext buildContext(LoanRequest request) {
-        Customer customer = customerRepository.findFirstByUserId(request.getUserId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNPROCESSABLE_ENTITY,
-                        "No customer for userId=" + request.getUserId()));
+        var customerF = CompletableFuture.supplyAsync(() -> lookup.customer(request.getUserId()), lookupExecutor);
+        var userF     = CompletableFuture.supplyAsync(() -> lookup.user(request.getUserId()), lookupExecutor);
 
-        User user = userRepository.findFirstByUserId(request.getUserId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNPROCESSABLE_ENTITY,
-                        "No user for userId=" + request.getUserId()));
+        try {
+            CompletableFuture.allOf(customerF, userF).join();
+        } catch (CompletionException e) {
+            if (e.getCause() instanceof ResponseStatusException rse) throw rse;
+            throw e;
+        }
 
         LoanValidationContext context = new LoanValidationContext();
         context.setUserId(request.getUserId());
-        context.setUser(user);
-        context.setCustomer(customer);
+        context.setUser(userF.join());
+        context.setCustomer(customerF.join());
         context.setLoan(toFact(request));
         return context;
     }

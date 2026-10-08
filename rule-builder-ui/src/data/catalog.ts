@@ -59,3 +59,16 @@ export const OPERATOR_LABELS: Record<string, string> = {
   '>=': 'is at least', '<=': 'is at most',
   '==': 'is equal to', '!=': 'is not',
 }
+
+// ---- Shared color system (flows, groups) — used across all screens ----------
+export const FLOW_ACCENT: Record<string, string> = {
+  TRANSFER_TRANSACTION: '#2056d6',
+  LOAN_APPLICATION: '#b5790b',
+  ACCOUNT_CLOSURE: '#6d49d4',
+}
+export const GROUP_COLOR: Record<string, string> = {
+  COMMON: '#6d49d4', TRANSFER: '#2056d6', VELOCITY: '#c98400',
+  COMPLIANCE: '#e03b4b', LOAN: '#0f9d6c', CLOSURE: '#7c5cff',
+}
+export const accentOf = (flowName: string): string => FLOW_ACCENT[flowName] ?? '#2056d6'
+export const groupColor = (g: string): string => GROUP_COLOR[g] ?? '#64748b'

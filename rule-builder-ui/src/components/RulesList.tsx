@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import type { ReactNode } from 'react'
+import type { ReactNode, CSSProperties } from 'react'
 import type { RuleDefinition } from '../api/ruleEngineApi'
 import type { FlowMeta } from '../data/catalog'
-import { prettyFlow } from '../data/catalog'
+import { prettyFlow, groupColor } from '../data/catalog'
 import { IconRules, IconBuilder, IconFileCode, IconFlows, IconPlus, IconEdit, IconTrash, IconClose } from './icons'
 
 function flowOf(rule: RuleDefinition): string | null {
@@ -15,12 +15,12 @@ function fmtDate(iso?: string): string {
   return isNaN(d.getTime()) ? '—' : d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function Stat({ icon, color, bg, value, label }: { icon: ReactNode; color: string; bg: string; value: number; label: string }) {
+function Stat({ icon, accent, value, label }: { icon: ReactNode; accent: string; value: number; label: string }) {
   return (
-    <div className="stat">
-      <div className="stat-ico" style={{ background: bg, color }}>{icon}</div>
-      <div className="stat-val">{value}</div>
-      <div className="stat-lbl">{label}</div>
+    <div className="stat2" style={{ '--acc': accent } as CSSProperties}>
+      <div className="s2-ico">{icon}</div>
+      <div className="s2-v">{value}</div>
+      <div className="s2-l">{label}</div>
     </div>
   )
 }
@@ -55,10 +55,10 @@ export default function RulesList({
   return (
     <div className="content-narrow">
       <div className="stat-row">
-        <Stat icon={<IconRules />}    color="#2056d6" bg="#eef3fe" value={rules.length} label="Active rules" />
-        <Stat icon={<IconBuilder />}  color="#6d49d4" bg="#efeafc" value={builder}      label="Visual (Builder)" />
-        <Stat icon={<IconFileCode />} color="#475069" bg="#eef1f6" value={drl}          label="Hand-written DRL" />
-        <Stat icon={<IconFlows />}    color="#0f9d6c" bg="#e7f7f0" value={flows.length}  label="Flows wired" />
+        <Stat icon={<IconRules />}    accent="#2056d6" value={rules.length} label="Active rules" />
+        <Stat icon={<IconBuilder />}  accent="#6d49d4" value={builder}      label="Visual (Builder)" />
+        <Stat icon={<IconFileCode />} accent="#475069" value={drl}          label="Hand-written DRL" />
+        <Stat icon={<IconFlows />}    accent="#0f9d6c" value={flows.length}  label="Flows wired" />
       </div>
 
       <div className="card">
@@ -92,7 +92,7 @@ export default function RulesList({
                       <div className="rule-desc">by {r.createdBy ?? 'system'}</div>
                     </td>
                     <td>{labelOf(flowOf(r))}</td>
-                    <td><span className={'badge ' + (r.agendaGroup === 'COMMON' ? 'badge-common' : 'badge-group')}>{r.agendaGroup}</span></td>
+                    <td><span className="grp-cell"><span className="gc-dot" style={{ background: groupColor(r.agendaGroup) }} /><span className={'badge ' + (r.agendaGroup === 'COMMON' ? 'badge-common' : 'badge-group')}>{r.agendaGroup}</span></span></td>
                     <td>
                       <span className={'badge ' + (isBuilder ? 'badge-builder' : 'badge-drl')}>
                         {isBuilder ? <IconBuilder width={12} height={12} /> : <IconFileCode width={12} height={12} />}

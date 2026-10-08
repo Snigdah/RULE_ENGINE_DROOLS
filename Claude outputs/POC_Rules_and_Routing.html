@@ -1,0 +1,414 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>POC Rules &amp; Routing</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Layout: routing tables, then the rule_definition table, then each rule's DRL + JSON in dark code panels. */
+  :root{
+    --bg:#f4f6f9; --surface:#ffffff; --surface-2:#eef1f6; --border:#e0e5ec;
+    --fg:#19212e; --muted:#5d6b7e; --faint:#8a97a8;
+    --accent:#2f5bd0; --accent-weak:#e8eefc; --accent-line:#c9d6fa;
+    --good:#1a7f46; --good-weak:#e5f5ec; --bad:#c0362c; --bad-weak:#fbe9e7;
+    --warn:#9a6a00; --warn-weak:#fbf1d9; --purple:#6b3fb5; --purple-weak:#f0e9fb;
+    --code-bg:#10151f; --code-fg:#e7ebf5;
+    --kw:#8ea2ff; --str:#9fe0a6; --num:#ffcf7a; --punc:#9aa6bd; --cmt:#7c8aa5; --var:#f4a9c7;
+    --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    --font:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --shadow:0 1px 2px rgba(20,30,50,.05),0 8px 22px rgba(20,30,50,.05);
+  }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --bg:#0d1017; --surface:#151a22; --surface-2:#1b222c; --border:#29313d;
+    --fg:#e7ebf2; --muted:#9aa6b6; --faint:#6b7687;
+    --accent:#7f93ff; --accent-weak:#1b2238; --accent-line:#2c3657;
+    --good:#45cf92; --good-weak:#12271e; --bad:#ff6f78; --bad-weak:#2a1a1d;
+    --warn:#d9ab4e; --warn-weak:#2a2210; --purple:#b79cff; --purple-weak:#20193a;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35); color-scheme:dark;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0d1017; --surface:#151a22; --surface-2:#1b222c; --border:#29313d;
+    --fg:#e7ebf2; --muted:#9aa6b6; --faint:#6b7687;
+    --accent:#7f93ff; --accent-weak:#1b2238; --accent-line:#2c3657;
+    --good:#45cf92; --good-weak:#12271e; --bad:#ff6f78; --bad-weak:#2a1a1d;
+    --warn:#d9ab4e; --warn-weak:#2a2210; --purple:#b79cff; --purple-weak:#20193a;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35); color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1040px;margin:0 auto;padding-block:26px;padding-inline:18px}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  h1{font-size:23px;font-weight:800;margin:0;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:14px;margin:2px 0 0}
+  .themebtn{margin-left:auto;font:inherit;font-size:13px;font-weight:600;color:var(--fg);background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:7px 12px;cursor:pointer}
+
+  .eyebrow{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin:36px 0 12px;display:flex;align-items:center;gap:10px}
+  .eyebrow::after{content:"";flex:1;height:2px;background:var(--border);border-radius:2px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);margin:14px 0;overflow:hidden}
+  .card-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid var(--border)}
+  .card-h .t{font-family:var(--mono);font-size:14px;font-weight:600}
+  .card-h .d{font-size:12.5px;color:var(--faint)}
+  .card-h .n{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:3px 9px}
+  .scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th,td{padding:9px 13px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;vertical-align:top}
+  th{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover td{background:var(--surface-2)}
+  .k{font-family:var(--mono);font-size:12.5px}
+  .num{font-variant-numeric:tabular-nums;text-align:center}
+
+  .chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+  .c-common{background:var(--accent-weak);color:var(--accent);border-color:var(--accent-line)}
+  .c-transfer{background:var(--good-weak);color:var(--good);border-color:color-mix(in srgb,var(--good) 35%,transparent)}
+  .c-loan{background:var(--warn-weak);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,transparent)}
+  .c-closure{background:var(--purple-weak);color:var(--purple);border-color:color-mix(in srgb,var(--purple) 35%,transparent)}
+  .c-velocity{background:var(--warn-weak);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,transparent)}
+  .c-compliance{background:var(--bad-weak);color:var(--bad);border-color:color-mix(in srgb,var(--bad) 35%,transparent)}
+  .c-drl{background:var(--surface-2);color:var(--muted);border-color:var(--border)}
+  .c-builder{background:var(--purple-weak);color:var(--purple);border-color:color-mix(in srgb,var(--purple) 35%,transparent)}
+  .c-mute{background:var(--surface-2);color:var(--faint);border-color:var(--border)}
+  .c-yes{background:var(--good-weak);color:var(--good);border-color:color-mix(in srgb,var(--good) 35%,transparent)}
+
+  .order{display:inline-flex;align-items:center;gap:6px}
+  .order .oarrow{color:var(--faint);font-weight:800}
+
+  /* code panels */
+  .codewrap{margin:12px 0}
+  .codehead{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 7px}
+  .codehead .nm{font-weight:700;font-size:14px}
+  .code{background:var(--code-bg);border-radius:12px;padding:15px 16px;overflow-x:auto}
+  .code pre{margin:0;font-family:var(--mono);font-size:12.5px;line-height:1.7;color:var(--code-fg);white-space:pre}
+  .kw{color:var(--kw);font-weight:600}.str{color:var(--str)}.num2{color:var(--num)}.punc{color:var(--punc)}.cmt{color:var(--cmt);font-style:italic}.var{color:var(--var)}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:760px){.twocol{grid-template-columns:1fr}}
+  .lbl{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--muted);margin-bottom:5px;text-transform:uppercase}
+
+  .note{background:var(--accent-weak);border:1px solid var(--accent-line);border-left:4px solid var(--accent);border-radius:11px;padding:13px 15px;font-size:13.5px;color:var(--muted);margin:12px 0}
+  .note b{color:var(--fg)}
+  .foot{color:var(--faint);font-size:12px;text-align:center;margin-top:28px}
+  code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);padding:1px 6px;border-radius:5px}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Rule Engine POC — Rules &amp; Routing</h1>
+      <p class="sub">The library tables you loaded through the admin API: request→flow mappings, flow groups, and the rules.</p>
+    </div>
+    <button class="themebtn" id="theme">◐ Theme</button>
+  </header>
+
+  <!-- ROUTING -->
+  <div class="eyebrow">Routing tables</div>
+
+  <div class="card">
+    <div class="card-h"><span class="t">request_flow_map</span><span class="d">request class → flow → fact type</span><span class="n">3 rows</span></div>
+    <div class="scroll"><table>
+      <thead><tr><th>request_class</th><th>flow_name</th><th>fact_type</th></tr></thead>
+      <tbody>
+        <tr><td class="k">…dto.TransactionRequest</td><td><span class="chip c-transfer">TRANSFER_TRANSACTION</span></td><td class="k">…model.ValidationContext</td></tr>
+        <tr><td class="k">…dto.LoanRequest</td><td><span class="chip c-loan">LOAN_APPLICATION</span></td><td class="k">…model.LoanValidationContext</td></tr>
+        <tr><td class="k">…dto.AccountCloseRequest</td><td><span class="chip c-closure">ACCOUNT_CLOSURE</span></td><td class="k">…model.ClosureValidationContext</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><span class="t">flow_group</span><span class="d">flow → ordered agenda groups (COMMON fires first)</span><span class="n">8 rows</span></div>
+    <div class="scroll"><table>
+      <thead><tr><th>flow_name</th><th>agenda_group</th><th class="num">order_no</th></tr></thead>
+      <tbody>
+        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-common">COMMON</span></td><td class="num">1</td></tr>
+        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-transfer">TRANSFER</span></td><td class="num">2</td></tr>
+        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-velocity">VELOCITY</span></td><td class="num">3</td></tr>
+        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-compliance">COMPLIANCE</span></td><td class="num">4</td></tr>
+        <tr><td class="k">LOAN_APPLICATION</td><td><span class="chip c-common">COMMON</span></td><td class="num">1</td></tr>
+        <tr><td class="k">LOAN_APPLICATION</td><td><span class="chip c-loan">LOAN</span></td><td class="num">2</td></tr>
+        <tr><td class="k">ACCOUNT_CLOSURE</td><td><span class="chip c-common">COMMON</span></td><td class="num">1</td></tr>
+        <tr><td class="k">ACCOUNT_CLOSURE</td><td><span class="chip c-closure">CLOSURE</span></td><td class="num">2</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <!-- RULE_DEFINITION TABLE -->
+  <div class="eyebrow">rule_definition — the rules</div>
+  <div class="card">
+    <div class="card-h"><span class="t">rule_definition</span><span class="d">one row per rule · engine runs DRL_TEXT only</span><span class="n">7 rows</span></div>
+    <div class="scroll"><table id="ruleTable">
+      <thead><tr><th>id</th><th>rule_name</th><th>agenda_group</th><th>source_type</th><th>source_json</th><th>drl_text</th><th>ver</th><th>status</th><th>active</th></tr></thead>
+      <tbody><!-- filled by JS --></tbody>
+    </table></div>
+  </div>
+
+  <!-- ONE ROW IN FULL -->
+  <div class="eyebrow">One rule_definition row, in full</div>
+  <div class="note">
+    <b>Your question — what do <code>source_json</code> and <code>drl_text</code> hold?</b> For a <b>BUILDER</b> rule, <code>source_json</code> is the editable spec the UI saved, and <code>drl_text</code> is generated from it. For a <b>DRL</b> rule, <code>source_json</code> is <b>null</b> and <code>drl_text</code> is hand-written. The engine only ever compiles <code>drl_text</code>.
+  </div>
+  <div id="example"></div>
+
+  <!-- DRL -->
+  <div class="eyebrow">drl_text — every rule (what the engine runs)</div>
+  <div id="drlList"></div>
+
+  <!-- JSON -->
+  <div class="eyebrow">source_json — the builder rules only</div>
+  <div id="jsonList"></div>
+
+  <p class="foot">Loaded via <code>POST /admin/flows</code>, <code>/admin/flows/mappings</code>, <code>/admin/rules</code>. DRL rules are hand-written; builder rules are generated from their JSON.</p>
+</div>
+
+<script>
+const RULES = [
+  { id:1, name:"Block transaction for a blocked user", group:"COMMON", type:"DRL",
+    drl:`package com.example.droolspoc.rules;
+
+import com.example.droolspoc.model.RuleContext;
+import com.example.droolspoc.context.data.BlockedUsers;
+
+global leads.ruleengine.core.context.GlobalContext globalContext;
+
+rule "Block transaction for a blocked user"
+    agenda-group "COMMON"
+    salience 100
+    when
+        $ctx : RuleContext()
+        eval(globalContext.get(BlockedUsers.class).isBlocked($ctx.getUserId()))
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: user is blocked");
+        drools.halt();
+end`, json:null },
+
+  { id:2, name:"Block if KYC not verified", group:"COMMON", type:"DRL",
+    drl:`package com.example.droolspoc.rules;
+
+import com.example.droolspoc.model.RuleContext;
+
+rule "Block if KYC not verified"
+    agenda-group "COMMON"
+    salience 90
+    when
+        $ctx : RuleContext(user != null, user.kycVerified == false)
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: KYC not verified");
+        drools.halt();
+end`, json:null },
+
+  { id:3, name:"Block over-limit debit-restricted BDT transaction", group:"TRANSFER", type:"BUILDER",
+    drl:`package com.example.droolspoc.model;
+
+rule "Block over-limit debit-restricted BDT transaction"
+    agenda-group "TRANSFER"
+    salience 10
+    when
+        $ctx : com.example.droolspoc.model.ValidationContext(
+            transaction.currency == "BDT",
+            product.drRes == 1,
+            transaction.amount > userLimit.limit
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: amount exceeds limit on a debit-restricted BDT account");
+end`,
+    json:`{
+  "ruleName": "Block over-limit debit-restricted BDT transaction",
+  "flow": "TRANSFER_TRANSACTION",
+  "agendaGroup": "TRANSFER",
+  "salience": 10,
+  "match": "all",
+  "conditions": [
+    { "field": "transaction.currency", "operator": "==", "value": "BDT" },
+    { "field": "product.drRes",        "operator": "==", "value": 1 },
+    { "field": "transaction.amount",   "operator": ">",  "valueField": "userLimit.limit" }
+  ],
+  "then": { "decision": "block", "message": "Blocked: amount exceeds limit on a debit-restricted BDT account" }
+}` },
+
+  { id:4, name:"Block loan below credit-score threshold", group:"LOAN", type:"BUILDER",
+    drl:`package com.example.droolspoc.model;
+
+rule "Block loan below credit-score threshold"
+    agenda-group "LOAN"
+    salience 10
+    when
+        $ctx : com.example.droolspoc.model.LoanValidationContext(
+            customer.creditScore < 600
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: credit score below 600");
+end`,
+    json:`{
+  "ruleName": "Block loan below credit-score threshold",
+  "flow": "LOAN_APPLICATION",
+  "agendaGroup": "LOAN",
+  "salience": 10,
+  "match": "all",
+  "conditions": [
+    { "field": "customer.creditScore", "operator": "<", "value": 600 }
+  ],
+  "then": { "decision": "block", "message": "Blocked: credit score below 600" }
+}` },
+
+  { id:5, name:"Block closure with outstanding balance", group:"CLOSURE", type:"BUILDER",
+    drl:`package com.example.droolspoc.model;
+
+rule "Block closure with outstanding balance"
+    agenda-group "CLOSURE"
+    salience 10
+    when
+        $ctx : com.example.droolspoc.model.ClosureValidationContext(
+            account.balance > 0
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: account has an outstanding balance");
+end`,
+    json:`{
+  "ruleName": "Block closure with outstanding balance",
+  "flow": "ACCOUNT_CLOSURE",
+  "agendaGroup": "CLOSURE",
+  "salience": 10,
+  "match": "all",
+  "conditions": [
+    { "field": "account.balance", "operator": ">", "value": 0 }
+  ],
+  "then": { "decision": "block", "message": "Blocked: account has an outstanding balance" }
+}` },
+  { id:6, name:"Block rapid high-value agent transfers", group:"VELOCITY", type:"BUILDER",
+    drl:`package com.example.droolspoc.model;
+
+rule "Block rapid high-value agent transfers"
+    agenda-group "VELOCITY"
+    salience 20
+    when
+        $ctx : com.example.droolspoc.model.ValidationContext(
+            transaction.channel == "AGENT",
+            transaction.amount > 50000,
+            transaction.dailyTxnCount >= 5
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: too many high-value agent transfers today");
+end`,
+    json:`{
+  "ruleName": "Block rapid high-value agent transfers",
+  "flow": "TRANSFER_TRANSACTION",
+  "agendaGroup": "VELOCITY",
+  "salience": 20,
+  "match": "all",
+  "conditions": [
+    { "field": "transaction.channel",       "operator": "==", "value": "AGENT" },
+    { "field": "transaction.amount",        "operator": ">",  "value": 50000 },
+    { "field": "transaction.dailyTxnCount", "operator": ">=", "value": 5 }
+  ],
+  "then": { "decision": "block", "message": "Blocked: too many high-value agent transfers today" }
+}` },
+
+  { id:7, name:"Block high-value cross-border non-BDT transfer", group:"COMPLIANCE", type:"BUILDER",
+    drl:`package com.example.droolspoc.model;
+
+rule "Block high-value cross-border non-BDT transfer"
+    agenda-group "COMPLIANCE"
+    salience 20
+    when
+        $ctx : com.example.droolspoc.model.ValidationContext(
+            transaction.currency != "BDT",
+            transaction.amount >= 100000,
+            transaction.country == "OTHER"
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: cross-border high-value transfer needs manual review");
+end`,
+    json:`{
+  "ruleName": "Block high-value cross-border non-BDT transfer",
+  "flow": "TRANSFER_TRANSACTION",
+  "agendaGroup": "COMPLIANCE",
+  "salience": 20,
+  "match": "all",
+  "conditions": [
+    { "field": "transaction.currency", "operator": "!=", "value": "BDT" },
+    { "field": "transaction.amount",   "operator": ">=", "value": 100000 },
+    { "field": "transaction.country",  "operator": "==", "value": "OTHER" }
+  ],
+  "then": { "decision": "block", "message": "Blocked: cross-border high-value transfer needs manual review" }
+}` }
+];
+
+const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function hiDRL(s){
+  return esc(s)
+    .replace(/(&quot;[^&]*?&quot;|"[^"]*")/g,'<span class="str">$1</span>')
+    .replace(/\b(rule|agenda-group|salience|when|then|end|global|import|package|eval)\b/g,'<span class="kw">$1</span>')
+    .replace(/\b(\d+)\b/g,'<span class="num2">$1</span>')
+    .replace(/(RuleContext|ValidationContext|LoanValidationContext|ClosureValidationContext|BlockedUsers|GlobalContext|setValid|setPermissionDenied|setValidationMessage|getUserId)/g,'<span class="punc">$1</span>')
+    .replace(/(\$ctx|globalContext)/g,'<span class="var">$1</span>');
+}
+function hiJSON(s){
+  return esc(s)
+    .replace(/("(?:\\.|[^"])*")(\s*:)/g,'<span class="punc">$1</span>$2')
+    .replace(/: ("(?:\\.|[^"])*")/g,': <span class="str">$1</span>')
+    .replace(/\b(true|false|null)\b/g,'<span class="kw">$1</span>')
+    .replace(/: (-?\d+(?:\.\d+)?)/g,': <span class="num2">$1</span>');
+}
+const groupChip = g => `<span class="chip c-${g.toLowerCase()}">${g}</span>`;
+const typeChip = t => `<span class="chip ${t==='DRL'?'c-drl':'c-builder'}">${t}</span>`;
+
+// rule_definition table
+document.querySelector('#ruleTable tbody').innerHTML = RULES.map(r=>`
+  <tr>
+    <td class="num">${r.id}</td>
+    <td>${r.name}</td>
+    <td>${groupChip(r.group)}</td>
+    <td>${typeChip(r.type)}</td>
+    <td>${r.json ? '<span class="chip c-yes">JSON</span>' : '<span class="chip c-mute">null</span>'}</td>
+    <td><span class="chip c-yes">DRL</span></td>
+    <td class="num">1</td>
+    <td><span class="chip c-yes">ACTIVE</span></td>
+    <td class="num">1</td>
+  </tr>`).join('');
+
+// example row in full (the over-limit builder rule)
+const ex = RULES[2];
+document.getElementById('example').innerHTML = `
+  <div class="card">
+    <div class="card-h"><span class="t">rule_definition</span><span class="d">id = ${ex.id} · ${ex.name}</span><span class="n">BUILDER</span></div>
+    <div class="scroll" style="padding:14px 16px">
+      <div class="twocol">
+        <div><div class="lbl">source_json  (editable source)</div><div class="code"><pre>${hiJSON(ex.json)}</pre></div></div>
+        <div><div class="lbl">drl_text  (generated · engine runs this)</div><div class="code"><pre>${hiDRL(ex.drl)}</pre></div></div>
+      </div>
+    </div>
+  </div>`;
+
+// all DRL
+document.getElementById('drlList').innerHTML = RULES.map(r=>`
+  <div class="codewrap">
+    <div class="codehead"><span class="nm">#${r.id} · ${r.name}</span>${groupChip(r.group)}${typeChip(r.type)}</div>
+    <div class="code"><pre>${hiDRL(r.drl)}</pre></div>
+  </div>`).join('');
+
+// all JSON (builder only)
+document.getElementById('jsonList').innerHTML = RULES.filter(r=>r.json).map(r=>`
+  <div class="codewrap">
+    <div class="codehead"><span class="nm">#${r.id} · ${r.name}</span>${groupChip(r.group)}</div>
+    <div class="code"><pre>${hiJSON(r.json)}</pre></div>
+  </div>`).join('');
+
+document.getElementById("theme").onclick=function(){
+  var r=document.documentElement;
+  var cur=r.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  r.setAttribute("data-theme",cur==="dark"?"light":"dark");
+};
+</script>
+
+</body></html>
