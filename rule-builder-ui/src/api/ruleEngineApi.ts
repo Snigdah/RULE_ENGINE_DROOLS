@@ -1,16 +1,33 @@
-// Thin typed API client for the rule-engine backend (library 0.0.5).
+// Thin typed API client for the rule-engine backend (library 1.0.0).
 // Dev calls go through the Vite proxy (vite.config.ts) to http://localhost:8080,
 // so relative paths work with no CORS setup.
 
 // ----- types (match the backend DTOs / entities) -----
 export type Decision = 'block' | 'allow'
 
-export interface Condition {
+// ---- recursive condition tree (matches leads.ruleengine.core.dto) ----
+export type GroupOp = 'AND' | 'OR'
+
+/** A single field comparison, e.g. transaction.amount > 5000. */
+export interface ConditionLeaf {
+  type: 'CONDITION'
   field: string
   operator: string
   value?: string | number | boolean
   valueField?: string
 }
+
+/** An AND/OR over child nodes (leaves and/or nested groups). */
+export interface ConditionGroup {
+  type: 'GROUP'
+  operator: GroupOp
+  children: ConditionNode[]
+}
+
+export type ConditionNode = ConditionGroup | ConditionLeaf
+
+export const isGroup = (n: ConditionNode): n is ConditionGroup => n.type === 'GROUP'
+export const isLeaf = (n: ConditionNode): n is ConditionLeaf => n.type === 'CONDITION'
 
 export interface Outcome {
   decision: Decision
@@ -22,8 +39,8 @@ export interface BuilderRuleSpec {
   flow: string
   agendaGroup: string
   salience?: number
-  match?: 'all' | 'any'
-  conditions: Condition[]
+  /** Root of the condition tree (a GROUP, or a single CONDITION). */
+  conditionTree: ConditionNode
   then: Outcome
   otherwise?: Outcome
 }
@@ -156,4 +173,3 @@ export const api = {
     fetch('/api/account-closures/validate', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(body) })
       .then(r => handle<ValidateResult>(r)),
 }
-

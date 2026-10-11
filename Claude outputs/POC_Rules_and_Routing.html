@@ -132,7 +132,7 @@
   <!-- RULE_DEFINITION TABLE -->
   <div class="eyebrow">rule_definition — the rules</div>
   <div class="card">
-    <div class="card-h"><span class="t">rule_definition</span><span class="d">one row per rule · engine runs DRL_TEXT only</span><span class="n">7 rows</span></div>
+    <div class="card-h"><span class="t">rule_definition</span><span class="d">one row per rule · engine runs DRL_TEXT only</span><span class="n">10 rows</span></div>
     <div class="scroll"><table id="ruleTable">
       <thead><tr><th>id</th><th>rule_name</th><th>agenda_group</th><th>source_type</th><th>source_json</th><th>drl_text</th><th>ver</th><th>status</th><th>active</th></tr></thead>
       <tbody><!-- filled by JS --></tbody>
@@ -205,9 +205,7 @@ rule "Block over-limit debit-restricted BDT transaction"
     salience 10
     when
         $ctx : com.example.droolspoc.model.ValidationContext(
-            transaction.currency == "BDT",
-            product.drRes == 1,
-            transaction.amount > userLimit.limit
+            (transaction.currency == "BDT" && product.drRes == 1 && transaction.amount > userLimit.limit)
         )
     then
         $ctx.setValid(false);
@@ -219,13 +217,34 @@ end`,
   "flow": "TRANSFER_TRANSACTION",
   "agendaGroup": "TRANSFER",
   "salience": 10,
-  "match": "all",
-  "conditions": [
-    { "field": "transaction.currency", "operator": "==", "value": "BDT" },
-    { "field": "product.drRes",        "operator": "==", "value": 1 },
-    { "field": "transaction.amount",   "operator": ">",  "valueField": "userLimit.limit" }
-  ],
-  "then": { "decision": "block", "message": "Blocked: amount exceeds limit on a debit-restricted BDT account" }
+  "conditionTree": {
+    "type": "GROUP",
+    "operator": "AND",
+    "children": [
+      {
+        "type": "CONDITION",
+        "field": "transaction.currency",
+        "operator": "==",
+        "value": "BDT"
+      },
+      {
+        "type": "CONDITION",
+        "field": "product.drRes",
+        "operator": "==",
+        "value": 1
+      },
+      {
+        "type": "CONDITION",
+        "field": "transaction.amount",
+        "operator": ">",
+        "valueField": "userLimit.limit"
+      }
+    ]
+  },
+  "then": {
+    "decision": "block",
+    "message": "Blocked: amount exceeds limit on a debit-restricted BDT account"
+  }
 }` },
 
   { id:4, name:"Block loan below credit-score threshold", group:"LOAN", type:"BUILDER",
@@ -236,7 +255,7 @@ rule "Block loan below credit-score threshold"
     salience 10
     when
         $ctx : com.example.droolspoc.model.LoanValidationContext(
-            customer.creditScore < 600
+            (customer.creditScore < 600)
         )
     then
         $ctx.setValid(false);
@@ -248,11 +267,22 @@ end`,
   "flow": "LOAN_APPLICATION",
   "agendaGroup": "LOAN",
   "salience": 10,
-  "match": "all",
-  "conditions": [
-    { "field": "customer.creditScore", "operator": "<", "value": 600 }
-  ],
-  "then": { "decision": "block", "message": "Blocked: credit score below 600" }
+  "conditionTree": {
+    "type": "GROUP",
+    "operator": "AND",
+    "children": [
+      {
+        "type": "CONDITION",
+        "field": "customer.creditScore",
+        "operator": "<",
+        "value": 600
+      }
+    ]
+  },
+  "then": {
+    "decision": "block",
+    "message": "Blocked: credit score below 600"
+  }
 }` },
 
   { id:5, name:"Block closure with outstanding balance", group:"CLOSURE", type:"BUILDER",
@@ -263,7 +293,7 @@ rule "Block closure with outstanding balance"
     salience 10
     when
         $ctx : com.example.droolspoc.model.ClosureValidationContext(
-            account.balance > 0
+            (account.balance > 0)
         )
     then
         $ctx.setValid(false);
@@ -275,12 +305,24 @@ end`,
   "flow": "ACCOUNT_CLOSURE",
   "agendaGroup": "CLOSURE",
   "salience": 10,
-  "match": "all",
-  "conditions": [
-    { "field": "account.balance", "operator": ">", "value": 0 }
-  ],
-  "then": { "decision": "block", "message": "Blocked: account has an outstanding balance" }
+  "conditionTree": {
+    "type": "GROUP",
+    "operator": "AND",
+    "children": [
+      {
+        "type": "CONDITION",
+        "field": "account.balance",
+        "operator": ">",
+        "value": 0
+      }
+    ]
+  },
+  "then": {
+    "decision": "block",
+    "message": "Blocked: account has an outstanding balance"
+  }
 }` },
+
   { id:6, name:"Block rapid high-value agent transfers", group:"VELOCITY", type:"BUILDER",
     drl:`package com.example.droolspoc.model;
 
@@ -289,9 +331,7 @@ rule "Block rapid high-value agent transfers"
     salience 20
     when
         $ctx : com.example.droolspoc.model.ValidationContext(
-            transaction.channel == "AGENT",
-            transaction.amount > 50000,
-            transaction.dailyTxnCount >= 5
+            (transaction.channel == "AGENT" && transaction.amount > 50000 && transaction.dailyTxnCount >= 5)
         )
     then
         $ctx.setValid(false);
@@ -303,13 +343,34 @@ end`,
   "flow": "TRANSFER_TRANSACTION",
   "agendaGroup": "VELOCITY",
   "salience": 20,
-  "match": "all",
-  "conditions": [
-    { "field": "transaction.channel",       "operator": "==", "value": "AGENT" },
-    { "field": "transaction.amount",        "operator": ">",  "value": 50000 },
-    { "field": "transaction.dailyTxnCount", "operator": ">=", "value": 5 }
-  ],
-  "then": { "decision": "block", "message": "Blocked: too many high-value agent transfers today" }
+  "conditionTree": {
+    "type": "GROUP",
+    "operator": "AND",
+    "children": [
+      {
+        "type": "CONDITION",
+        "field": "transaction.channel",
+        "operator": "==",
+        "value": "AGENT"
+      },
+      {
+        "type": "CONDITION",
+        "field": "transaction.amount",
+        "operator": ">",
+        "value": 50000
+      },
+      {
+        "type": "CONDITION",
+        "field": "transaction.dailyTxnCount",
+        "operator": ">=",
+        "value": 5
+      }
+    ]
+  },
+  "then": {
+    "decision": "block",
+    "message": "Blocked: too many high-value agent transfers today"
+  }
 }` },
 
   { id:7, name:"Block high-value cross-border non-BDT transfer", group:"COMPLIANCE", type:"BUILDER",
@@ -320,9 +381,7 @@ rule "Block high-value cross-border non-BDT transfer"
     salience 20
     when
         $ctx : com.example.droolspoc.model.ValidationContext(
-            transaction.currency != "BDT",
-            transaction.amount >= 100000,
-            transaction.country == "OTHER"
+            (transaction.currency != "BDT" && transaction.amount >= 100000 && transaction.country == "OTHER")
         )
     then
         $ctx.setValid(false);
@@ -334,13 +393,298 @@ end`,
   "flow": "TRANSFER_TRANSACTION",
   "agendaGroup": "COMPLIANCE",
   "salience": 20,
-  "match": "all",
-  "conditions": [
-    { "field": "transaction.currency", "operator": "!=", "value": "BDT" },
-    { "field": "transaction.amount",   "operator": ">=", "value": 100000 },
-    { "field": "transaction.country",  "operator": "==", "value": "OTHER" }
-  ],
-  "then": { "decision": "block", "message": "Blocked: cross-border high-value transfer needs manual review" }
+  "conditionTree": {
+    "type": "GROUP",
+    "operator": "AND",
+    "children": [
+      {
+        "type": "CONDITION",
+        "field": "transaction.currency",
+        "operator": "!=",
+        "value": "BDT"
+      },
+      {
+        "type": "CONDITION",
+        "field": "transaction.amount",
+        "operator": ">=",
+        "value": 100000
+      },
+      {
+        "type": "CONDITION",
+        "field": "transaction.country",
+        "operator": "==",
+        "value": "OTHER"
+      }
+    ]
+  },
+  "then": {
+    "decision": "block",
+    "message": "Blocked: cross-border high-value transfer needs manual review"
+  }
+}` },
+
+  { id:8, name:"High-value or cross-border transfer", group:"TRANSFER", type:"BUILDER",
+    drl:`package com.example.droolspoc.model;
+
+rule "High-value or cross-border transfer"
+    agenda-group "TRANSFER"
+    salience 20
+    when
+        $ctx : com.example.droolspoc.model.ValidationContext(
+            ((transaction.channel == "AGENT" && transaction.amount > 50000) || (transaction.country == "OTHER" && transaction.currency != "BDT"))
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: high-value agent transfer, or cross-border non-BDT transfer");
+end`,
+    json:`{
+  "ruleName": "High-value or cross-border transfer",
+  "flow": "TRANSFER_TRANSACTION",
+  "agendaGroup": "TRANSFER",
+  "salience": 20,
+  "conditionTree": {
+    "type": "GROUP",
+    "operator": "OR",
+    "children": [
+      {
+        "type": "GROUP",
+        "operator": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "field": "transaction.channel",
+            "operator": "==",
+            "value": "AGENT"
+          },
+          {
+            "type": "CONDITION",
+            "field": "transaction.amount",
+            "operator": ">",
+            "value": 50000
+          }
+        ]
+      },
+      {
+        "type": "GROUP",
+        "operator": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "field": "transaction.country",
+            "operator": "==",
+            "value": "OTHER"
+          },
+          {
+            "type": "CONDITION",
+            "field": "transaction.currency",
+            "operator": "!=",
+            "value": "BDT"
+          }
+        ]
+      }
+    ]
+  },
+  "then": {
+    "decision": "block",
+    "message": "Blocked: high-value agent transfer, or cross-border non-BDT transfer"
+  }
+}` },
+
+  { id:9, name:"Layered channel & geo screen", group:"VELOCITY", type:"BUILDER",
+    drl:`package com.example.droolspoc.model;
+
+rule "Layered channel & geo screen"
+    agenda-group "VELOCITY"
+    salience 20
+    when
+        $ctx : com.example.droolspoc.model.ValidationContext(
+            ((transaction.amount > 10000 && (transaction.channel == "ONLINE" || transaction.channel == "AGENT")) && ((transaction.country == "US" || transaction.country == "OTHER") && transaction.currency != "BDT"))
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: layered channel & geo screening");
+end`,
+    json:`{
+  "ruleName": "Layered channel & geo screen",
+  "flow": "TRANSFER_TRANSACTION",
+  "agendaGroup": "VELOCITY",
+  "salience": 20,
+  "conditionTree": {
+    "type": "GROUP",
+    "operator": "AND",
+    "children": [
+      {
+        "type": "GROUP",
+        "operator": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "field": "transaction.amount",
+            "operator": ">",
+            "value": 10000
+          },
+          {
+            "type": "GROUP",
+            "operator": "OR",
+            "children": [
+              {
+                "type": "CONDITION",
+                "field": "transaction.channel",
+                "operator": "==",
+                "value": "ONLINE"
+              },
+              {
+                "type": "CONDITION",
+                "field": "transaction.channel",
+                "operator": "==",
+                "value": "AGENT"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "GROUP",
+        "operator": "AND",
+        "children": [
+          {
+            "type": "GROUP",
+            "operator": "OR",
+            "children": [
+              {
+                "type": "CONDITION",
+                "field": "transaction.country",
+                "operator": "==",
+                "value": "US"
+              },
+              {
+                "type": "CONDITION",
+                "field": "transaction.country",
+                "operator": "==",
+                "value": "OTHER"
+              }
+            ]
+          },
+          {
+            "type": "CONDITION",
+            "field": "transaction.currency",
+            "operator": "!=",
+            "value": "BDT"
+          }
+        ]
+      }
+    ]
+  },
+  "then": {
+    "decision": "block",
+    "message": "Blocked: layered channel & geo screening"
+  }
+}` },
+
+  { id:10, name:"Deep-nested compliance check", group:"COMPLIANCE", type:"BUILDER",
+    drl:`package com.example.droolspoc.model;
+
+rule "Deep-nested compliance check"
+    agenda-group "COMPLIANCE"
+    salience 20
+    when
+        $ctx : com.example.droolspoc.model.ValidationContext(
+            ((((transaction.amount > 5000 || transaction.currency == "USD") && product.drRes == 1) || transaction.dailyTxnCount >= 10) && (userLimit.limit >= 100000 || (transaction.amount > userLimit.limit && transaction.dailyTxnCount >= 5)))
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: deep-nested compliance condition met");
+end`,
+    json:`{
+  "ruleName": "Deep-nested compliance check",
+  "flow": "TRANSFER_TRANSACTION",
+  "agendaGroup": "COMPLIANCE",
+  "salience": 20,
+  "conditionTree": {
+    "type": "GROUP",
+    "operator": "AND",
+    "children": [
+      {
+        "type": "GROUP",
+        "operator": "OR",
+        "children": [
+          {
+            "type": "GROUP",
+            "operator": "AND",
+            "children": [
+              {
+                "type": "GROUP",
+                "operator": "OR",
+                "children": [
+                  {
+                    "type": "CONDITION",
+                    "field": "transaction.amount",
+                    "operator": ">",
+                    "value": 5000
+                  },
+                  {
+                    "type": "CONDITION",
+                    "field": "transaction.currency",
+                    "operator": "==",
+                    "value": "USD"
+                  }
+                ]
+              },
+              {
+                "type": "CONDITION",
+                "field": "product.drRes",
+                "operator": "==",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "type": "CONDITION",
+            "field": "transaction.dailyTxnCount",
+            "operator": ">=",
+            "value": 10
+          }
+        ]
+      },
+      {
+        "type": "GROUP",
+        "operator": "OR",
+        "children": [
+          {
+            "type": "CONDITION",
+            "field": "userLimit.limit",
+            "operator": ">=",
+            "value": 100000
+          },
+          {
+            "type": "GROUP",
+            "operator": "AND",
+            "children": [
+              {
+                "type": "CONDITION",
+                "field": "transaction.amount",
+                "operator": ">",
+                "valueField": "userLimit.limit"
+              },
+              {
+                "type": "CONDITION",
+                "field": "transaction.dailyTxnCount",
+                "operator": ">=",
+                "value": 5
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "then": {
+    "decision": "block",
+    "message": "Blocked: deep-nested compliance condition met"
+  }
 }` }
 ];
 
@@ -378,7 +722,7 @@ document.querySelector('#ruleTable tbody').innerHTML = RULES.map(r=>`
   </tr>`).join('');
 
 // example row in full (the over-limit builder rule)
-const ex = RULES[2];
+const ex = RULES.find(r => r.name === "Deep-nested compliance check") || RULES[2];
 document.getElementById('example').innerHTML = `
   <div class="card">
     <div class="card-h"><span class="t">rule_definition</span><span class="d">id = ${ex.id} · ${ex.name}</span><span class="n">BUILDER</span></div>

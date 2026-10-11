@@ -26,6 +26,8 @@ const CLO_PRESETS: Preset<ClosureTest>[] = [
   { label: 'Zero balance', expect: 'allow', data: { userId: 'USER-001', accountNo: 'ACC-900', reason: 'Switching bank' } },
   { label: 'Remaining balance', expect: 'block', data: { userId: 'USER-001', accountNo: 'ACC-901', reason: 'Switching bank' } },
   { label: 'Blocked user', expect: 'block', data: { userId: 'USER-002', accountNo: 'ACC-900', reason: 'Closure' } },
+  { label: 'Dormant → COMPLIANCE', expect: 'block', data: { userId: 'USER-001', accountNo: 'ACC-902', reason: 'Switching bank' } },
+  { label: 'Frozen → COMPLIANCE', expect: 'block', data: { userId: 'USER-001', accountNo: 'ACC-903', reason: 'Switching bank' } },
 ]
 
 const FLOW_CARDS: { key: Flow; label: string; flow: string; acc: string }[] = [
@@ -186,6 +188,8 @@ export default function TestConsole() {
                       <select className="select" value={clo.accountNo} onChange={e => setClo({ ...clo, accountNo: e.target.value })}>
                         <option value="ACC-900">ACC-900 · balance 0</option>
                         <option value="ACC-901">ACC-901 · balance 1,500</option>
+                        <option value="ACC-902">ACC-902 · balance 0 · DORMANT</option>
+                        <option value="ACC-903">ACC-903 · balance 0 · FROZEN</option>
                       </select>
                     </Field>
                   </div>

@@ -2,30 +2,31 @@ package leads.ruleengine.core.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * The shape the Visual Rule Builder saves as {@code SOURCE_JSON}, and the input the
  * {@code RuleDrlGenerator} turns into DRL.
  *
- * <p>Deliberately simple and tolerant ({@code ignoreUnknown}) so the UI can add presentation
- * fields without breaking generation.</p>
+ * <p><b>Conditions are a tree</b> ({@link #conditionTree}), not a flat list — so a rule can mix
+ * AND and OR to any depth, e.g. {@code (A AND B) OR (C AND D)}. The old flat
+ * {@code conditions[] + match} model has been replaced by this tree.</p>
  *
  * <pre>
  * {
- *   "ruleName": "Over-limit debit-restricted BDT",
+ *   "ruleName": "Transfer validation",
  *   "flow": "TRANSFER_TRANSACTION",
  *   "agendaGroup": "TRANSFER",
  *   "salience": 10,
- *   "match": "all",                    // all = AND, any = OR
- *   "conditions": [
- *     { "field": "transaction.currency", "operator": "==", "value": "BDT" },
- *     { "field": "product.drRes",        "operator": "==", "value": 1 },
- *     { "field": "transaction.amount",   "operator": ">",  "valueField": "userLimit.limit" }
- *   ],
- *   "then":      { "decision": "block", "message": "Amount exceeds limit..." },
- *   "otherwise": { "decision": "allow" }   // optional - generates a second (negated) rule
+ *   "conditionTree": {
+ *     "type": "GROUP", "operator": "OR",
+ *     "children": [
+ *       { "type":"GROUP","operator":"AND","children":[
+ *           {"type":"CONDITION","field":"transaction.currency","operator":"==","value":"BDT"},
+ *           {"type":"CONDITION","field":"transaction.amount","operator":">","valueField":"userLimit.limit"} ]},
+ *       { "type":"CONDITION","field":"customer.creditScore","operator":"&lt;","value":600 }
+ *     ]
+ *   },
+ *   "then":      { "decision": "block", "message": "..." },
+ *   "otherwise": { "decision": "allow" }   // optional - second rule with the De-Morgan negation
  * }
  * </pre>
  *
@@ -38,24 +39,14 @@ public class BuilderRuleSpec {
     public String flow;
     public String agendaGroup;
     public Integer salience = 0;
-    /** {@code all} (AND) or {@code any} (OR). */
-    public String match = "all";
-    public List<Condition> conditions = new ArrayList<>();
-    public Outcome then;
-    /** Optional ELSE branch. When present the generator emits a second rule with negated conditions. */
-    public Outcome otherwise;
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class Condition {
-        /** Field key from RULE_FIELD_CATALOG, e.g. {@code transaction.amount}. */
-        public String field;
-        /** One of {@code >, <, >=, <=, ==, !=}. */
-        public String operator;
-        /** A literal value (number / string / boolean). Ignored when {@code valueField} is set. */
-        public Object value;
-        /** Compare against another field instead of a literal, e.g. {@code userLimit.limit}. */
-        public String valueField;
-    }
+    /** Root of the condition tree (a GROUP, or a single CONDITION). */
+    public ConditionNode conditionTree;
+
+    public Outcome then;
+
+    /** Optional ELSE branch. When present the generator emits a second rule with the negated tree. */
+    public Outcome otherwise;
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Outcome {

@@ -624,3 +624,171 @@ tr.rule-link:hover td { background: var(--brand-50); }
 .fl-card.mini .fl-ico { width: 34px; height: 34px; border-radius: 9px; }
 .fl-card.mini .mini-label { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
 .fl-card.mini .mini-sub { font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-top: 1px; }
+
+/* ============================================================
+   Recursive condition tree (ConditionTree.tsx)
+   ============================================================ */
+.tree-tip {
+  font-size: 12px; color: var(--text-3); background: var(--surface-2);
+  border: 1px dashed var(--border-2); border-radius: var(--r-sm);
+  padding: 8px 12px; margin-bottom: 14px; line-height: 1.5;
+}
+.tree-tip .mono { color: var(--text-2); background: var(--brand-50); padding: 1px 6px; border-radius: 6px; }
+
+.input.locked {
+  display: flex; align-items: center; background: var(--surface-2);
+  color: var(--text-2); cursor: not-allowed;
+}
+
+/* a group box */
+.cgroup {
+  border: 1px solid var(--border); border-radius: var(--r);
+  background: var(--surface); position: relative;
+}
+.cgroup.cgroup-root { border-color: var(--border-2); }
+/* a tinted accent rail on the left by operator */
+.cgroup::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  border-radius: var(--r) 0 0 var(--r);
+}
+.cgroup.is-and::before { background: var(--brand-100); }
+.cgroup.is-or::before  { background: var(--violet-50); }
+.cgroup.is-and.cgroup-root::before,
+.cgroup.is-or.cgroup-root::before { background: transparent; }
+
+/* nested groups: subtle inset tint + spacing */
+.cgroup .cgroup { background: var(--surface-2); margin: 2px 0; }
+.cgroup .cgroup.is-and { box-shadow: inset 2px 0 0 var(--brand-100); }
+.cgroup .cgroup.is-or  { box-shadow: inset 2px 0 0 var(--violet-50); }
+
+.cgroup-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+}
+.cgroup-op.seg { padding: 2px; }
+.cgroup-op.seg button { padding: 4px 12px; font-size: 12px; letter-spacing: .02em; }
+.cgroup-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; font-weight: 650; color: var(--text-2);
+}
+.cgroup-tag svg { color: var(--text-3); }
+.cgroup-hint { font-size: 11.5px; color: var(--text-3); }
+.cgroup-remove {
+  margin-left: auto; width: 28px; height: 28px; border-radius: 8px;
+  border: 1px solid var(--border-2); background: var(--surface); color: var(--text-3);
+  display: grid; place-items: center; cursor: pointer; transition: all .12s;
+}
+.cgroup-remove:hover { color: var(--red); border-color: #f3c4ca; background: var(--red-50); }
+
+.cgroup-body { padding: 12px 12px 4px; display: flex; flex-direction: column; }
+
+/* each child slot (leaf or nested group) */
+.cnode { position: relative; }
+.cnode-connector {
+  display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
+  padding: 1px 8px; border-radius: 20px; margin: 2px 0 2px 2px;
+}
+.cnode-connector.and { color: var(--brand-600); background: var(--brand-50); }
+.cnode-connector.or  { color: var(--violet);    background: var(--violet-50); }
+
+.cgroup-foot { display: flex; gap: 8px; padding: 6px 12px 12px; }
+.add-node {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  font-size: 12.5px; font-weight: 600; color: var(--brand);
+  background: var(--brand-50); border: 1px solid var(--brand-100);
+  border-radius: 9px; padding: 7px 12px; transition: all .12s;
+}
+.add-node:hover { background: var(--brand-100); }
+.add-node.ghost { color: var(--violet); background: var(--violet-50); border-color: #e2d8f7; }
+.add-node.ghost:hover { background: #e7defb; }
+.add-node:disabled { opacity: .45; cursor: not-allowed; }
+
+/* keep the condition row tidy inside a group */
+.cgroup .cond-row { margin-bottom: 0; }
+
+/* ============================================================
+   Plain-English nested rendering (PreviewPanel.tsx)
+   ============================================================ */
+.pl-group { }
+.pl-group.pl-top { }
+.pl-ghead { color: #9fb6e6; font-size: 12.5px; margin: 2px 0 2px; }
+.pl-list {
+  list-style: none; margin: 0 0 0 2px; padding: 0 0 0 14px;
+  border-left: 1px solid #27324d;
+}
+.pl-list > li { position: relative; padding: 3px 0; }
+.pl-leaf b { color: #e8eefc; font-weight: 600; }
+.pl-empty { color: #6b7794; }
+
+/* ============================================================
+   Flow drill-down (FlowsList / FlowDetail / GroupDetail)
+   ============================================================ */
+.drill-intro {
+  font-size: 13px; color: var(--text-2); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: var(--r); padding: 12px 15px; margin-bottom: 16px;
+}
+.btn.sm { padding: 7px 12px; font-size: 12.5px; }
+
+/* flow cards become links */
+.fl-card.as-link { cursor: pointer; text-align: left; }
+.fl-card .fl-card-top { display: flex; align-items: center; justify-content: space-between; }
+.fl-open { color: var(--text-3); display: grid; place-items: center; transition: transform .12s, color .12s; }
+.fl-card.as-link:hover .fl-open { color: var(--acc); transform: translateX(3px); }
+
+/* mini pipeline on the flow-detail page */
+.fl-pipe-item { display: inline-flex; align-items: center; }
+.fl-stage.mini { padding: 7px 12px; }
+.fl-stage.mini .st-name { font-size: 12.5px; }
+
+/* rule-group cards */
+.grp-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.grp-card {
+  display: flex; align-items: center; gap: 13px; width: 100%; text-align: left; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--gc);
+  border-radius: var(--r); padding: 14px 16px; transition: box-shadow .12s, transform .06s;
+}
+.grp-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.grp-order {
+  width: 26px; height: 26px; border-radius: 8px; flex: none; display: grid; place-items: center;
+  font-size: 12.5px; font-weight: 700; color: var(--gc);
+  background: color-mix(in srgb, var(--gc) 12%, transparent);
+}
+.grp-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--gc); flex: none; }
+.grp-main { flex: 1; min-width: 0; }
+.grp-name { font-weight: 650; font-size: 14.5px; color: var(--text); }
+.grp-sub { font-size: 12.5px; color: var(--text-3); margin-top: 1px; }
+.grp-card svg { color: var(--text-3); flex: none; }
+.grp-card:hover svg { color: var(--gc); }
+.gtag { font-size: 11px; font-weight: 600; color: var(--text-3); }
+
+/* add-group inline form */
+.addgrp {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  background: var(--surface-2); border: 1px dashed var(--border-2); border-radius: var(--r);
+  padding: 10px 13px; margin: 10px 0;
+}
+.addgrp > svg { color: var(--text-3); flex: none; }
+.addgrp .input { flex: 1; min-width: 180px; height: 38px; }
+.addgrp-prev { font-size: 11.5px; color: var(--text-3); }
+.addgrp-prev b { color: var(--brand); font-family: var(--mono, monospace); }
+.addgrp-err { font-size: 12px; color: var(--red); margin: 2px 0 6px; }
+
+/* group-detail hero */
+.grp-hero {
+  display: flex; align-items: center; gap: 13px;
+  background: var(--surface); border: 1px solid var(--border); border-left: 5px solid var(--gc);
+  border-radius: var(--r-lg); padding: 16px 18px; margin-bottom: 14px;
+}
+.grp-hero-dot { width: 13px; height: 13px; border-radius: 50%; background: var(--gc); flex: none; }
+.grp-hero-name { font-size: 18px; font-weight: 750; color: var(--text); }
+.grp-hero-sub { font-size: 12.5px; color: var(--text-3); margin-top: 2px; }
+.grp-hero .btn { margin-left: auto; }
+
+/* delete button on flow/group/rule cards */
+.fl-del {
+  width: 30px; height: 30px; border-radius: 8px; flex: none; cursor: pointer;
+  border: 1px solid var(--border-2); background: var(--surface); color: var(--text-3);
+  display: grid; place-items: center; transition: all .12s;
+}
+.fl-del:hover { color: var(--red); border-color: #f3c4ca; background: var(--red-50); }
+.grp-note { font-size: 11.5px; color: var(--text-3); margin: 12px 2px 0; }

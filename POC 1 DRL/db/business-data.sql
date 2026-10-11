@@ -44,3 +44,9 @@ INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_
 INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), 'transaction.channel', 'TRANSFER_TRANSACTION', 'Channel', 'ENUM', 'transaction.channel', '==,!=', 'ATM,POS,ONLINE,BRANCH,AGENT');
 INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), 'transaction.country', 'TRANSFER_TRANSACTION', 'Destination Country', 'ENUM', 'transaction.country', '==,!=', 'BD,US,UK,AE,SG,OTHER');
 INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), 'transaction.dailyTxnCount', 'TRANSFER_TRANSACTION', 'Daily Txn Count', 'NUMBER', 'transaction.dailyTxnCount', '>,<,>=,<=,==', NULL);
+
+-- closure COMPLIANCE demo additions
+INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_account_seq'), 'ACC-902', 0, 'DORMANT');
+INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_account_seq'), 'ACC-903', 0, 'FROZEN');
+INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values)
+VALUES (nextval('rule_field_catalog_seq'), 'account.status', 'ACCOUNT_CLOSURE', 'Account Status', 'ENUM', 'account.status', '==,!=', 'ACTIVE,DORMANT,FROZEN,CLOSED');

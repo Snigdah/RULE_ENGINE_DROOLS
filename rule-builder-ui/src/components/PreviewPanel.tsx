@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
 import type { ReactNode } from 'react'
-import type { BuilderRuleSpec, FieldCatalogRow, RulePreviewResponse } from '../api/ruleEngineApi'
-import { api } from '../api/ruleEngineApi'
+import type { BuilderRuleSpec, ConditionNode, FieldCatalogRow, RulePreviewResponse } from '../api/ruleEngineApi'
+import { api, isGroup } from '../api/ruleEngineApi'
 import type { FlowMeta } from '../data/catalog'
-import { generateDrl, toJson, describe, validate, cleanSpec } from '../lib/drlPreview'
+import { generateDrl, toJson, validate, cleanSpec, fieldLabel, opLabel, valueLabel } from '../lib/drlPreview'
 import { IconCheck, IconClose } from './icons'
 
 type Tab = 'plain' | 'json' | 'drl'
@@ -26,8 +26,29 @@ function highlightDrl(src: string): ReactNode[] {
       if (last < part.length) sub.push(part.slice(last))
       return <Fragment key={j}>{sub}</Fragment>
     })
-    return <div key={i}>{nodes.length ? nodes : ' '}</div>
+    return <div key={i}>{nodes.length ? nodes : ' '}</div>
   })
+}
+
+// recursive Plain-English rendering of the condition tree
+function PlainNode({ node, fields, top = false }: { node: ConditionNode; fields: FieldCatalogRow[]; top?: boolean }): ReactNode {
+  if (isGroup(node)) {
+    if (node.children.length === 0) return <span className="pl-empty">no conditions yet…</span>
+    const word = node.operator === 'AND' ? 'ALL of these are true' : 'ANY of these is true'
+    return (
+      <div className={top ? 'pl-group pl-top' : 'pl-group'}>
+        <div className="pl-ghead"><span className="kw">{word}</span>:</div>
+        <ul className="pl-list">
+          {node.children.map((c, i) => <li key={i}><PlainNode node={c} fields={fields} /></li>)}
+        </ul>
+      </div>
+    )
+  }
+  return (
+    <span className="pl-leaf">
+      <b>{fieldLabel(node, fields)}</b> <span className="op">{opLabel(node.operator)}</span> <span className="val">{valueLabel(node, fields)}</span>
+    </span>
+  )
 }
 
 export default function PreviewPanel({
@@ -56,7 +77,6 @@ export default function PreviewPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
-  const d = describe(spec, fields)
   const drlText = server?.drl ?? generateDrl(spec, flow, fields)
 
   // Status bar: client gate first, then the server's real compile verdict.
@@ -81,23 +101,18 @@ export default function PreviewPanel({
       <div className="preview-body">
         {tab === 'plain' && (
           <div className="preview-plain">
-            <div><span className="kw">WHEN</span> {d.matchWord === 'all' ? 'all of these are true' : 'any of these is true'}:</div>
-            <ul>
-              {d.clauses.length === 0 && <li style={{ color: '#6b7794' }}>no conditions yet…</li>}
-              {d.clauses.map((c, i) => (
-                <li key={i}><b style={{ color: '#e8eefc' }}>{c.field}</b> <span className="op">{c.op}</span> <span className="val">{c.value}</span></li>
-              ))}
-            </ul>
-            <div style={{ marginTop: 12 }}>
+            <div style={{ marginBottom: 6 }}><span className="kw">WHEN</span></div>
+            <PlainNode node={spec.conditionTree} fields={fields} top />
+            <div style={{ marginTop: 14 }}>
               <span className="kw">THEN</span>{' '}
-              <span className={d.thenDecision === 'block' ? 'blk' : 'alw'}>{d.thenDecision === 'block' ? 'BLOCK' : 'ALLOW'}</span>
-              {d.thenMessage ? <> — <span className="val">"{d.thenMessage}"</span></> : null}
+              <span className={spec.then.decision === 'block' ? 'blk' : 'alw'}>{spec.then.decision === 'block' ? 'BLOCK' : 'ALLOW'}</span>
+              {spec.then.message ? <> — <span className="val">"{spec.then.message}"</span></> : null}
             </div>
-            {d.otherwiseDecision && (
+            {spec.otherwise && (
               <div style={{ marginTop: 8 }}>
                 <span className="kw">ELSE</span>{' '}
-                <span className={d.otherwiseDecision === 'block' ? 'blk' : 'alw'}>{d.otherwiseDecision === 'block' ? 'BLOCK' : 'ALLOW'}</span>
-                {d.otherwiseMessage ? <> — <span className="val">"{d.otherwiseMessage}"</span></> : null}
+                <span className={spec.otherwise.decision === 'block' ? 'blk' : 'alw'}>{spec.otherwise.decision === 'block' ? 'BLOCK' : 'ALLOW'}</span>
+                {spec.otherwise.message ? <> — <span className="val">"{spec.otherwise.message}"</span></> : null}
               </div>
             )}
           </div>

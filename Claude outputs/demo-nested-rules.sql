@@ -1,0 +1,2 @@
+-- SUPERSEDED. The DEMO group was replaced by real-group rules.
+-- Use: nested-rules.sql  (rules now live in TRANSFER / VELOCITY / COMPLIANCE).

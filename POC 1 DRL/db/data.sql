@@ -89,7 +89,7 @@ end',
 -- TRANSFER: over-limit debit-restricted BDT (BUILDER) ----
 INSERT INTO rule_definition (id, rule_name, agenda_group, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at)
 VALUES (nextval('rule_definition_seq'), 'Block over-limit debit-restricted BDT transaction', 'TRANSFER', 'BUILDER',
-'{"ruleName":"Block over-limit debit-restricted BDT transaction","flow":"TRANSFER_TRANSACTION","agendaGroup":"TRANSFER","salience":10,"match":"all","conditions":[{"field":"transaction.currency","operator":"==","value":"BDT"},{"field":"product.drRes","operator":"==","value":1},{"field":"transaction.amount","operator":">","valueField":"userLimit.limit"}],"then":{"decision":"block","message":"Blocked: amount exceeds limit on a debit-restricted BDT account"}}',
+'{"ruleName":"Block over-limit debit-restricted BDT transaction","flow":"TRANSFER_TRANSACTION","agendaGroup":"TRANSFER","salience":10,"conditionTree":{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"transaction.currency","operator":"==","value":"BDT"},{"type":"CONDITION","field":"product.drRes","operator":"==","value":1},{"type":"CONDITION","field":"transaction.amount","operator":">","valueField":"userLimit.limit"}]},"then":{"decision":"block","message":"Blocked: amount exceeds limit on a debit-restricted BDT account"}}',
 'package com.example.droolspoc.model;
 
 rule "Block over-limit debit-restricted BDT transaction"
@@ -97,9 +97,7 @@ rule "Block over-limit debit-restricted BDT transaction"
     salience 10
     when
         $ctx : com.example.droolspoc.model.ValidationContext(
-            transaction.currency == "BDT",
-            product.drRes == 1,
-            transaction.amount > userLimit.limit
+            (transaction.currency == "BDT" && product.drRes == 1 && transaction.amount > userLimit.limit)
         )
     then
         $ctx.setValid(false);
@@ -111,7 +109,7 @@ end',
 -- LOAN: below credit-score threshold (BUILDER) ----
 INSERT INTO rule_definition (id, rule_name, agenda_group, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at)
 VALUES (nextval('rule_definition_seq'), 'Block loan below credit-score threshold', 'LOAN', 'BUILDER',
-'{"ruleName":"Block loan below credit-score threshold","flow":"LOAN_APPLICATION","agendaGroup":"LOAN","salience":10,"match":"all","conditions":[{"field":"customer.creditScore","operator":"<","value":600}],"then":{"decision":"block","message":"Blocked: credit score below 600"}}',
+'{"ruleName":"Block loan below credit-score threshold","flow":"LOAN_APPLICATION","agendaGroup":"LOAN","salience":10,"conditionTree":{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"customer.creditScore","operator":"<","value":600}]},"then":{"decision":"block","message":"Blocked: credit score below 600"}}',
 'package com.example.droolspoc.model;
 
 rule "Block loan below credit-score threshold"
@@ -119,7 +117,7 @@ rule "Block loan below credit-score threshold"
     salience 10
     when
         $ctx : com.example.droolspoc.model.LoanValidationContext(
-            customer.creditScore < 600
+            (customer.creditScore < 600)
         )
     then
         $ctx.setValid(false);
@@ -131,7 +129,7 @@ end',
 -- CLOSURE: outstanding balance (BUILDER) ----
 INSERT INTO rule_definition (id, rule_name, agenda_group, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at)
 VALUES (nextval('rule_definition_seq'), 'Block closure with outstanding balance', 'CLOSURE', 'BUILDER',
-'{"ruleName":"Block closure with outstanding balance","flow":"ACCOUNT_CLOSURE","agendaGroup":"CLOSURE","salience":10,"match":"all","conditions":[{"field":"account.balance","operator":">","value":0}],"then":{"decision":"block","message":"Blocked: account has an outstanding balance"}}',
+'{"ruleName":"Block closure with outstanding balance","flow":"ACCOUNT_CLOSURE","agendaGroup":"CLOSURE","salience":10,"conditionTree":{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"account.balance","operator":">","value":0}]},"then":{"decision":"block","message":"Blocked: account has an outstanding balance"}}',
 'package com.example.droolspoc.model;
 
 rule "Block closure with outstanding balance"
@@ -139,7 +137,7 @@ rule "Block closure with outstanding balance"
     salience 10
     when
         $ctx : com.example.droolspoc.model.ClosureValidationContext(
-            account.balance > 0
+            (account.balance > 0)
         )
     then
         $ctx.setValid(false);
@@ -178,7 +176,7 @@ INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_acc
 -- VELOCITY: rapid high-value agent transfers (BUILDER, 3 conditions: enum + number) ----
 INSERT INTO rule_definition (id, rule_name, agenda_group, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at)
 VALUES (nextval('rule_definition_seq'), 'Block rapid high-value agent transfers', 'VELOCITY', 'BUILDER',
-'{"ruleName":"Block rapid high-value agent transfers","flow":"TRANSFER_TRANSACTION","agendaGroup":"VELOCITY","salience":20,"match":"all","conditions":[{"field":"transaction.channel","operator":"==","value":"AGENT"},{"field":"transaction.amount","operator":">","value":50000},{"field":"transaction.dailyTxnCount","operator":">=","value":5}],"then":{"decision":"block","message":"Blocked: too many high-value agent transfers today"}}',
+'{"ruleName":"Block rapid high-value agent transfers","flow":"TRANSFER_TRANSACTION","agendaGroup":"VELOCITY","salience":20,"conditionTree":{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"transaction.channel","operator":"==","value":"AGENT"},{"type":"CONDITION","field":"transaction.amount","operator":">","value":50000},{"type":"CONDITION","field":"transaction.dailyTxnCount","operator":">=","value":5}]},"then":{"decision":"block","message":"Blocked: too many high-value agent transfers today"}}',
 'package com.example.droolspoc.model;
 
 rule "Block rapid high-value agent transfers"
@@ -186,9 +184,7 @@ rule "Block rapid high-value agent transfers"
     salience 20
     when
         $ctx : com.example.droolspoc.model.ValidationContext(
-            transaction.channel == "AGENT",
-            transaction.amount > 50000,
-            transaction.dailyTxnCount >= 5
+            (transaction.channel == "AGENT" && transaction.amount > 50000 && transaction.dailyTxnCount >= 5)
         )
     then
         $ctx.setValid(false);
@@ -200,7 +196,7 @@ end',
 -- COMPLIANCE: cross-border high-value non-BDT transfer (BUILDER, 3 conditions: enum + number) ----
 INSERT INTO rule_definition (id, rule_name, agenda_group, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at)
 VALUES (nextval('rule_definition_seq'), 'Block high-value cross-border non-BDT transfer', 'COMPLIANCE', 'BUILDER',
-'{"ruleName":"Block high-value cross-border non-BDT transfer","flow":"TRANSFER_TRANSACTION","agendaGroup":"COMPLIANCE","salience":20,"match":"all","conditions":[{"field":"transaction.currency","operator":"!=","value":"BDT"},{"field":"transaction.amount","operator":">=","value":100000},{"field":"transaction.country","operator":"==","value":"OTHER"}],"then":{"decision":"block","message":"Blocked: cross-border high-value transfer needs manual review"}}',
+'{"ruleName":"Block high-value cross-border non-BDT transfer","flow":"TRANSFER_TRANSACTION","agendaGroup":"COMPLIANCE","salience":20,"conditionTree":{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"transaction.currency","operator":"!=","value":"BDT"},{"type":"CONDITION","field":"transaction.amount","operator":">=","value":100000},{"type":"CONDITION","field":"transaction.country","operator":"==","value":"OTHER"}]},"then":{"decision":"block","message":"Blocked: cross-border high-value transfer needs manual review"}}',
 'package com.example.droolspoc.model;
 
 rule "Block high-value cross-border non-BDT transfer"
@@ -208,9 +204,7 @@ rule "Block high-value cross-border non-BDT transfer"
     salience 20
     when
         $ctx : com.example.droolspoc.model.ValidationContext(
-            transaction.currency != "BDT",
-            transaction.amount >= 100000,
-            transaction.country == "OTHER"
+            (transaction.currency != "BDT" && transaction.amount >= 100000 && transaction.country == "OTHER")
         )
     then
         $ctx.setValid(false);
@@ -219,3 +213,118 @@ rule "Block high-value cross-border non-BDT transfer"
 end',
 1, 'ACTIVE', TRUE, 'farhat', now());
 
+
+-- ================= Nested-tree rules (real groups: TRANSFER / VELOCITY / COMPLIANCE) =================
+
+-- High-value or cross-border transfer  (TRANSFER)
+INSERT INTO rule_definition (id, rule_name, agenda_group, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at)
+VALUES (nextval('rule_definition_seq'), 'High-value or cross-border transfer', 'TRANSFER', 'BUILDER',
+'{"ruleName":"High-value or cross-border transfer","flow":"TRANSFER_TRANSACTION","agendaGroup":"TRANSFER","salience":20,"conditionTree":{"type":"GROUP","operator":"OR","children":[{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"transaction.channel","operator":"==","value":"AGENT"},{"type":"CONDITION","field":"transaction.amount","operator":">","value":50000}]},{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"transaction.country","operator":"==","value":"OTHER"},{"type":"CONDITION","field":"transaction.currency","operator":"!=","value":"BDT"}]}]},"then":{"decision":"block","message":"Blocked: high-value agent transfer, or cross-border non-BDT transfer"}}',
+'package com.example.droolspoc.model;
+
+rule "High-value or cross-border transfer"
+    agenda-group "TRANSFER"
+    salience 20
+    when
+        $ctx : com.example.droolspoc.model.ValidationContext(
+            ((transaction.channel == "AGENT" && transaction.amount > 50000) || (transaction.country == "OTHER" && transaction.currency != "BDT"))
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: high-value agent transfer, or cross-border non-BDT transfer");
+end',
+1, 'ACTIVE', TRUE, 'farhat', now());
+
+-- Layered channel & geo screen  (VELOCITY)
+INSERT INTO rule_definition (id, rule_name, agenda_group, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at)
+VALUES (nextval('rule_definition_seq'), 'Layered channel & geo screen', 'VELOCITY', 'BUILDER',
+'{"ruleName":"Layered channel & geo screen","flow":"TRANSFER_TRANSACTION","agendaGroup":"VELOCITY","salience":20,"conditionTree":{"type":"GROUP","operator":"AND","children":[{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"transaction.amount","operator":">","value":10000},{"type":"GROUP","operator":"OR","children":[{"type":"CONDITION","field":"transaction.channel","operator":"==","value":"ONLINE"},{"type":"CONDITION","field":"transaction.channel","operator":"==","value":"AGENT"}]}]},{"type":"GROUP","operator":"AND","children":[{"type":"GROUP","operator":"OR","children":[{"type":"CONDITION","field":"transaction.country","operator":"==","value":"US"},{"type":"CONDITION","field":"transaction.country","operator":"==","value":"OTHER"}]},{"type":"CONDITION","field":"transaction.currency","operator":"!=","value":"BDT"}]}]},"then":{"decision":"block","message":"Blocked: layered channel & geo screening"}}',
+'package com.example.droolspoc.model;
+
+rule "Layered channel & geo screen"
+    agenda-group "VELOCITY"
+    salience 20
+    when
+        $ctx : com.example.droolspoc.model.ValidationContext(
+            ((transaction.amount > 10000 && (transaction.channel == "ONLINE" || transaction.channel == "AGENT")) && ((transaction.country == "US" || transaction.country == "OTHER") && transaction.currency != "BDT"))
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: layered channel & geo screening");
+end',
+1, 'ACTIVE', TRUE, 'farhat', now());
+
+-- Deep-nested compliance check  (COMPLIANCE)
+INSERT INTO rule_definition (id, rule_name, agenda_group, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at)
+VALUES (nextval('rule_definition_seq'), 'Deep-nested compliance check', 'COMPLIANCE', 'BUILDER',
+'{"ruleName":"Deep-nested compliance check","flow":"TRANSFER_TRANSACTION","agendaGroup":"COMPLIANCE","salience":20,"conditionTree":{"type":"GROUP","operator":"AND","children":[{"type":"GROUP","operator":"OR","children":[{"type":"GROUP","operator":"AND","children":[{"type":"GROUP","operator":"OR","children":[{"type":"CONDITION","field":"transaction.amount","operator":">","value":5000},{"type":"CONDITION","field":"transaction.currency","operator":"==","value":"USD"}]},{"type":"CONDITION","field":"product.drRes","operator":"==","value":1}]},{"type":"CONDITION","field":"transaction.dailyTxnCount","operator":">=","value":10}]},{"type":"GROUP","operator":"OR","children":[{"type":"CONDITION","field":"userLimit.limit","operator":">=","value":100000},{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"transaction.amount","operator":">","valueField":"userLimit.limit"},{"type":"CONDITION","field":"transaction.dailyTxnCount","operator":">=","value":5}]}]}]},"then":{"decision":"block","message":"Blocked: deep-nested compliance condition met"}}',
+'package com.example.droolspoc.model;
+
+rule "Deep-nested compliance check"
+    agenda-group "COMPLIANCE"
+    salience 20
+    when
+        $ctx : com.example.droolspoc.model.ValidationContext(
+            ((((transaction.amount > 5000 || transaction.currency == "USD") && product.drRes == 1) || transaction.dailyTxnCount >= 10) && (userLimit.limit >= 100000 || (transaction.amount > userLimit.limit && transaction.dailyTxnCount >= 5)))
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: deep-nested compliance condition met");
+end',
+1, 'ACTIVE', TRUE, 'farhat', now());
+
+
+-- ================= Closure COMPLIANCE demo (same group name as transfer, different rules) =================
+-- expose account.status to the closure flow so rules can use it
+INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values)
+VALUES (nextval('rule_field_catalog_seq'), 'account.status', 'ACCOUNT_CLOSURE', 'Account Status', 'ENUM', 'account.status', '==,!=', 'ACTIVE,DORMANT,FROZEN,CLOSED');
+
+-- accounts that reach the COMPLIANCE stage (balance 0 passes the CLOSURE balance>0 rule)
+INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_account_seq'), 'ACC-902', 0, 'DORMANT');
+INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_account_seq'), 'ACC-903', 0, 'FROZEN');
+
+-- closure flow now runs COMMON -> CLOSURE -> COMPLIANCE
+INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'ACCOUNT_CLOSURE', 'COMPLIANCE', 3);
+
+-- Closure compliance - dormant review
+INSERT INTO rule_definition (id, rule_name, agenda_group, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at)
+VALUES (nextval('rule_definition_seq'), 'Closure compliance - dormant review', 'COMPLIANCE', 'BUILDER',
+'{"ruleName":"Closure compliance - dormant review","flow":"ACCOUNT_CLOSURE","agendaGroup":"COMPLIANCE","salience":20,"conditionTree":{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"account.status","operator":"==","value":"DORMANT"}]},"then":{"decision":"block","message":"Blocked: dormant account closure needs compliance review"}}',
+'package com.example.droolspoc.model;
+
+rule "Closure compliance - dormant review"
+    agenda-group "COMPLIANCE"
+    salience 20
+    when
+        $ctx : com.example.droolspoc.model.ClosureValidationContext(
+            (account.status == "DORMANT")
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: dormant account closure needs compliance review");
+end',
+1, 'ACTIVE', TRUE, 'farhat', now());
+
+-- Closure compliance - frozen block
+INSERT INTO rule_definition (id, rule_name, agenda_group, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at)
+VALUES (nextval('rule_definition_seq'), 'Closure compliance - frozen block', 'COMPLIANCE', 'BUILDER',
+'{"ruleName":"Closure compliance - frozen block","flow":"ACCOUNT_CLOSURE","agendaGroup":"COMPLIANCE","salience":20,"conditionTree":{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"account.status","operator":"==","value":"FROZEN"}]},"then":{"decision":"block","message":"Blocked: a frozen account cannot be closed"}}',
+'package com.example.droolspoc.model;
+
+rule "Closure compliance - frozen block"
+    agenda-group "COMPLIANCE"
+    salience 20
+    when
+        $ctx : com.example.droolspoc.model.ClosureValidationContext(
+            (account.status == "FROZEN")
+        )
+    then
+        $ctx.setValid(false);
+        $ctx.setPermissionDenied(true);
+        $ctx.setValidationMessage("Blocked: a frozen account cannot be closed");
+end',
+1, 'ACTIVE', TRUE, 'farhat', now());
