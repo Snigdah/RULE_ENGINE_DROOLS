@@ -8,26 +8,20 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * The method a consuming service calls to run rules. Two overloads so global reference data
- * is OPTIONAL - a service uses it only if its rules need it.
+ * The method a consuming service calls to run rules. Two overloads so global reference data is
+ * OPTIONAL - a service uses it only if its rules need it.
  *
- * <p>Without reference data:</p>
+ * <p>Routing is driven by the inserted fact's OWN class: its name selects the flow
+ * ({@code REQUEST_FLOW_MAP.FACT_TYPE}), the flow selects the ordered agenda groups, and the
+ * session fires them in that order. The service passes only the context - no separate request
+ * class.</p>
+ *
  * <pre>
- *   ruleExecutionService.execute(context, TransactionRequest.class);
+ *   ruleExecutionService.execute(context);                 // rules read only the fact
+ *   ruleExecutionService.execute(context, globalContext);  // rules also read shared reference data
  * </pre>
  *
- * <p>With reference data (e.g. a blocked-user set the rules read as a {@code global}):</p>
- * <pre>
- *   ruleExecutionService.execute(context, TransactionRequest.class, globalContext);
- * </pre>
- *
- * <p><b>Why the fact is {@code Object}:</b> the fact/context is business-specific - each
- * service inserts its own type. The library stays business-agnostic by taking it as
- * {@code Object} and letting each service's DRL match on its own concrete type.</p>
- *
- * <p>Routing is driven by {@code requestType}: its class name selects the flow, the flow
- * selects the ordered agenda groups, and the session fires them in that order. A fresh
- * {@link KieSession} is created per call (sessions are not thread-safe) and always disposed.</p>
+ * <p>A fresh {@link KieSession} is created per call (sessions are not thread-safe) and disposed.</p>
  *
  * @author K M Farhat Snigdah
  */
@@ -43,32 +37,23 @@ public class RuleExecutionService {
         this.flowResolver = flowResolver;
     }
 
-    /**
-     * Run the flow mapped to {@code requestType} against {@code fact}, WITHOUT any global
-     * reference data. Use this when the rules read only the inserted fact.
-     */
-    public void execute(Object fact, Class<?> requestType) {
-        run(fact, requestType, null);
+    /** Run the flow mapped to {@code fact}'s class, WITHOUT any global reference data. */
+    public void execute(Object fact) {
+        run(fact, null);
     }
 
-    /**
-     * Run the flow mapped to {@code requestType} against {@code fact}, exposing
-     * {@code globalContext} to the rules as the {@code global GlobalContext globalContext}.
-     * Use this when the rules read shared reference data.
-     */
-    public void execute(Object fact, Class<?> requestType, GlobalContext globalContext) {
-        run(fact, requestType, globalContext);
+    /** Run the flow mapped to {@code fact}'s class, exposing {@code globalContext} to the rules. */
+    public void execute(Object fact, GlobalContext globalContext) {
+        run(fact, globalContext);
     }
 
-    private void run(Object fact, Class<?> requestType, GlobalContext globalContext) {
-        String flow = flowResolver.flowFor(requestType.getName());
+    private void run(Object fact, GlobalContext globalContext) {
+        String flow = flowResolver.flowFor(fact.getClass().getName());
         List<String> groups = flowResolver.groupsFor(flow);
 
         KieSession session = ruleBaseProvider.getContainer().newKieSession();
         try {
             if (globalContext != null) {
-                // A DRL may or may not declare `global GlobalContext globalContext;`. Setting
-                // a global the DRL did not declare throws, so guard it.
                 try {
                     session.setGlobal("globalContext", globalContext);
                 } catch (RuntimeException ignored) {
@@ -78,8 +63,6 @@ public class RuleExecutionService {
 
             session.insert(fact);
 
-            // setFocus is a stack: focus the LAST group first so the FIRST group ends up on
-            // top and fires first. This makes orderNo the real firing order.
             for (int i = groups.size() - 1; i >= 0; i--) {
                 AgendaGroup group = session.getAgenda().getAgendaGroup(groups.get(i));
                 if (group != null) {

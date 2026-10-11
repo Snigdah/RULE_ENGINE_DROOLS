@@ -1,8 +1,9 @@
 # Rule Engine Starter (`com.leads:rule-engine`)
 
 A shared Spring Boot starter that gives any Microcube service a Drools rule engine with
-**runtime rule upload** and **DB-driven flow routing** — no engine code copied per service.
-Same house pattern as the AuthZ library: add the dependency, configure YAML, done.
+**runtime rule authoring** (Visual Rule Builder JSON *or* hand-written DRL) and **DB-driven
+flow routing** — no engine code copied per service. Same house pattern as the AuthZ library:
+add the dependency, configure YAML, done.
 
 Business microservices run on **Oracle** (PL/SQL). The library ships its own entities; each
 service points them at its own Oracle schema.
@@ -41,8 +42,8 @@ spring:
     driver-class-name: oracle.jdbc.OracleDriver
   jpa:
     hibernate:
-      ddl-auto: validate              # DBA runs schema-oracle.sql; app only validates
-                                      # (use 'update' in dev to auto-create the 3 tables)
+      ddl-auto: none                  # DBA runs schema-oracle.sql; app does not touch DDL
+                                      # (use 'update' in dev to auto-create the tables)
 
 rule-engine:
   admin:
@@ -54,9 +55,13 @@ auto-detects the Oracle dialect from the live connection.
 
 ### Schema
 
-- **Dev:** `ddl-auto: update` auto-creates `RULE_FILE`, `FLOW_GROUP`, `REQUEST_FLOW_MAP`.
+Four tables: `RULE_DEFINITION` (the rules — stores `SOURCE_JSON` + `DRL_TEXT`),
+`RULE_FIELD_CATALOG` (the builder palette), `FLOW_GROUP` (flow → ordered agenda groups) and
+`REQUEST_FLOW_MAP` (request class → flow). A BUILDER rule's fact/context class is stored in `REQUEST_FLOW_MAP.FACT_TYPE` (set it in the schema seed or via `POST /admin/flows/mappings` with `factType`) — no YAML.
+
+- **Dev:** `ddl-auto: update` auto-creates all four.
 - **Prod (banking):** DBA runs `core/src/main/resources/db/oracle/schema-oracle.sql` once, then
-  `ddl-auto: validate`.
+  `ddl-auto: none`. `sample-data-oracle.sql` has demo rows (3 request types, 4 rules, 7 fields).
 
 ## 3. What each service still writes (business-specific)
 
@@ -66,7 +71,9 @@ The library is business-agnostic. Per service you write:
 - your **fact/context** class + a `buildContext(...)` that does your DB lookups
 - your business **entities/repos** (their own tables)
 - any **`GlobalReferenceLoader`** beans (reference data your rules read as a `global`)
-- your **DRL** files (uploaded at runtime via the admin API)
+- your **rules** — authored at runtime as builder JSON or hand-written DRL via the admin API
+- (for BUILDER rules) setters on your context the generated DRL calls: `setValid(boolean)`,
+  `setPermissionDenied(boolean)`, `setValidationMessage(String)`
 
 Then call the engine:
 
@@ -80,10 +87,16 @@ selects the flow. The rules mutate the fact in place; read the result off it aft
 ## 4. Onboard a new request type (all runtime, no redeploy)
 
 ```bash
-# a) upload a DRL
+# a1) save a BUILDER rule (the UI posts this — engine generates the DRL from the JSON)
 curl -X POST http://localhost:8080/admin/rules \
   -H "Content-Type: application/json" \
-  -d '{"fileName":"transaction-rules.drl","drl":"package ...\nrule \"...\" ... end"}'
+  -d '{"ruleName":"Over-limit debit-restricted BDT","agendaGroup":"TRANSFER","sourceType":"BUILDER",
+       "sourceJson":"{\"flow\":\"TRANSFER_TRANSACTION\",\"agendaGroup\":\"TRANSFER\",\"salience\":10,\"match\":\"all\",\"conditions\":[{\"field\":\"transaction.amount\",\"operator\":\">\",\"valueField\":\"userLimit.limit\"}],\"then\":{\"decision\":\"block\",\"message\":\"Over limit\"}}"}'
+
+# a2) save a hand-written DRL rule (e.g. one using eval + a global)
+curl -X POST http://localhost:8080/admin/rules \
+  -H "Content-Type: application/json" \
+  -d '{"ruleName":"Block blocked user","agendaGroup":"COMMON","sourceType":"DRL","drl":"package ...\nrule \"...\" ... end"}'
 
 # b) define the flow (ordered agenda groups)
 curl -X POST http://localhost:8080/admin/flows \
@@ -99,13 +112,16 @@ curl -X POST http://localhost:8080/admin/flows/mappings \
 Inspect / manage:
 
 ```bash
-curl http://localhost:8080/admin/rules                       # list stored DRLs
+curl http://localhost:8080/admin/rules                       # list stored rules
+curl "http://localhost:8080/admin/rules/fields?flow=TRANSFER_TRANSACTION"  # builder palette for a flow
+curl -X POST http://localhost:8080/admin/rules/preview -H "Content-Type: application/json" \
+  -d '{"flow":"TRANSFER_TRANSACTION","agendaGroup":"TRANSFER","salience":10,"match":"all","conditions":[{"field":"transaction.amount","operator":">","valueField":"userLimit.limit"}],"then":{"decision":"block","message":"Over limit"}}'   # generated DRL + compiles? (no save)
 curl http://localhost:8080/admin/flows/overview              # mappings + flows in one view
-curl -X DELETE http://localhost:8080/admin/rules/transaction-rules.drl
+curl -X DELETE "http://localhost:8080/admin/rules/Block%20blocked%20user"
 curl -X DELETE "http://localhost:8080/admin/flows/mappings?requestClass=com.example.dto.TransactionRequest"
 ```
 
-A DRL that does not compile is **rejected with 400** and the running engine is untouched
+A rule whose DRL does not compile is **rejected with 400** and the running engine is untouched
 (validate-before-swap).
 
 ---
@@ -117,12 +133,12 @@ core/
  └─ src/main/java/leads/ruleengine/core/
     ├─ config/       RuleEngineAutoConfiguration, RuleEngineProperties
     ├─ service/      RuleExecutionService, RuleBaseProvider, DecisionFlowResolver,
-    │                RuleAdminService, FlowAdminService
+    │                RuleAdminService, RuleDrlGenerator, FlowAdminService
     ├─ controller/   RuleAdminController, FlowAdminController   (gated by rule-engine.admin.enabled)
-    ├─ model/        RuleFile, FlowGroup, RequestFlowMap        (Oracle: CLOB + SEQUENCE)
-    ├─ repository/   the three Spring Data repos
+    ├─ model/        RuleDefinition, RuleFieldCatalog, FlowGroup, RequestFlowMap  (Oracle: CLOB + SEQUENCE)
+    ├─ repository/   the four Spring Data repos
     ├─ context/      GlobalContext, GlobalReferenceLoader, GlobalContextLoader
-    ├─ dto/          RuleUploadRequest, FlowDefinitionRequest, RequestMappingRequest
+    ├─ dto/          RuleDefinitionRequest, BuilderRuleSpec, FlowDefinitionRequest, RequestMappingRequest
     └─ exception/    RuleCompilationException, FlowNotConfiguredException,
                      RuleEngineAdminExceptionHandler (scoped to admin controllers only)
 ```

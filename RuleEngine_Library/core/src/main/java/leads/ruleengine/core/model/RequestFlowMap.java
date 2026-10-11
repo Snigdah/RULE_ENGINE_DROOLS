@@ -9,13 +9,13 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 /**
- * Maps a request DTO class name to the flow that should run for it.
+ * Maps a fact/context class to its flow.
  *
- * <p>The consumer calls {@code ruleExecutionService.execute(context, TransactionRequest.class)};
- * the engine looks up {@code request_class = 'com.example.dto.TransactionRequest'} here to
- * find the flow (e.g. {@code TRANSFER_TRANSACTION}), then runs that flow's agenda groups.
- * Routing is data, not code - a new request type is onboarded by inserting one row via the
- * admin API, never by editing the library.</p>
+ * <p>The service inserts a context (e.g. {@code ValidationContext}) and calls
+ * {@code ruleExecutionService.execute(context, ...)}. The engine looks that context's class up
+ * here to find the flow, then runs the flow's agenda groups. The SAME value is the type the
+ * rules' DRL matches on ({@code $ctx : <factType>(...)}), so one column drives both routing and
+ * code generation - no separate request class.</p>
  *
  * @author K M Farhat Snigdah
  */
@@ -28,9 +28,9 @@ public class RequestFlowMap {
     @SequenceGenerator(name = "request_flow_map_seq", sequenceName = "REQUEST_FLOW_MAP_SEQ", allocationSize = 1)
     private Long id;
 
-    /** Fully-qualified request DTO class name, unique. */
-    @Column(name = "REQUEST_CLASS", nullable = false, unique = true, length = 500)
-    private String requestClass;
+    /** Fully-qualified fact/context class - the routing key AND the type the DRL matches. Unique. */
+    @Column(name = "FACT_TYPE", nullable = false, unique = true, length = 500)
+    private String factType;
 
     @Column(name = "FLOW_NAME", nullable = false, length = 255)
     private String flowName;
@@ -43,12 +43,12 @@ public class RequestFlowMap {
         this.id = id;
     }
 
-    public String getRequestClass() {
-        return requestClass;
+    public String getFactType() {
+        return factType;
     }
 
-    public void setRequestClass(String requestClass) {
-        this.requestClass = requestClass;
+    public void setFactType(String factType) {
+        this.factType = factType;
     }
 
     public String getFlowName() {

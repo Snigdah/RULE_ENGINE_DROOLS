@@ -3,8 +3,7 @@ package leads.ruleengine.core.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Behaviour of the rule engine is chosen by YAML in each service, not by code -
- * the same "one library, configured per service" idea as the AuthZ {@code SecurityMode}.
+ * Behaviour of the rule engine is chosen by YAML in each service, not by code.
  *
  * <p>Example ({@code application.yaml}):</p>
  * <pre>
@@ -12,6 +11,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *   admin:
  *     enabled: true          # expose /admin/rules and /admin/flows (default true)
  * </pre>
+ *
+ * <p>The builder's flow-to-fact-type mapping is NOT configured here - it lives in the database
+ * ({@code REQUEST_FLOW_MAP.FACT_TYPE}), alongside the rest of the routing.</p>
  *
  * @author K M Farhat Snigdah
  */
@@ -25,9 +27,8 @@ public class RuleEngineProperties {
     }
 
     /**
-     * Controls the runtime admin API (rule upload + flow CRUD). On by default; a service
-     * can switch it off - or secure it separately - with {@code rule-engine.admin.enabled: false}
-     * without touching code.
+     * Controls the runtime admin API (rule save + flow CRUD). On by default; a service
+     * can switch it off - or secure it separately - with {@code rule-engine.admin.enabled: false}.
      */
     public static class Admin {
         private boolean enabled = true;

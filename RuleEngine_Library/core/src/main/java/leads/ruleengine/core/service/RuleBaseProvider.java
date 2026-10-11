@@ -2,8 +2,8 @@ package leads.ruleengine.core.service;
 
 import jakarta.annotation.PostConstruct;
 import leads.ruleengine.core.exception.RuleCompilationException;
-import leads.ruleengine.core.model.RuleFile;
-import leads.ruleengine.core.repository.RuleFileRepository;
+import leads.ruleengine.core.model.RuleDefinition;
+import leads.ruleengine.core.repository.RuleDefinitionRepository;
 import org.kie.api.KieServices;
 import org.kie.api.builder.KieBuilder;
 import org.kie.api.builder.KieFileSystem;
@@ -20,14 +20,16 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Owns the live Drools rule base and rebuilds it from the database at RUNTIME.
  *
- * <p><b>The safety guarantee:</b> a new DRL is compiled into a throw-away container FIRST
- * ({@link #validate(List)}). Only if that succeeds does {@link #reload()} build a fresh
- * container and atomically swap it in. A DRL that does not compile is rejected before it
- * can touch the running engine - so a bad upload can never break rules that are already
- * live.</p>
+ * <p>The source is every active {@link RuleDefinition}: the engine compiles each rule's
+ * {@code drlText} (the only form it runs) into one container.</p>
  *
- * <p>The container reference is {@code volatile}: {@link #getContainer()} always returns
- * the current one, and readers in flight keep using the old container until they finish.</p>
+ * <p><b>The safety guarantee:</b> a candidate set is compiled into a throw-away container FIRST
+ * ({@link #validate(List)}). Only if that succeeds does {@link #reload()} build a fresh container
+ * and atomically swap it in. A rule that does not compile is rejected before it can touch the
+ * running engine - so a bad save can never break rules that are already live.</p>
+ *
+ * <p>The container reference is {@code volatile}: {@link #getContainer()} always returns the
+ * current one, and readers in flight keep using the old container until they finish.</p>
  *
  * @author K M Farhat Snigdah
  */
@@ -39,7 +41,7 @@ public class RuleBaseProvider {
     /** Where each DRL is placed in the virtual KieFileSystem before compilation. */
     private static final String RULES_PATH = "src/main/resources/rules/";
 
-    private final RuleFileRepository ruleFileRepository;
+    private final RuleDefinitionRepository ruleDefinitionRepository;
     private final KieServices kieServices = KieServices.Factory.get();
 
     /** Unique release id per build so containers never collide in the KIE repository. */
@@ -47,8 +49,8 @@ public class RuleBaseProvider {
 
     private volatile KieContainer container;
 
-    public RuleBaseProvider(RuleFileRepository ruleFileRepository) {
-        this.ruleFileRepository = ruleFileRepository;
+    public RuleBaseProvider(RuleDefinitionRepository ruleDefinitionRepository) {
+        this.ruleDefinitionRepository = ruleDefinitionRepository;
     }
 
     @PostConstruct
@@ -62,13 +64,13 @@ public class RuleBaseProvider {
     }
 
     /**
-     * Rebuild the rule base from all active DRL files and swap it in atomically.
-     * Called at startup and after every successful rule upload/delete.
+     * Rebuild the rule base from all active rules and swap it in atomically.
+     * Called at startup and after every successful rule save/delete.
      */
     public synchronized void reload() {
-        List<RuleFile> active = ruleFileRepository.findByActiveTrue();
+        List<RuleDefinition> active = ruleDefinitionRepository.findByActiveTrue();
         if (active.isEmpty()) {
-            log.warn("No active DRL files - rule base is empty. Rules will fire nothing until one is uploaded.");
+            log.warn("No active rules - rule base is empty. Rules will fire nothing until one is saved.");
         }
         KieContainer fresh = build(active);
         KieContainer old = this.container;
@@ -76,24 +78,24 @@ public class RuleBaseProvider {
         if (old != null) {
             old.dispose();
         }
-        log.info("Rule base reloaded from {} active DRL file(s).", active.size());
+        log.info("Rule base reloaded from {} active rule(s).", active.size());
     }
 
     /**
-     * Compile a candidate set of files WITHOUT swapping the live container. Used to
-     * validate an upload before committing it. Throws {@link RuleCompilationException} on
-     * any compile error; disposes the throw-away container either way.
+     * Compile a candidate set WITHOUT swapping the live container. Used to validate a save
+     * before committing it. Throws {@link RuleCompilationException} on any compile error;
+     * disposes the throw-away container either way.
      */
-    public void validate(List<RuleFile> candidateFiles) {
-        KieContainer probe = build(candidateFiles);
+    public void validate(List<RuleDefinition> candidates) {
+        KieContainer probe = build(candidates);
         probe.dispose();
     }
 
     /**
-     * Compile the given DRL files into a fresh {@link KieContainer}. Shared by
-     * {@link #reload()} and {@link #validate(List)}.
+     * Compile the given rules into a fresh {@link KieContainer}. Shared by {@link #reload()}
+     * and {@link #validate(List)}.
      */
-    private KieContainer build(List<RuleFile> files) {
+    private KieContainer build(List<RuleDefinition> rules) {
         // Every build gets a UNIQUE release id. This is what keeps validate() safe: a probe
         // compile never overwrites the live module in the shared KIE repository, because it
         // deploys under its own version. reload() then swaps to its own fresh version.
@@ -102,10 +104,9 @@ public class RuleBaseProvider {
 
         KieFileSystem kfs = kieServices.newKieFileSystem();
         kfs.generateAndWritePomXML(releaseId);
-        for (RuleFile file : files) {
-            // String overload (same as the validated POC); DRL type is inferred from the
-            // ".drl" path extension.
-            kfs.write(RULES_PATH + file.getFileName(), file.getDrlText());
+        for (RuleDefinition rule : rules) {
+            // Each rule becomes its own .drl resource; DRL type is inferred from the extension.
+            kfs.write(RULES_PATH + resourceName(rule), rule.getDrlText());
         }
 
         KieBuilder kieBuilder = kieServices.newKieBuilder(kfs);
@@ -117,5 +118,11 @@ public class RuleBaseProvider {
         }
 
         return kieServices.newKieContainer(releaseId);
+    }
+
+    /** A filesystem-safe, unique .drl resource name derived from the (unique) rule name. */
+    private String resourceName(RuleDefinition rule) {
+        String safe = rule.getRuleName().replaceAll("[^A-Za-z0-9_]", "_");
+        return safe + ".drl";
     }
 }

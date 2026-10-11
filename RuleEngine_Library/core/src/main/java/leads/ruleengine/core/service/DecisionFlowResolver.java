@@ -16,17 +16,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Resolves "which flow, and which agenda groups in what order" for a given request class,
+ * Resolves "which flow, and which agenda groups in what order" for a given fact/context class,
  * from the database - so routing is configuration, not code.
- *
- * <p>Two lookups are cached in memory and refreshed by {@link #reload()} whenever the admin
- * API changes a mapping or a flow:
- * <ul>
- *   <li>{@code requestClass -> flowName}</li>
- *   <li>{@code flowName -> ordered list of agenda groups}</li>
- * </ul>
- * The caches are {@code volatile} and replaced wholesale on reload, so lookups are lock-free
- * and always see a consistent snapshot.</p>
  *
  * @author K M Farhat Snigdah
  */
@@ -38,7 +29,7 @@ public class DecisionFlowResolver {
     private final RequestFlowMapRepository requestFlowMapRepository;
     private final FlowGroupRepository flowGroupRepository;
 
-    private volatile Map<String, String> requestToFlow = Map.of();
+    private volatile Map<String, String> factToFlow = Map.of();
     private volatile Map<String, List<String>> flowToGroups = Map.of();
 
     public DecisionFlowResolver(RequestFlowMapRepository requestFlowMapRepository,
@@ -54,8 +45,8 @@ public class DecisionFlowResolver {
 
     /** Rebuild both caches from the DB. Called at startup and after every admin change. */
     public synchronized void reload() {
-        Map<String, String> freshRequestToFlow = requestFlowMapRepository.findAll().stream()
-                .collect(Collectors.toMap(RequestFlowMap::getRequestClass, RequestFlowMap::getFlowName));
+        Map<String, String> freshFactToFlow = requestFlowMapRepository.findAll().stream()
+                .collect(Collectors.toMap(RequestFlowMap::getFactType, RequestFlowMap::getFlowName, (a, b) -> a));
 
         Map<String, List<String>> freshFlowToGroups = flowGroupRepository.findAll().stream()
                 .collect(Collectors.groupingBy(
@@ -67,18 +58,18 @@ public class DecisionFlowResolver {
                                         .map(FlowGroup::getAgendaGroup)
                                         .collect(Collectors.toList()))));
 
-        this.requestToFlow = freshRequestToFlow;
+        this.factToFlow = freshFactToFlow;
         this.flowToGroups = freshFlowToGroups;
-        log.info("Flow routing reloaded: {} request mapping(s), {} flow(s).",
-                freshRequestToFlow.size(), freshFlowToGroups.size());
+        log.info("Flow routing reloaded: {} context mapping(s), {} flow(s).",
+                freshFactToFlow.size(), freshFlowToGroups.size());
     }
 
-    /** Flow name for a request class, or fail clearly if the mapping row is missing. */
-    public String flowFor(String requestClass) {
-        String flow = requestToFlow.get(requestClass);
+    /** Flow name for a fact/context class, or fail clearly if the mapping row is missing. */
+    public String flowFor(String factType) {
+        String flow = factToFlow.get(factType);
         if (flow == null) {
             throw new FlowNotConfiguredException(
-                    "No flow mapped for request class '" + requestClass + "'. Add one via POST /admin/flows/mappings.");
+                    "No flow mapped for context class '" + factType + "'. Add one via POST /admin/flows/mappings.");
         }
         return flow;
     }

@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * CRUD for the routing tables: request-class-to-flow mappings, and flow-to-agenda-group
+ * CRUD for the routing tables: fact/context-class-to-flow mappings, and flow-to-agenda-group
  * definitions. Every write reloads {@link DecisionFlowResolver} so changes take effect
  * immediately - no restart.
  *
@@ -41,7 +41,6 @@ public class FlowAdminService {
 
     // ---- Flow definitions (flow -> ordered agenda groups) --------------------------------
 
-    /** Define or replace a flow's ordered agenda groups (delete-then-reinsert in order). */
     @Transactional
     public void upsertFlow(String flowName, List<String> groups) {
         flowGroupRepository.deleteByFlowName(flowName);
@@ -64,7 +63,6 @@ public class FlowAdminService {
         log.info("Flow '{}' deleted; routing reloaded.", flowName);
     }
 
-    /** All flows as {@code flowName -> ordered agenda groups}. */
     public Map<String, List<String>> listFlows() {
         return flowGroupRepository.findAll().stream()
                 .collect(Collectors.groupingBy(
@@ -78,37 +76,35 @@ public class FlowAdminService {
                                         .collect(Collectors.toList()))));
     }
 
-    // ---- Request mappings (request class -> flow) ----------------------------------------
+    // ---- Mappings (fact/context class -> flow) -------------------------------------------
 
-    /** Map (or remap) a request class to a flow. */
+    /** Map (or remap) a fact/context class to a flow. */
     @Transactional
-    public RequestFlowMap upsertMapping(String requestClass, String flowName) {
-        RequestFlowMap mapping = requestFlowMapRepository.findByRequestClass(requestClass)
+    public RequestFlowMap upsertMapping(String factType, String flowName) {
+        RequestFlowMap mapping = requestFlowMapRepository.findByFactType(factType)
                 .orElseGet(RequestFlowMap::new);
-        mapping.setRequestClass(requestClass);
+        mapping.setFactType(factType);
         mapping.setFlowName(flowName);
         RequestFlowMap saved = requestFlowMapRepository.save(mapping);
         flowResolver.reload();
-        log.info("Mapping '{}' -> '{}' saved; routing reloaded.", requestClass, flowName);
+        log.info("Mapping '{}' -> '{}' saved; routing reloaded.", factType, flowName);
         return saved;
     }
 
     @Transactional
-    public void deleteMapping(String requestClass) {
-        requestFlowMapRepository.findByRequestClass(requestClass).ifPresent(m -> {
+    public void deleteMapping(String factType) {
+        requestFlowMapRepository.findByFactType(factType).ifPresent(m -> {
             requestFlowMapRepository.delete(m);
             flowResolver.reload();
-            log.info("Mapping '{}' deleted; routing reloaded.", requestClass);
+            log.info("Mapping '{}' deleted; routing reloaded.", factType);
         });
     }
 
-    /** All mappings as {@code requestClass -> flowName}. */
     public Map<String, String> listMappings() {
         return requestFlowMapRepository.findAll().stream()
-                .collect(Collectors.toMap(RequestFlowMap::getRequestClass, RequestFlowMap::getFlowName));
+                .collect(Collectors.toMap(RequestFlowMap::getFactType, RequestFlowMap::getFlowName));
     }
 
-    /** Both tables in one view, handy for a config dashboard. */
     public Map<String, Object> overview() {
         Map<String, Object> view = new LinkedHashMap<>();
         view.put("mappings", listMappings());
