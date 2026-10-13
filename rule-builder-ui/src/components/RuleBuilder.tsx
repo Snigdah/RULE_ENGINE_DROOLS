@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { BuilderRuleSpec, ConditionNode, Decision, FieldCatalogRow, RuleDefinition } from '../api/ruleEngineApi'
+import type { BuilderRuleSpec, ConditionNode, Decision, FieldCatalogRow, RuleView } from '../api/ruleEngineApi'
 import { api } from '../api/ruleEngineApi'
 import type { FlowMeta } from '../data/catalog'
 import { cleanSpec, validate } from '../lib/drlPreview'
@@ -8,29 +8,32 @@ import ConditionTree from './ConditionTree'
 import PreviewPanel from './PreviewPanel'
 import { IconClose, IconBolt, IconArrow, IconBack } from './icons'
 
-/** Parse a stored rule's SOURCE_JSON (new tree shape or legacy flat shape). */
-function parsedOf(rule: RuleDefinition): Record<string, unknown> | null {
+/** Parse a stored rule's SOURCE_JSON (the builder tree shape). */
+function parsedOf(rule: RuleView): Record<string, unknown> | null {
   if (!rule.sourceJson) return null
   try { return JSON.parse(rule.sourceJson) as Record<string, unknown> } catch { return null }
 }
 
 export default function RuleBuilder({
   flows, editing, presetFlow, presetGroup, onBack, onCancel, onSaved,
-}: { flows: FlowMeta[]; editing?: RuleDefinition | null; presetFlow?: string; presetGroup?: string; onBack: () => void; onCancel: () => void; onSaved: (name: string) => void }) {
+}: { flows: FlowMeta[]; editing?: RuleView | null; presetFlow?: string; presetGroup?: string; onBack: () => void; onCancel: () => void; onSaved: (name: string) => void }) {
   const initial = (editing && parsedOf(editing)) || null
-  const flowExists = (name: string) => flows.some(f => f.flowName === name)
+  const flowExists = (code: string) => flows.some(f => f.flowCode === code)
+  // builder rules live in a flow's own groups (not the shared COMMON group)
+  const ownGroups = (code: string) => (flows.find(f => f.flowCode === code)?.groups ?? []).filter(g => !g.shared).map(g => g.code)
+
   const initialFlow = typeof initial?.flow === 'string' ? (initial.flow as string) : ''
   const startFlow = presetFlow && flowExists(presetFlow) ? presetFlow
-    : initial && flowExists(initialFlow) ? initialFlow : flows[0].flowName
+    : editing && editing.flowCode && flowExists(editing.flowCode) ? editing.flowCode
+    : initial && flowExists(initialFlow) ? initialFlow : (flows[0]?.flowCode ?? '')
   const locked = !!editing || (!!presetFlow && !!presetGroup)
-  const groupsOf = (name: string) => flows.find(f => f.flowName === name)?.groups ?? []
 
   const initialThen = (initial?.then as BuilderRuleSpec['then'] | undefined)
   const initialElse = (initial?.otherwise as BuilderRuleSpec['otherwise'] | undefined)
 
   const [ruleName, setRuleName] = useState((initial?.ruleName as string) ?? editing?.ruleName ?? '')
   const [flow, setFlow]         = useState(startFlow)
-  const [agendaGroup, setGroup] = useState(presetGroup ?? (initial?.agendaGroup as string) ?? groupsOf(startFlow)[0] ?? 'COMMON')
+  const [agendaGroup, setGroup] = useState(presetGroup ?? editing?.groupCode ?? (initial?.agendaGroup as string) ?? ownGroups(startFlow)[0] ?? '')
   const [salience, setSalience] = useState<number>((initial?.salience as number) ?? 10)
   const [tree, setTree]         = useState<ConditionNode | null>(initial ? toTree(initial, []) : null)
   const [thenDecision, setThenDecision] = useState<Decision>(initialThen?.decision ?? 'block')
@@ -44,11 +47,10 @@ export default function RuleBuilder({
   const [fieldsError, setFieldsError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const resetTree = useRef(!initial)  // keep the loaded tree on first mount when editing
+  const resetTree = useRef(!initial)
 
-  const flowMeta = flows.find(f => f.flowName === flow) ?? flows[0]
+  const flowMeta = flows.find(f => f.flowCode === flow) ?? flows[0]
 
-  // Load the field palette for the selected flow from the backend.
   useEffect(() => {
     let alive = true
     setFieldsLoading(true); setFieldsError(null)
@@ -77,21 +79,23 @@ export default function RuleBuilder({
   function changeFlow(next: string) {
     resetTree.current = true
     setFlow(next)
-    setGroup(groupsOf(next)[0] ?? 'COMMON')
+    setGroup(ownGroups(next)[0] ?? '')
   }
 
   async function handleSave() {
     if (!check.valid) { setSaveError(check.error); return }
+    const name = ruleName.trim() || 'Untitled rule'
+    const body = { ruleName: name, sourceType: 'BUILDER' as const, sourceJson: JSON.stringify(cleanSpec(spec)), createdBy: 'farhat' }
     setSaving(true); setSaveError(null)
     try {
-      await api.saveRule({
-        ruleName: ruleName.trim() || 'Untitled rule',
-        agendaGroup,
-        sourceType: 'BUILDER',
-        sourceJson: JSON.stringify(cleanSpec(spec)),
-        createdBy: 'farhat',
-      })
-      onSaved(ruleName.trim() || 'Untitled rule')
+      if (editing) {
+        await api.updateRule(editing.id, body)
+      } else {
+        const grp = flows.find(f => f.flowCode === flow)?.groups.find(g => g.code === agendaGroup && !g.shared)
+        if (!grp) { setSaveError('Pick a flow group for this rule — builder rules can’t go in the shared COMMON group.'); setSaving(false); return }
+        await api.saveRuleInGroup(grp.id, body)
+      }
+      onSaved(name)
     } catch (err: unknown) {
       setSaveError(err instanceof Error ? err.message : String(err))
       setSaving(false)
@@ -102,11 +106,10 @@ export default function RuleBuilder({
     <>
     <div className="backbar">
       <button className="back-btn" onClick={onBack}><IconBack width={16} height={16} /> Back</button>
-      <span className="ctx">{editing ? `Rules / ${editing.ruleName}` : presetFlow ? `Flows / ${flowMeta.label} / ${presetGroup} / New rule` : 'Rules / New rule'}</span>
+      <span className="ctx">{editing ? `Rules / ${editing.ruleName}` : presetFlow ? `Flows / ${flowMeta?.label} / ${presetGroup} / New rule` : 'Rules / New rule'}</span>
     </div>
     <div className="builder-grid">
       <div>
-        {/* details */}
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-head"><h3>Rule details</h3><span className="hint">Where this rule lives and when it runs</span></div>
           <div className="card-body">
@@ -119,21 +122,21 @@ export default function RuleBuilder({
               <div className="field">
                 <label>Flow {locked && <span className="sub">— fixed</span>}</label>
                 {locked ? (
-                  <div className="input locked">{flowMeta.label} · {flow}</div>
+                  <div className="input locked">{flowMeta?.label} · {flow}</div>
                 ) : (
                   <select className="select" value={flow} onChange={e => changeFlow(e.target.value)}>
-                    {flows.map(f => <option key={f.flowName} value={f.flowName}>{f.label} · {f.flowName}</option>)}
+                    {flows.map(f => <option key={f.flowCode} value={f.flowCode}>{f.label} · {f.flowCode}</option>)}
                   </select>
                 )}
-                {flowMeta.factType && <span className="sub mono" style={{ marginTop: 2 }}>routes on {flowMeta.factSimpleName}</span>}
+                {flowMeta?.factType && <span className="sub mono" style={{ marginTop: 2 }}>routes on {flowMeta.factSimpleName}</span>}
               </div>
               <div className="field">
                 <label>Agenda group {locked && <span className="sub">— fixed</span>}</label>
                 {locked ? (
-                  <div className="input locked">{agendaGroup}{agendaGroup === 'COMMON' ? ' (shared)' : ''}</div>
+                  <div className="input locked">{agendaGroup}</div>
                 ) : (
                   <select className="select" value={agendaGroup} onChange={e => setGroup(e.target.value)}>
-                    {groupsOf(flow).map(g => <option key={g} value={g}>{g}{g === 'COMMON' ? ' (shared)' : ''}</option>)}
+                    {ownGroups(flow).map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                 )}
               </div>
@@ -145,7 +148,6 @@ export default function RuleBuilder({
           </div>
         </div>
 
-        {/* conditions (recursive tree) */}
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-head">
             <h3>Conditions</h3>
@@ -173,7 +175,6 @@ export default function RuleBuilder({
           </div>
         </div>
 
-        {/* outcome */}
         <div className="card">
           <div className="card-head"><h3>Outcome</h3><span className="hint">The THEN side of the rule</span></div>
           <div className="card-body">
@@ -227,14 +228,14 @@ export default function RuleBuilder({
 
         <div className="flex" style={{ marginTop: 18, justifyContent: 'flex-end' }}>
           <button className="btn btn-ghost" onClick={onCancel} disabled={saving}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving || fieldsLoading || !check.valid}>
+          <button className="btn btn-primary" onClick={() => void handleSave()} disabled={saving || fieldsLoading || !check.valid}>
             {saving ? <><span className="spinner sm" /> Saving…</> : editing ? 'Update rule' : 'Save rule'}
           </button>
         </div>
       </div>
 
       <div className="preview-col">
-        <PreviewPanel spec={spec} fields={fields} flow={flowMeta} />
+        {flowMeta && <PreviewPanel spec={spec} fields={fields} flow={flowMeta} />}
         <p style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 12, lineHeight: 1.5, textAlign: 'center' }}>
           Live preview · <span className="mono">POST /admin/rules/preview</span>
         </p>

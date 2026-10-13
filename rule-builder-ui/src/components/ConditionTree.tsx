@@ -50,12 +50,12 @@ function LeafRow({
       <select className="select" value={leaf.field} onChange={e => h.changeField(path, e.target.value)}>
         {fields.map(opt => (
           <option key={opt.fieldKey} value={opt.fieldKey}>
-            {opt.label}{opt.flowName === 'COMMON' ? ' · shared' : ''}
+            {opt.label}{opt.flow === null ? ' · shared' : ''}
           </option>
         ))}
       </select>
       <select className="select" value={leaf.operator} onChange={e => h.patchLeaf(path, { operator: e.target.value })}>
-        {(f?.allowedOps.split(',') ?? ['==']).map(op => <option key={op} value={op}>{op}</option>)}
+        {(f?.allowedOps.split(/[,\s]+/).filter(Boolean) ?? ['==']).map(op => <option key={op} value={op}>{op}</option>)}
       </select>
       <div>
         {compareMode ? (
@@ -180,7 +180,7 @@ export default function ConditionTree({
       const f = fieldByKey(fields, key)
       onChange(replaceAt(root, path, {
         type: 'CONDITION', field: key,
-        operator: f?.allowedOps.split(',')[0] ?? '==', value: '',
+        operator: f?.allowedOps.split(/[,\s]+/).filter(Boolean)[0] ?? '==', value: '',
       }))
     },
     setOp: (path, op) => {

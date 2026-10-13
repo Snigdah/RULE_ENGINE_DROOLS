@@ -1,19 +1,30 @@
 // -----------------------------------------------------------------------------
-// Pure helpers over data fetched from the backend. No mock data — every list the
-// UI shows now comes from the API (overview, fields, rules).
+// Pure helpers over data fetched from the backend. Every list the UI shows comes
+// from the API (GET /admin/flows, /admin/groups/{id}/rules, /admin/flows/{code}/fields).
 // -----------------------------------------------------------------------------
-import type { FieldCatalogRow, FlowOverview } from '../api/ruleEngineApi'
+import type { FieldCatalogRow, FlowView } from '../api/ruleEngineApi'
 
-export interface FlowMeta {
-  flowName: string
-  label: string
-  factType: string          // fully-qualified context class the engine routes on
-  factSimpleName: string    // short class name used in the DRL pattern
-  groups: string[]          // agenda groups, in firing order
+export interface GroupMeta {
+  id: number
+  code: string          // group code (COMMON, TRANSFER, …) — the Drools agenda-group
+  orderNo: number
+  shared: boolean       // flow_id NULL = runs for every flow
+  active: boolean
 }
 
-// Fallback fact name for the client-side DRL preview when a flow has no mapping
-// yet (the server preview is still authoritative).
+export interface FlowMeta {
+  id: number
+  flowCode: string
+  flowName: string          // == flowCode (kept for readability across screens)
+  label: string
+  requestClass: string | null
+  factType: string          // fully-qualified context class the engine routes on
+  factSimpleName: string    // short class name used in the DRL pattern
+  active: boolean
+  groups: GroupMeta[]       // shared groups first, then the flow's own, in firing order
+}
+
+// Fallback fact name for the client-side DRL preview when a flow has no fact type.
 export const FALLBACK_FACT = 'Context'
 
 export function simpleName(fqn: string): string {
@@ -34,19 +45,21 @@ export function prettyFlow(name: string): string {
     .join(' ')
 }
 
-/** Turn /admin/flows/overview into the FlowMeta list the UI uses. */
-export function buildFlowMetas(ov: FlowOverview): FlowMeta[] {
-  const factTypes = ov.factTypes ?? {}
-  return Object.entries(ov.flows ?? {}).map(([flowName, groups]) => {
-    const factType = factTypes[flowName] ?? ''
-    return {
-      flowName,
-      label: prettyFlow(flowName),
-      factType,
-      factSimpleName: factType ? simpleName(factType) : FALLBACK_FACT,
-      groups: groups ?? [],
-    }
-  })
+/** Turn GET /admin/flows (FlowView[]) into the FlowMeta list the UI uses. */
+export function buildFlowMetas(flows: FlowView[]): FlowMeta[] {
+  return flows.map(f => ({
+    id: f.id,
+    flowCode: f.flowCode,
+    flowName: f.flowCode,
+    label: f.label && f.label.trim() ? f.label : prettyFlow(f.flowCode),
+    requestClass: f.requestClass ?? null,
+    factType: f.factType ?? '',
+    factSimpleName: f.factType ? simpleName(f.factType) : FALLBACK_FACT,
+    active: f.active,
+    groups: (f.groups ?? []).map(g => ({
+      id: g.id, code: g.groupCode, orderNo: g.orderNo, shared: g.shared, active: g.active,
+    })),
+  }))
 }
 
 export function fieldByKey(fields: FieldCatalogRow[], key: string): FieldCatalogRow | undefined {

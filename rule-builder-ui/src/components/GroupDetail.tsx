@@ -1,50 +1,54 @@
 import { useState, Fragment } from 'react'
 import type { CSSProperties } from 'react'
-import type { RuleDefinition } from '../api/ruleEngineApi'
-import type { FlowMeta } from '../data/catalog'
+import type { RuleView } from '../api/ruleEngineApi'
+import type { FlowMeta, GroupMeta } from '../data/catalog'
 import { groupColor } from '../data/catalog'
 import { IconBack, IconPlus, IconEdit, IconArrow, IconBuilder, IconFileCode, IconTrash } from './icons'
 
-/** Level 3 — one rule group: the rules inside it, with add + delete. */
+/** Level 3 — one rule group: the rules inside it, with add / edit / delete / toggle. */
 export default function GroupDetail({
-  flow, group, rules, onBack, onEditRule, onAddRule, onDeleteRule,
+  flow, group, rules, onBack, onEditRule, onAddRule, onDeleteRule, onToggleRule,
 }: {
-  flow: FlowMeta; group: string; rules: RuleDefinition[]
+  flow: FlowMeta; group: GroupMeta; rules: RuleView[]
   onBack: () => void
-  onEditRule: (r: RuleDefinition) => void
+  onEditRule: (r: RuleView) => void
   onAddRule: () => void
-  onDeleteRule: (r: RuleDefinition) => void
+  onDeleteRule: (r: RuleView) => void
+  onToggleRule: (r: RuleView) => void
 }) {
-  const gc = groupColor(group)
-  const grp = rules.filter(r => r.agendaGroup === group)
+  const gc = groupColor(group.code)
+  const grp = rules.filter(r => r.groupId === group.id)
   const [openDrl, setOpenDrl] = useState<number | null>(null)
 
-  function del(e: React.MouseEvent, r: RuleDefinition) {
+  function del(e: React.MouseEvent, r: RuleView) {
     e.stopPropagation()
-    if (window.confirm(`Delete rule "${r.ruleName}"?\nIt will be removed from the engine (soft-deleted).`)) onDeleteRule(r)
+    if (window.confirm(`Delete rule "${r.ruleName}" permanently? To only disable it, use the On/Off toggle instead.`)) onDeleteRule(r)
   }
+  function toggle(e: React.MouseEvent, r: RuleView) { e.stopPropagation(); onToggleRule(r) }
 
   return (
     <>
       <div className="backbar">
         <button className="back-btn" onClick={onBack}><IconBack width={16} height={16} /> {flow.label}</button>
-        <span className="ctx">Flows / {flow.label} / {group}</span>
+        <span className="ctx">Flows / {flow.label} / {group.code}</span>
       </div>
 
       <div className="fl-detail" style={{ '--acc': gc } as CSSProperties}>
         <div className="grp-hero" style={{ '--gc': gc } as CSSProperties}>
           <span className="grp-hero-dot" />
           <div>
-            <div className="grp-hero-name">{group}{group === 'COMMON' ? <span className="gtag"> shared across all flows</span> : null}</div>
+            <div className="grp-hero-name">{group.code}{group.shared ? <span className="gtag"> shared across all flows</span> : null}{!group.active ? <span className="gtag" style={{ color: 'var(--text-3)' }}> · inactive</span> : null}</div>
             <div className="grp-hero-sub">{grp.length} rule{grp.length === 1 ? '' : 's'} · in {flow.label}</div>
           </div>
-          <button className="btn btn-primary" onClick={onAddRule}><IconPlus width={15} height={15} /> Add rule</button>
+          {group.shared
+            ? <span className="hint" style={{ maxWidth: 260, textAlign: 'right' }}>COMMON holds hand-written DRL rules — seeded via the API, read-only here.</span>
+            : <button className="btn btn-primary" onClick={onAddRule}><IconPlus width={15} height={15} /> Add rule</button>}
         </div>
 
         <div className="fl-rules" style={{ marginTop: 4 }}>
           {grp.length === 0 && (
             <div className="fl-empty-grp">
-              No rules in this group yet. Click <b>Add rule</b> to create the first one — it will be scoped to {flow.label}.
+              No rules in this group yet.{group.shared ? '' : <> Click <b>Add rule</b> to create the first one — it will be scoped to {flow.label}.</>}
             </div>
           )}
 
@@ -52,18 +56,21 @@ export default function GroupDetail({
             const isBuilder = r.sourceType === 'BUILDER'
             return (
               <Fragment key={r.id}>
-                <div className="fl-rule" style={{ '--gc': gc } as CSSProperties}
+                <div className="fl-rule" style={{ '--gc': gc, opacity: r.active ? 1 : .55 } as CSSProperties}
                   onClick={() => (isBuilder ? onEditRule(r) : setOpenDrl(openDrl === r.id ? null : r.id))}>
                   <div className="fl-rule-main">
                     <div className="fl-rule-name">{r.ruleName}</div>
                     <div className="fl-rule-meta">
-                      {isBuilder ? 'Visual Builder' : 'Hand-written DRL'} · by {r.createdBy ?? 'system'} · v{r.version}
+                      {isBuilder ? 'Visual Builder' : 'Hand-written DRL'} · v{r.version}
                     </div>
                   </div>
                   <span className={'badge ' + (isBuilder ? 'badge-builder' : 'badge-drl')}>
                     {isBuilder ? <IconBuilder width={12} height={12} /> : <IconFileCode width={12} height={12} />}
                     {isBuilder ? 'Builder' : 'DRL'}
                   </span>
+                  <button className="btn btn-ghost sm" title="Activate / deactivate" onClick={e => toggle(e, r)}>
+                    {r.active ? 'On' : 'Off'}
+                  </button>
                   <span className={'fl-rule-go' + (isBuilder ? '' : ' muted')}>
                     {isBuilder
                       ? <><IconEdit width={14} height={14} /> Edit</>

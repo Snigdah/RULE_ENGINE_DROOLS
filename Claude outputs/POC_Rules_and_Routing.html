@@ -1,758 +1,401 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>POC Rules &amp; Routing</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-  /* Layout: routing tables, then the rule_definition table, then each rule's DRL + JSON in dark code panels. */
-  :root{
-    --bg:#f4f6f9; --surface:#ffffff; --surface-2:#eef1f6; --border:#e0e5ec;
-    --fg:#19212e; --muted:#5d6b7e; --faint:#8a97a8;
-    --accent:#2f5bd0; --accent-weak:#e8eefc; --accent-line:#c9d6fa;
-    --good:#1a7f46; --good-weak:#e5f5ec; --bad:#c0362c; --bad-weak:#fbe9e7;
-    --warn:#9a6a00; --warn-weak:#fbf1d9; --purple:#6b3fb5; --purple-weak:#f0e9fb;
-    --code-bg:#10151f; --code-fg:#e7ebf5;
-    --kw:#8ea2ff; --str:#9fe0a6; --num:#ffcf7a; --punc:#9aa6bd; --cmt:#7c8aa5; --var:#f4a9c7;
-    --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
-    --font:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
-    --shadow:0 1px 2px rgba(20,30,50,.05),0 8px 22px rgba(20,30,50,.05);
-  }
-  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
-    --bg:#0d1017; --surface:#151a22; --surface-2:#1b222c; --border:#29313d;
-    --fg:#e7ebf2; --muted:#9aa6b6; --faint:#6b7687;
-    --accent:#7f93ff; --accent-weak:#1b2238; --accent-line:#2c3657;
-    --good:#45cf92; --good-weak:#12271e; --bad:#ff6f78; --bad-weak:#2a1a1d;
-    --warn:#d9ab4e; --warn-weak:#2a2210; --purple:#b79cff; --purple-weak:#20193a;
-    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35); color-scheme:dark;
-  }}
-  :root[data-theme="dark"]{
-    --bg:#0d1017; --surface:#151a22; --surface-2:#1b222c; --border:#29313d;
-    --fg:#e7ebf2; --muted:#9aa6b6; --faint:#6b7687;
-    --accent:#7f93ff; --accent-weak:#1b2238; --accent-line:#2c3657;
-    --good:#45cf92; --good-weak:#12271e; --bad:#ff6f78; --bad-weak:#2a1a1d;
-    --warn:#d9ab4e; --warn-weak:#2a2210; --purple:#b79cff; --purple-weak:#20193a;
-    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35); color-scheme:dark;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1040px;margin:0 auto;padding-block:26px;padding-inline:18px}
-  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px}
-  h1{font-size:23px;font-weight:800;margin:0;letter-spacing:-.01em}
-  .sub{color:var(--muted);font-size:14px;margin:2px 0 0}
-  .themebtn{margin-left:auto;font:inherit;font-size:13px;font-weight:600;color:var(--fg);background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:7px 12px;cursor:pointer}
+:root{
+  --bg:#f4f6f9;--surface:#fff;--surface-2:#eef1f6;--border:#e0e5ec;
+  --fg:#19212e;--muted:#5d6b7e;--faint:#8a97a8;
+  --accent:#2f5bd0;--accent-weak:#e8eefc;--accent-line:#c9d6fa;
+  --good:#1a7f46;--good-weak:#e5f5ec;--bad:#c0362c;--bad-weak:#fbe9e7;
+  --warn:#9a6a00;--warn-weak:#fbf1d9;--purple:#6b3fb5;--purple-weak:#f0e9fb;
+  --code-bg:#10151f;--code-fg:#e7ebf5;--kw:#8ea2ff;--str:#9fe0a6;--num:#ffcf7a;--punc:#9aa6bd;--var:#f4a9c7;
+  --g-common:#6d49d4;--g-transfer:#2056d6;--g-velocity:#b07800;--g-compliance:#d0323f;--g-loan:#0f8a5f;--g-closure:#7c5cff;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;--font:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --shadow:0 1px 2px rgba(20,30,50,.05),0 8px 22px rgba(20,30,50,.05);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d1017;--surface:#151a22;--surface-2:#1b222c;--border:#29313d;--fg:#e7ebf2;--muted:#9aa6b6;--faint:#6b7687;
+  --accent:#7f93ff;--accent-weak:#1b2238;--accent-line:#2c3657;--good:#45cf92;--good-weak:#12271e;--bad:#ff6f78;--bad-weak:#2a1a1d;
+  --warn:#d9ab4e;--warn-weak:#2a2210;--purple:#b79cff;--purple-weak:#20193a;
+  --g-common:#a48bff;--g-transfer:#7f9bff;--g-velocity:#e0b04e;--g-compliance:#ff7680;--g-loan:#45cf92;--g-closure:#b29cff;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1017;--surface:#151a22;--surface-2:#1b222c;--border:#29313d;--fg:#e7ebf2;--muted:#9aa6b6;--faint:#6b7687;
+  --accent:#7f93ff;--accent-weak:#1b2238;--accent-line:#2c3657;--good:#45cf92;--good-weak:#12271e;--bad:#ff6f78;--bad-weak:#2a1a1d;
+  --warn:#d9ab4e;--warn-weak:#2a2210;--purple:#b79cff;--purple-weak:#20193a;
+  --g-common:#a48bff;--g-transfer:#7f9bff;--g-velocity:#e0b04e;--g-compliance:#ff7680;--g-loan:#45cf92;--g-closure:#b29cff;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;font-size:14px}
+.wrap{max-width:1120px;margin:0 auto;padding:26px 16px 40px}
+header{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-size:24px;font-weight:800;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:2px 0 0}
+.themebtn{margin-left:auto;font:inherit;font-size:13px;font-weight:600;color:var(--fg);background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:7px 12px;cursor:pointer}
+.status{display:flex;gap:10px;align-items:flex-start;margin:16px 0 4px;background:var(--warn-weak);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);border-left:4px solid var(--warn);border-radius:11px;padding:12px 15px;color:var(--muted);font-size:13.5px}
+.status b{color:var(--fg)}
+.eyebrow{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin:38px 0 12px;display:flex;align-items:center;gap:10px}
+.eyebrow::after{content:"";flex:1;height:2px;background:var(--border);border-radius:2px}
+.lead{color:var(--muted);margin:-4px 0 12px;max-width:820px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);margin:14px 0;overflow:hidden}
+.card-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--border)}
+.card-h .t{font-family:var(--mono);font-size:14px;font-weight:600}
+.card-h .d{font-size:12.5px;color:var(--faint)}
+.card-h .n{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:3px 9px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;vertical-align:top}
+th{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+th .ky{font-family:var(--mono);font-size:9.5px;font-weight:700;margin-left:5px;padding:1px 5px;border-radius:5px;background:var(--surface);border:1px solid var(--border);color:var(--faint);letter-spacing:0}
+th .ky.pk{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
+th .ky.fk{color:var(--accent);border-color:var(--accent-line)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--surface-2)}
+.k{font-family:var(--mono);font-size:12px}
+.num{font-variant-numeric:tabular-nums;text-align:center}
+.null{font-family:var(--mono);font-size:11.5px;color:var(--faint);font-style:italic}
+.fk-ref{font-family:var(--mono);font-size:12px;color:var(--accent)}
+.fk-ref small{color:var(--faint);font-family:var(--font);margin-left:5px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.gchip{color:var(--gc);background:color-mix(in srgb,var(--gc) 11%,transparent);border-color:color-mix(in srgb,var(--gc) 32%,transparent)}
+.akey{font-family:var(--mono);font-size:11.5px;color:var(--gc);background:color-mix(in srgb,var(--gc) 9%,transparent);border:1px solid color-mix(in srgb,var(--gc) 25%,transparent);border-radius:6px;padding:1px 7px}
+.c-drl{background:var(--surface-2);color:var(--muted);border-color:var(--border)}
+.c-builder{background:var(--purple-weak);color:var(--purple);border-color:color-mix(in srgb,var(--purple) 35%,transparent)}
+.c-shared{background:var(--accent-weak);color:var(--accent);border-color:var(--accent-line)}
 
-  .eyebrow{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin:36px 0 12px;display:flex;align-items:center;gap:10px}
-  .eyebrow::after{content:"";flex:1;height:2px;background:var(--border);border-radius:2px}
+/* compare */
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:820px){.cmp{grid-template-columns:1fr}}
+.cmp .card{margin:0}
+.cmp-b{padding:14px 16px}
+.cmp h3{margin:0;font-size:14.5px}
+.tag-bad{color:var(--bad)}.tag-good{color:var(--good)}
+.mini{font-family:var(--mono);font-size:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin:10px 0 8px;line-height:1.75;overflow-x:auto;white-space:pre}
+.cmp ul{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:13px}
+.cmp li{margin:3px 0}
+.cmp li b{color:var(--fg)}
 
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);margin:14px 0;overflow:hidden}
-  .card-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid var(--border)}
-  .card-h .t{font-family:var(--mono);font-size:14px;font-weight:600}
-  .card-h .d{font-size:12.5px;color:var(--faint)}
-  .card-h .n{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:3px 9px}
-  .scroll{overflow-x:auto}
-  table{border-collapse:collapse;width:100%;font-size:13.5px}
-  th,td{padding:9px 13px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;vertical-align:top}
-  th{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
-  tbody tr:last-child td{border-bottom:none}
-  tbody tr:hover td{background:var(--surface-2)}
-  .k{font-family:var(--mono);font-size:12.5px}
-  .num{font-variant-numeric:tabular-nums;text-align:center}
+/* ER */
+.er-wrap{overflow-x:auto;padding:14px 10px}
+.er{width:100%;min-width:900px;height:auto;display:block}
+.er-box{fill:var(--surface);stroke:var(--border);stroke-width:1.2}
+.er-head{fill:var(--surface-2)}
+.er-title{font:700 13px var(--mono);fill:var(--fg)}
+.er-col{font:500 12px var(--mono);fill:var(--muted)}
+.er-pk{font:700 12px var(--mono);fill:var(--fg)}
+.er-fk{font:600 12px var(--mono);fill:var(--accent)}
 
-  .chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
-  .c-common{background:var(--accent-weak);color:var(--accent);border-color:var(--accent-line)}
-  .c-transfer{background:var(--good-weak);color:var(--good);border-color:color-mix(in srgb,var(--good) 35%,transparent)}
-  .c-loan{background:var(--warn-weak);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,transparent)}
-  .c-closure{background:var(--purple-weak);color:var(--purple);border-color:color-mix(in srgb,var(--purple) 35%,transparent)}
-  .c-velocity{background:var(--warn-weak);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,transparent)}
-  .c-compliance{background:var(--bad-weak);color:var(--bad);border-color:color-mix(in srgb,var(--bad) 35%,transparent)}
-  .c-drl{background:var(--surface-2);color:var(--muted);border-color:var(--border)}
-  .c-builder{background:var(--purple-weak);color:var(--purple);border-color:color-mix(in srgb,var(--purple) 35%,transparent)}
-  .c-mute{background:var(--surface-2);color:var(--faint);border-color:var(--border)}
-  .c-yes{background:var(--good-weak);color:var(--good);border-color:color-mix(in srgb,var(--good) 35%,transparent)}
+.er-key{font:700 10px var(--mono);fill:var(--faint)}
+.er-key.pk{fill:var(--warn)}.er-key.fk{fill:var(--accent)}
+.er-edge{fill:none;stroke:var(--accent);stroke-width:1.6;opacity:.75}
+.er-edge.dash{stroke-dasharray:6 5}
+.er-arrow{fill:var(--accent)}
+.er-elabel{font:700 10.5px var(--font);fill:var(--muted);paint-order:stroke;stroke:var(--surface);stroke-width:4px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;padding:0 16px 14px;color:var(--muted);font-size:12px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.lg-line{width:26px;height:0;border-top:2px solid var(--accent)}
+.lg-line.dash{border-top-style:dashed}
 
-  .order{display:inline-flex;align-items:center;gap:6px}
-  .order .oarrow{color:var(--faint);font-weight:800}
+/* flow tree */
+.flows{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media (max-width:980px){.flows{grid-template-columns:1fr}}
+.flow{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;border-top:4px solid var(--fc)}
+.flow-h{padding:13px 15px 10px;border-bottom:1px solid var(--border)}
+.flow-name{font-weight:800;font-size:15.5px}
+.flow-meta{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:2px;word-break:break-all}
+.flow-req{margin-top:7px;font-size:11.5px;color:var(--muted)}
+.flow-req b{font-family:var(--mono);font-weight:600;color:var(--fg)}
+.stages{padding:10px 12px 14px;display:flex;flex-direction:column;gap:9px}
+.stage{border:1px solid var(--border);border-left:4px solid var(--gc);border-radius:10px;background:var(--surface)}
+.stage.shared{background:color-mix(in srgb,var(--gc) 5%,var(--surface));border-style:dashed;border-left-style:solid}
+.stage-h{display:flex;align-items:center;gap:8px;padding:8px 10px;flex-wrap:wrap}
+.ord{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:11.5px;font-weight:800;color:var(--gc);background:color-mix(in srgb,var(--gc) 13%,transparent);flex:none}
+.gname{font-weight:750;font-size:13px}
+.gid{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.stage-k{padding:0 10px 6px 40px}
+.rlist{list-style:none;margin:0;padding:0 10px 9px 40px}
+.rlist li{font-size:12.5px;padding:3px 0;display:flex;gap:6px;align-items:baseline}
+.rlist li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--gc);flex:none;transform:translateY(-2px)}
+.rlist .rid{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.hl{box-shadow:0 0 0 2px color-mix(in srgb,var(--g-compliance) 45%,transparent)}
 
-  /* code panels */
-  .codewrap{margin:12px 0}
-  .codehead{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 7px}
-  .codehead .nm{font-weight:700;font-size:14px}
-  .code{background:var(--code-bg);border-radius:12px;padding:15px 16px;overflow-x:auto}
-  .code pre{margin:0;font-family:var(--mono);font-size:12.5px;line-height:1.7;color:var(--code-fg);white-space:pre}
-  .kw{color:var(--kw);font-weight:600}.str{color:var(--str)}.num2{color:var(--num)}.punc{color:var(--punc)}.cmt{color:var(--cmt);font-style:italic}.var{color:var(--var)}
-  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media (max-width:760px){.twocol{grid-template-columns:1fr}}
-  .lbl{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--muted);margin-bottom:5px;text-transform:uppercase}
+/* runtime */
+.rt{display:flex;flex-direction:column;gap:10px}
+.rt-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.rt-req{font-family:var(--mono);font-size:12px;font-weight:600}
+.rt-arrow{color:var(--faint);font-weight:800}
+.rt-flow{font-weight:800;font-size:13px}
 
-  .note{background:var(--accent-weak);border:1px solid var(--accent-line);border-left:4px solid var(--accent);border-radius:11px;padding:13px 15px;font-size:13.5px;color:var(--muted);margin:12px 0}
-  .note b{color:var(--fg)}
-  .foot{color:var(--faint);font-size:12px;text-align:center;margin-top:28px}
-  code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);padding:1px 6px;border-radius:5px}
-</style>
+.note{background:var(--accent-weak);border:1px solid var(--accent-line);border-left:4px solid var(--accent);border-radius:11px;padding:12px 15px;font-size:13.5px;color:var(--muted);margin:12px 0}
+.note b{color:var(--fg)}
+code{font-family:var(--mono);font-size:12px;background:var(--surface-2);padding:1px 6px;border-radius:5px}
 
+/* code */
+details.cd{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin:8px 0;overflow:hidden}
+details.cd>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;font-weight:700;font-size:13.5px}
+details.cd>summary::-webkit-details-marker{display:none}
+details.cd>summary::before{content:"▸";color:var(--faint);transition:transform .15s}
+details.cd[open]>summary::before{transform:rotate(90deg)}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px 12px}
+.twocol.one{grid-template-columns:1fr}
+.twocol>div{min-width:0}
+@media (max-width:820px){.twocol{grid-template-columns:1fr}}
+.lbl{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--muted);margin-bottom:5px;text-transform:uppercase}
+.code{background:var(--code-bg);border-radius:10px;padding:12px 14px;overflow-x:auto}
+.code pre{margin:0;font-family:var(--mono);font-size:12px;line-height:1.65;color:var(--code-fg);white-space:pre}
+.kw{color:var(--kw);font-weight:600}.str{color:var(--str)}.num2{color:var(--num)}.punc{color:var(--punc)}.var{color:var(--var)}
+.m-get{color:var(--good)}.m-post{color:var(--accent)}.m-put{color:var(--warn)}.m-del{color:var(--bad)}
+.foot{color:var(--faint);font-size:12px;text-align:center;margin-top:30px}
+</style></head><body>
 <div class="wrap">
   <header>
     <div>
       <h1>Rule Engine POC — Rules &amp; Routing</h1>
-      <p class="sub">The library tables you loaded through the admin API: request→flow mappings, flow groups, and the rules.</p>
+      <p class="sub">Library tables, how they link, and which rule lives where.</p>
     </div>
-    <button class="themebtn" id="theme">◐ Theme</button>
+    <button class="themebtn" id="theme" type="button">◐ Theme</button>
   </header>
 
-  <!-- ROUTING -->
-  <div class="eyebrow">Routing tables</div>
+  <div class="status"><div><b>Planned design — library v3.0.0, not implemented yet.</b> This page shows the target schema so it can be reviewed before any code changes. Flows and groups become real rows with ids, and every rule belongs to exactly one group.</div></div>
 
+  <!-- PROBLEM vs FIX -->
+  <div class="eyebrow">Why the change</div>
+  <div class="cmp">
+    <div class="card"><div class="cmp-b">
+      <h3><span class="tag-bad">Today (v2)</span> — a rule points at a group <i>name</i></h3>
+<div class="mini">RULE_DEFINITION
+  rule_name   = "Block high-value cross-border…"  <span style="color:var(--bad)">UNIQUE</span>
+  agenda_group = "COMPLIANCE"   <span style="color:var(--bad)">← just a string</span>
+
+Transfer › COMPLIANCE  ─┐
+                        ├─ same bucket, same rules
+Closure  › COMPLIANCE  ─┘</div>
+      <ul>
+        <li>Both COMPLIANCE screens list <b>the same rules</b>.</li>
+        <li>Editing a rule from one flow <b>changes it in the other</b> — it's one row.</li>
+        <li>A rule name can exist <b>only once</b> in the whole system.</li>
+      </ul>
+    </div></div>
+    <div class="card"><div class="cmp-b">
+      <h3><span class="tag-good">Planned (v3)</span> — a rule points at a group <i>id</i></h3>
+<div class="mini">RULE_GROUP  id=4  TRANSFER_TRANSACTION.COMPLIANCE
+RULE_GROUP  id=7  ACCOUNT_CLOSURE.COMPLIANCE
+
+RULE_DEFINITION
+  group_id  = 4  <span style="color:var(--good)">← FK to one exact group</span>
+  rule_name   UNIQUE per group only</div>
+      <ul>
+        <li>Each flow's COMPLIANCE is its <b>own row</b> with its own rules.</li>
+        <li>The <b>same rule name</b> may exist in both groups.</li>
+        <li>COMMON is <b>one shared group</b>, so blocked-user / KYC exist once.</li>
+      </ul>
+    </div></div>
+  </div>
+
+  <!-- ER -->
+  <div class="eyebrow">Database design</div>
+  <p class="lead">Four tables, joined by <b>real foreign keys</b>. <b>RULE_FLOW</b> is the flow master <i>and</i> the router — routing is <b>1:1</b> (one <code>request_class</code> → one flow), so the request class is a UNIQUE column here, not a separate mapping table. <b>group_id</b> and <b>flow_id</b> are FKs to RULE_FLOW. A dashed arrow is a <i>nullable</i> FK: <code>NULL</code> there = shared by every flow (the COMMON group and its shared fields). <code>request_class</code> and <code>fact_type</code> live once, on RULE_FLOW. Every flow, group and rule carries an <code>active</code> flag (on/off), and each rule keeps <b>both</b> its editable <code>source_json</code> and the generated <code>drl_text</code>.</p>
   <div class="card">
-    <div class="card-h"><span class="t">request_flow_map</span><span class="d">request class → flow (routing key only)</span><span class="n">3 rows</span></div>
-    <div class="scroll"><table>
-      <thead><tr><th>request_type</th><th>flow_name</th></tr></thead>
-      <tbody>
-        <tr><td class="k">…dto.TransactionRequest</td><td><span class="chip c-transfer">TRANSFER_TRANSACTION</span></td></tr>
-        <tr><td class="k">…dto.LoanRequest</td><td><span class="chip c-loan">LOAN_APPLICATION</span></td></tr>
-        <tr><td class="k">…dto.AccountCloseRequest</td><td><span class="chip c-closure">ACCOUNT_CLOSURE</span></td></tr>
-      </tbody>
-    </table></div>
+    <div class="er-wrap"><svg viewBox="0 0 1130 580" class="er" role="img" aria-label="ER diagram"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="er-arrow"/></marker></defs><path d="M440,151.5 C390.0,151.5 390.0,256.5 340,256.5" class="er-edge dash" marker-end="url(#arr)"/><text x="390.0" y="198.0" text-anchor="middle" class="er-elabel">flow_id</text><path d="M440,392.5 C390.0,392.5 390.0,256.5 340,256.5" class="er-edge dash" marker-end="url(#arr)"/><text x="390.0" y="318.5" text-anchor="middle" class="er-elabel">flow_id</text><path d="M810,227.5 C775.0,227.5 775.0,151.5 740,151.5" class="er-edge" marker-end="url(#arr)"/><text x="775.0" y="183.5" text-anchor="middle" class="er-elabel">group_id</text><rect x="40" y="185" width="300" height="143" rx="10" class="er-box"/>
+<rect x="40" y="185" width="300" height="30" rx="10" class="er-head"/><rect x="40" y="205" width="300" height="10" class="er-head"/>
+<text x="54" y="205" class="er-title">RULE_FLOW</text>
+<text x="54" y="233" class="er-pk">id</text>
+<text x="326" y="233" text-anchor="end" class="er-key pk">PK</text>
+<text x="54" y="254" class="er-col">flow_code</text>
+<text x="326" y="254" text-anchor="end" class="er-key">UQ</text>
+<text x="54" y="275" class="er-col">request_class</text>
+<text x="326" y="275" text-anchor="end" class="er-key">UQ</text>
+<text x="54" y="296" class="er-col">fact_type</text>
+<text x="54" y="317" class="er-col">active</text><rect x="440" y="80" width="300" height="143" rx="10" class="er-box"/>
+<rect x="440" y="80" width="300" height="30" rx="10" class="er-head"/><rect x="440" y="100" width="300" height="10" class="er-head"/>
+<text x="454" y="100" class="er-title">RULE_GROUP</text>
+<text x="454" y="128" class="er-pk">id</text>
+<text x="726" y="128" text-anchor="end" class="er-key pk">PK</text>
+<text x="454" y="149" class="er-fk">flow_id</text>
+<text x="726" y="149" text-anchor="end" class="er-key fk">FK·null=shared</text>
+<text x="454" y="170" class="er-col">group_code</text>
+<text x="454" y="191" class="er-col">order_no</text>
+<text x="454" y="212" class="er-col">active</text><rect x="440" y="300" width="300" height="185" rx="10" class="er-box"/>
+<rect x="440" y="300" width="300" height="30" rx="10" class="er-head"/><rect x="440" y="320" width="300" height="10" class="er-head"/>
+<text x="454" y="320" class="er-title">RULE_FIELD_CATALOG</text>
+<text x="454" y="348" class="er-pk">id</text>
+<text x="726" y="348" text-anchor="end" class="er-key pk">PK</text>
+<text x="454" y="369" class="er-fk">flow_id</text>
+<text x="726" y="369" text-anchor="end" class="er-key fk">FK·null=shared</text>
+<text x="454" y="390" class="er-col">field_key</text>
+<text x="726" y="390" text-anchor="end" class="er-key">UQ(flow,key)</text>
+<text x="454" y="411" class="er-col">data_type</text>
+<text x="454" y="432" class="er-col">drl_path</text>
+<text x="454" y="453" class="er-col">allowed_ops</text>
+<text x="454" y="474" class="er-col">allowed_values</text><rect x="810" y="135" width="300" height="185" rx="10" class="er-box"/>
+<rect x="810" y="135" width="300" height="30" rx="10" class="er-head"/><rect x="810" y="155" width="300" height="10" class="er-head"/>
+<text x="824" y="155" class="er-title">RULE_DEFINITION</text>
+<text x="824" y="183" class="er-pk">id</text>
+<text x="1096" y="183" text-anchor="end" class="er-key pk">PK</text>
+<text x="824" y="204" class="er-fk">group_id</text>
+<text x="1096" y="204" text-anchor="end" class="er-key fk">FK</text>
+<text x="824" y="225" class="er-col">rule_name</text>
+<text x="1096" y="225" text-anchor="end" class="er-key">UQ(group,name)</text>
+<text x="824" y="246" class="er-col">source_type</text>
+<text x="824" y="267" class="er-col">source_json</text>
+<text x="824" y="288" class="er-col">drl_text</text>
+<text x="824" y="309" class="er-col">active</text></svg></div>
+    <div class="legend">
+      <span><i class="lg-line"></i> foreign key (many → one)</span>
+      <span><i class="lg-line dash"></i> nullable FK — NULL = shared</span>
+      <span><b style="color:var(--warn);font-family:var(--mono)">PK</b> primary key</span>
+      <span><b style="color:var(--faint);font-family:var(--mono)">UQ</b> unique constraint</span>
+    </div>
   </div>
 
-  <div class="card">
-    <div class="card-h"><span class="t">flow_group</span><span class="d">flow → ordered agenda groups (COMMON fires first)</span><span class="n">8 rows</span></div>
-    <div class="scroll"><table>
-      <thead><tr><th>flow_name</th><th>agenda_group</th><th class="num">order_no</th><th>fact_type</th></tr></thead>
-      <tbody>
-        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-common">COMMON</span></td><td class="num">1</td><td class="k">…model.ValidationContext</td></tr>
-        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-transfer">TRANSFER</span></td><td class="num">2</td><td class="k">…model.ValidationContext</td></tr>
-        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-velocity">VELOCITY</span></td><td class="num">3</td><td class="k">…model.ValidationContext</td></tr>
-        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-compliance">COMPLIANCE</span></td><td class="num">4</td><td class="k">…model.ValidationContext</td></tr>
-        <tr><td class="k">LOAN_APPLICATION</td><td><span class="chip c-common">COMMON</span></td><td class="num">1</td><td class="k">…model.LoanValidationContext</td></tr>
-        <tr><td class="k">LOAN_APPLICATION</td><td><span class="chip c-loan">LOAN</span></td><td class="num">2</td><td class="k">…model.LoanValidationContext</td></tr>
-        <tr><td class="k">ACCOUNT_CLOSURE</td><td><span class="chip c-common">COMMON</span></td><td class="num">1</td><td class="k">…model.ClosureValidationContext</td></tr>
-        <tr><td class="k">ACCOUNT_CLOSURE</td><td><span class="chip c-closure">CLOSURE</span></td><td class="num">2</td><td class="k">…model.ClosureValidationContext</td></tr>
-      </tbody>
-    </table></div>
-  </div>
+  <!-- FLOW TREE -->
+  <div class="eyebrow">Flow → stages → group → rules</div>
+  <p class="lead">What each flow runs, top to bottom. The two <b>COMPLIANCE</b> groups are outlined: same name, different ids, different rules. COMMON (dashed) is the same group <b>#1</b> in every flow.</p>
+  <div class="flows" id="flows"></div>
 
-  <!-- RULE_DEFINITION TABLE -->
-  <div class="eyebrow">rule_definition — the rules</div>
-  <div class="card">
-    <div class="card-h"><span class="t">rule_definition</span><span class="d">one row per rule · engine runs DRL_TEXT only</span><span class="n">10 rows</span></div>
-    <div class="scroll"><table id="ruleTable">
-      <thead><tr><th>id</th><th>rule_name</th><th>agenda_group</th><th>source_type</th><th>source_json</th><th>drl_text</th><th>ver</th><th>status</th><th>active</th></tr></thead>
-      <tbody><!-- filled by JS --></tbody>
-    </table></div>
-  </div>
+  <!-- RUNTIME -->
+  <div class="eyebrow">At runtime</div>
+  <p class="lead"><code>execute(context, LoanRequest.class, globalContext)</code> → request type picks the flow → the flow's stages give the <b>agenda keys</b> to focus, in order. Both flows' COMPLIANCE rules share the <code>COMPLIANCE</code> Drools bucket, but a transfer only ever inserts a transfer fact, so closure rules never fire there. In the database they are still two separate group rows (<b>#4</b> vs <b>#7</b>).</p>
+  <div class="rt" id="runtime"></div>
 
-  <!-- ONE ROW IN FULL -->
-  <div class="eyebrow">One rule_definition row, in full</div>
-  <div class="note">
-    <b>Your question — what do <code>source_json</code> and <code>drl_text</code> hold?</b> For a <b>BUILDER</b> rule, <code>source_json</code> is the editable spec the UI saved, and <code>drl_text</code> is generated from it. For a <b>DRL</b> rule, <code>source_json</code> is <b>null</b> and <code>drl_text</code> is hand-written. The engine only ever compiles <code>drl_text</code>.
-  </div>
-  <div id="example"></div>
+  <!-- TABLES -->
+  <div class="eyebrow">Tables &amp; rows</div>
+  <div id="tables"></div>
 
-  <!-- DRL -->
-  <div class="eyebrow">drl_text — every rule (what the engine runs)</div>
-  <div id="drlList"></div>
+  <div class="note"><b>Now allowed — same name in two groups.</b> <code>UNIQUE(group_id, rule_name)</code> lets a rule called, say, <i>"Block high-value cross-border non-BDT transfer"</i> exist in group <b>#4</b> and again in group <b>#7</b>. They are two rows with two ids; editing one never touches the other. The compiled DRL name is prefixed with the agenda key (<code>TRANSFER_TRANSACTION.COMPLIANCE::…</code>), so Drools still sees unique names.</div>
 
-  <!-- JSON -->
-  <div class="eyebrow">source_json — the builder rules only</div>
-  <div id="jsonList"></div>
+  <!-- CODE -->
+  <div class="eyebrow">drl_text &amp; source_json — every rule</div>
+  <p class="lead">Builder rules show both the editable JSON and the DRL generated from it. Hand-written DRL rules (COMMON) have no JSON.</p>
+  <div id="code"></div>
 
-  <p class="foot">Loaded via <code>POST /admin/flows</code>, <code>/admin/flows/mappings</code>, <code>/admin/rules</code>. DRL rules are hand-written; builder rules are generated from their JSON.</p>
+  <!-- API -->
+  <div class="eyebrow">Admin API (planned)</div>
+  <div class="card"><div class="scroll"><table>
+    <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+    <tbody id="api"></tbody>
+  </table></div></div>
+  <div class="note"><b>Delete vs. active/inactive — two separate actions.</b> Every flow, group and rule has an <code>active</code> flag (the UI on/off radio) <i>and</i> a delete. <b>Deactivate</b> keeps the row but skips it when a business request hits: an inactive <b>rule</b> is not compiled, an inactive <b>group</b> is not focused, and an inactive <b>flow</b> runs nothing at all. <b>Delete</b> removes the row for good (<code>?force=true</code> cascades to children). So a screen can be switched off without losing its rules, then switched back on.</div>
+  <div class="note"><b>Consumer API is unchanged.</b> Services still call <code>ruleExecutionService.execute(context, TransactionRequest.class, globalContext)</code>. Flows themselves stay developer-managed (DB seed); end users manage groups and rules.</div>
+
+  <p class="foot">Planned for library 3.0.0 · PostgreSQL &amp; Oracle DDL will match this page.</p>
 </div>
 
 <script>
-const RULES = [
-  { id:1, name:"Block transaction for a blocked user", group:"COMMON", type:"DRL",
-    drl:`package com.example.droolspoc.rules;
-
-import com.example.droolspoc.model.RuleContext;
-import com.example.droolspoc.context.data.BlockedUsers;
-
-global leads.ruleengine.core.context.GlobalContext globalContext;
-
-rule "Block transaction for a blocked user"
-    agenda-group "COMMON"
-    salience 100
-    when
-        $ctx : RuleContext()
-        eval(globalContext.get(BlockedUsers.class).isBlocked($ctx.getUserId()))
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: user is blocked");
-        drools.halt();
-end`, json:null },
-
-  { id:2, name:"Block if KYC not verified", group:"COMMON", type:"DRL",
-    drl:`package com.example.droolspoc.rules;
-
-import com.example.droolspoc.model.RuleContext;
-
-rule "Block if KYC not verified"
-    agenda-group "COMMON"
-    salience 90
-    when
-        $ctx : RuleContext(user != null, user.kycVerified == false)
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: KYC not verified");
-        drools.halt();
-end`, json:null },
-
-  { id:3, name:"Block over-limit debit-restricted BDT transaction", group:"TRANSFER", type:"BUILDER",
-    drl:`package com.example.droolspoc.model;
-
-rule "Block over-limit debit-restricted BDT transaction"
-    agenda-group "TRANSFER"
-    salience 10
-    when
-        $ctx : com.example.droolspoc.model.ValidationContext(
-            (transaction.currency == "BDT" && product.drRes == 1 && transaction.amount > userLimit.limit)
-        )
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: amount exceeds limit on a debit-restricted BDT account");
-end`,
-    json:`{
-  "ruleName": "Block over-limit debit-restricted BDT transaction",
-  "flow": "TRANSFER_TRANSACTION",
-  "agendaGroup": "TRANSFER",
-  "salience": 10,
-  "conditionTree": {
-    "type": "GROUP",
-    "operator": "AND",
-    "children": [
-      {
-        "type": "CONDITION",
-        "field": "transaction.currency",
-        "operator": "==",
-        "value": "BDT"
-      },
-      {
-        "type": "CONDITION",
-        "field": "product.drRes",
-        "operator": "==",
-        "value": 1
-      },
-      {
-        "type": "CONDITION",
-        "field": "transaction.amount",
-        "operator": ">",
-        "valueField": "userLimit.limit"
-      }
-    ]
-  },
-  "then": {
-    "decision": "block",
-    "message": "Blocked: amount exceeds limit on a debit-restricted BDT account"
-  }
-}` },
-
-  { id:4, name:"Block loan below credit-score threshold", group:"LOAN", type:"BUILDER",
-    drl:`package com.example.droolspoc.model;
-
-rule "Block loan below credit-score threshold"
-    agenda-group "LOAN"
-    salience 10
-    when
-        $ctx : com.example.droolspoc.model.LoanValidationContext(
-            (customer.creditScore < 600)
-        )
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: credit score below 600");
-end`,
-    json:`{
-  "ruleName": "Block loan below credit-score threshold",
-  "flow": "LOAN_APPLICATION",
-  "agendaGroup": "LOAN",
-  "salience": 10,
-  "conditionTree": {
-    "type": "GROUP",
-    "operator": "AND",
-    "children": [
-      {
-        "type": "CONDITION",
-        "field": "customer.creditScore",
-        "operator": "<",
-        "value": 600
-      }
-    ]
-  },
-  "then": {
-    "decision": "block",
-    "message": "Blocked: credit score below 600"
-  }
-}` },
-
-  { id:5, name:"Block closure with outstanding balance", group:"CLOSURE", type:"BUILDER",
-    drl:`package com.example.droolspoc.model;
-
-rule "Block closure with outstanding balance"
-    agenda-group "CLOSURE"
-    salience 10
-    when
-        $ctx : com.example.droolspoc.model.ClosureValidationContext(
-            (account.balance > 0)
-        )
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: account has an outstanding balance");
-end`,
-    json:`{
-  "ruleName": "Block closure with outstanding balance",
-  "flow": "ACCOUNT_CLOSURE",
-  "agendaGroup": "CLOSURE",
-  "salience": 10,
-  "conditionTree": {
-    "type": "GROUP",
-    "operator": "AND",
-    "children": [
-      {
-        "type": "CONDITION",
-        "field": "account.balance",
-        "operator": ">",
-        "value": 0
-      }
-    ]
-  },
-  "then": {
-    "decision": "block",
-    "message": "Blocked: account has an outstanding balance"
-  }
-}` },
-
-  { id:6, name:"Block rapid high-value agent transfers", group:"VELOCITY", type:"BUILDER",
-    drl:`package com.example.droolspoc.model;
-
-rule "Block rapid high-value agent transfers"
-    agenda-group "VELOCITY"
-    salience 20
-    when
-        $ctx : com.example.droolspoc.model.ValidationContext(
-            (transaction.channel == "AGENT" && transaction.amount > 50000 && transaction.dailyTxnCount >= 5)
-        )
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: too many high-value agent transfers today");
-end`,
-    json:`{
-  "ruleName": "Block rapid high-value agent transfers",
-  "flow": "TRANSFER_TRANSACTION",
-  "agendaGroup": "VELOCITY",
-  "salience": 20,
-  "conditionTree": {
-    "type": "GROUP",
-    "operator": "AND",
-    "children": [
-      {
-        "type": "CONDITION",
-        "field": "transaction.channel",
-        "operator": "==",
-        "value": "AGENT"
-      },
-      {
-        "type": "CONDITION",
-        "field": "transaction.amount",
-        "operator": ">",
-        "value": 50000
-      },
-      {
-        "type": "CONDITION",
-        "field": "transaction.dailyTxnCount",
-        "operator": ">=",
-        "value": 5
-      }
-    ]
-  },
-  "then": {
-    "decision": "block",
-    "message": "Blocked: too many high-value agent transfers today"
-  }
-}` },
-
-  { id:7, name:"Block high-value cross-border non-BDT transfer", group:"COMPLIANCE", type:"BUILDER",
-    drl:`package com.example.droolspoc.model;
-
-rule "Block high-value cross-border non-BDT transfer"
-    agenda-group "COMPLIANCE"
-    salience 20
-    when
-        $ctx : com.example.droolspoc.model.ValidationContext(
-            (transaction.currency != "BDT" && transaction.amount >= 100000 && transaction.country == "OTHER")
-        )
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: cross-border high-value transfer needs manual review");
-end`,
-    json:`{
-  "ruleName": "Block high-value cross-border non-BDT transfer",
-  "flow": "TRANSFER_TRANSACTION",
-  "agendaGroup": "COMPLIANCE",
-  "salience": 20,
-  "conditionTree": {
-    "type": "GROUP",
-    "operator": "AND",
-    "children": [
-      {
-        "type": "CONDITION",
-        "field": "transaction.currency",
-        "operator": "!=",
-        "value": "BDT"
-      },
-      {
-        "type": "CONDITION",
-        "field": "transaction.amount",
-        "operator": ">=",
-        "value": 100000
-      },
-      {
-        "type": "CONDITION",
-        "field": "transaction.country",
-        "operator": "==",
-        "value": "OTHER"
-      }
-    ]
-  },
-  "then": {
-    "decision": "block",
-    "message": "Blocked: cross-border high-value transfer needs manual review"
-  }
-}` },
-
-  { id:8, name:"High-value or cross-border transfer", group:"TRANSFER", type:"BUILDER",
-    drl:`package com.example.droolspoc.model;
-
-rule "High-value or cross-border transfer"
-    agenda-group "TRANSFER"
-    salience 20
-    when
-        $ctx : com.example.droolspoc.model.ValidationContext(
-            ((transaction.channel == "AGENT" && transaction.amount > 50000) || (transaction.country == "OTHER" && transaction.currency != "BDT"))
-        )
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: high-value agent transfer, or cross-border non-BDT transfer");
-end`,
-    json:`{
-  "ruleName": "High-value or cross-border transfer",
-  "flow": "TRANSFER_TRANSACTION",
-  "agendaGroup": "TRANSFER",
-  "salience": 20,
-  "conditionTree": {
-    "type": "GROUP",
-    "operator": "OR",
-    "children": [
-      {
-        "type": "GROUP",
-        "operator": "AND",
-        "children": [
-          {
-            "type": "CONDITION",
-            "field": "transaction.channel",
-            "operator": "==",
-            "value": "AGENT"
-          },
-          {
-            "type": "CONDITION",
-            "field": "transaction.amount",
-            "operator": ">",
-            "value": 50000
-          }
-        ]
-      },
-      {
-        "type": "GROUP",
-        "operator": "AND",
-        "children": [
-          {
-            "type": "CONDITION",
-            "field": "transaction.country",
-            "operator": "==",
-            "value": "OTHER"
-          },
-          {
-            "type": "CONDITION",
-            "field": "transaction.currency",
-            "operator": "!=",
-            "value": "BDT"
-          }
-        ]
-      }
-    ]
-  },
-  "then": {
-    "decision": "block",
-    "message": "Blocked: high-value agent transfer, or cross-border non-BDT transfer"
-  }
-}` },
-
-  { id:9, name:"Layered channel & geo screen", group:"VELOCITY", type:"BUILDER",
-    drl:`package com.example.droolspoc.model;
-
-rule "Layered channel & geo screen"
-    agenda-group "VELOCITY"
-    salience 20
-    when
-        $ctx : com.example.droolspoc.model.ValidationContext(
-            ((transaction.amount > 10000 && (transaction.channel == "ONLINE" || transaction.channel == "AGENT")) && ((transaction.country == "US" || transaction.country == "OTHER") && transaction.currency != "BDT"))
-        )
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: layered channel & geo screening");
-end`,
-    json:`{
-  "ruleName": "Layered channel & geo screen",
-  "flow": "TRANSFER_TRANSACTION",
-  "agendaGroup": "VELOCITY",
-  "salience": 20,
-  "conditionTree": {
-    "type": "GROUP",
-    "operator": "AND",
-    "children": [
-      {
-        "type": "GROUP",
-        "operator": "AND",
-        "children": [
-          {
-            "type": "CONDITION",
-            "field": "transaction.amount",
-            "operator": ">",
-            "value": 10000
-          },
-          {
-            "type": "GROUP",
-            "operator": "OR",
-            "children": [
-              {
-                "type": "CONDITION",
-                "field": "transaction.channel",
-                "operator": "==",
-                "value": "ONLINE"
-              },
-              {
-                "type": "CONDITION",
-                "field": "transaction.channel",
-                "operator": "==",
-                "value": "AGENT"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "type": "GROUP",
-        "operator": "AND",
-        "children": [
-          {
-            "type": "GROUP",
-            "operator": "OR",
-            "children": [
-              {
-                "type": "CONDITION",
-                "field": "transaction.country",
-                "operator": "==",
-                "value": "US"
-              },
-              {
-                "type": "CONDITION",
-                "field": "transaction.country",
-                "operator": "==",
-                "value": "OTHER"
-              }
-            ]
-          },
-          {
-            "type": "CONDITION",
-            "field": "transaction.currency",
-            "operator": "!=",
-            "value": "BDT"
-          }
-        ]
-      }
-    ]
-  },
-  "then": {
-    "decision": "block",
-    "message": "Blocked: layered channel & geo screening"
-  }
-}` },
-
-  { id:10, name:"Deep-nested compliance check", group:"COMPLIANCE", type:"BUILDER",
-    drl:`package com.example.droolspoc.model;
-
-rule "Deep-nested compliance check"
-    agenda-group "COMPLIANCE"
-    salience 20
-    when
-        $ctx : com.example.droolspoc.model.ValidationContext(
-            ((((transaction.amount > 5000 || transaction.currency == "USD") && product.drRes == 1) || transaction.dailyTxnCount >= 10) && (userLimit.limit >= 100000 || (transaction.amount > userLimit.limit && transaction.dailyTxnCount >= 5)))
-        )
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: deep-nested compliance condition met");
-end`,
-    json:`{
-  "ruleName": "Deep-nested compliance check",
-  "flow": "TRANSFER_TRANSACTION",
-  "agendaGroup": "COMPLIANCE",
-  "salience": 20,
-  "conditionTree": {
-    "type": "GROUP",
-    "operator": "AND",
-    "children": [
-      {
-        "type": "GROUP",
-        "operator": "OR",
-        "children": [
-          {
-            "type": "GROUP",
-            "operator": "AND",
-            "children": [
-              {
-                "type": "GROUP",
-                "operator": "OR",
-                "children": [
-                  {
-                    "type": "CONDITION",
-                    "field": "transaction.amount",
-                    "operator": ">",
-                    "value": 5000
-                  },
-                  {
-                    "type": "CONDITION",
-                    "field": "transaction.currency",
-                    "operator": "==",
-                    "value": "USD"
-                  }
-                ]
-              },
-              {
-                "type": "CONDITION",
-                "field": "product.drRes",
-                "operator": "==",
-                "value": 1
-              }
-            ]
-          },
-          {
-            "type": "CONDITION",
-            "field": "transaction.dailyTxnCount",
-            "operator": ">=",
-            "value": 10
-          }
-        ]
-      },
-      {
-        "type": "GROUP",
-        "operator": "OR",
-        "children": [
-          {
-            "type": "CONDITION",
-            "field": "userLimit.limit",
-            "operator": ">=",
-            "value": 100000
-          },
-          {
-            "type": "GROUP",
-            "operator": "AND",
-            "children": [
-              {
-                "type": "CONDITION",
-                "field": "transaction.amount",
-                "operator": ">",
-                "valueField": "userLimit.limit"
-              },
-              {
-                "type": "CONDITION",
-                "field": "transaction.dailyTxnCount",
-                "operator": ">=",
-                "value": 5
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  },
-  "then": {
-    "decision": "block",
-    "message": "Blocked: deep-nested compliance condition met"
-  }
-}` }
-];
-
-const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
-function hiDRL(s){
-  return esc(s)
-    .replace(/(&quot;[^&]*?&quot;|"[^"]*")/g,'<span class="str">$1</span>')
-    .replace(/\b(rule|agenda-group|salience|when|then|end|global|import|package|eval)\b/g,'<span class="kw">$1</span>')
-    .replace(/\b(\d+)\b/g,'<span class="num2">$1</span>')
-    .replace(/(RuleContext|ValidationContext|LoanValidationContext|ClosureValidationContext|BlockedUsers|GlobalContext|setValid|setPermissionDenied|setValidationMessage|getUserId)/g,'<span class="punc">$1</span>')
-    .replace(/(\$ctx|globalContext)/g,'<span class="var">$1</span>');
+const D = {"flows": [{"id": 1, "code": "TRANSFER_TRANSACTION", "label": "Transfer Transaction", "fact": "com.example.droolspoc.model.ValidationContext", "req": "com.example.droolspoc.dto.TransactionRequest"}, {"id": 2, "code": "LOAN_APPLICATION", "label": "Loan Application", "fact": "com.example.droolspoc.model.LoanValidationContext", "req": "com.example.droolspoc.dto.LoanRequest"}, {"id": 3, "code": "ACCOUNT_CLOSURE", "label": "Account Closure", "fact": "com.example.droolspoc.model.ClosureValidationContext", "req": "com.example.droolspoc.dto.AccountCloseRequest"}], "groups": [{"id": 1, "flow": null, "code": "COMMON", "order": 1}, {"id": 2, "flow": 1, "code": "TRANSFER", "order": 2}, {"id": 3, "flow": 1, "code": "VELOCITY", "order": 3}, {"id": 4, "flow": 1, "code": "COMPLIANCE", "order": 4}, {"id": 5, "flow": 2, "code": "LOAN", "order": 2}, {"id": 6, "flow": 3, "code": "CLOSURE", "order": 2}, {"id": 7, "flow": 3, "code": "COMPLIANCE", "order": 3}], "cat": [[1, null, "user.kycVerified", "KYC Verified", "BOOLEAN", "user.kycVerified", "==", "Yes (true), No (false)"], [2, 1, "transaction.amount", "Transaction Amount", "NUMBER", "transaction.amount", "> < >= <= ==", "\u2014"], [3, 1, "transaction.currency", "Currency", "ENUM", "transaction.currency", "== !=", "BDT, USD, EUR, GBP"], [4, 1, "product.drRes", "Debit Restricted", "BOOLEAN", "product.drRes", "==", "Yes (1), No (0)"], [5, 1, "userLimit.limit", "User Limit", "NUMBER", "userLimit.limit", "> < >= <=", "\u2014"], [6, 1, "transaction.channel", "Channel", "ENUM", "transaction.channel", "== !=", "ATM, POS, ONLINE, BRANCH, AGENT"], [7, 1, "transaction.country", "Destination Country", "ENUM", "transaction.country", "== !=", "BD, US, UK, AE, SG, OTHER"], [8, 1, "transaction.dailyTxnCount", "Daily Txn Count", "NUMBER", "transaction.dailyTxnCount", "> < >= <= ==", "\u2014"], [9, 2, "loan.amount", "Loan Amount", "NUMBER", "loan.amount", "> < >= <=", "\u2014"], [10, 2, "customer.creditScore", "Credit Score", "NUMBER", "customer.creditScore", "> < >= <=", "\u2014"], [11, 3, "account.balance", "Account Balance", "NUMBER", "account.balance", "> < >= <= == !=", "\u2014"], [12, 3, "account.status", "Account Status", "ENUM", "account.status", "== !=", "ACTIVE, DORMANT, FROZEN, CLOSED"]], "rules": [{"id": 1, "gid": 1, "name": "Block transaction for a blocked user", "type": "DRL", "sal": 100, "drl": "package com.example.droolspoc.rules;\n\nimport com.example.droolspoc.model.RuleContext;\nimport com.example.droolspoc.context.data.BlockedUsers;\n\nglobal leads.ruleengine.core.context.GlobalContext globalContext;\n\nrule \"Block transaction for a blocked user\"\n    agenda-group \"COMMON\"\n    salience 100\n    when\n        $ctx : RuleContext()\n        eval(globalContext.get(BlockedUsers.class).isBlocked($ctx.getUserId()))\n    then\n        $ctx.setValid(false);\n        $ctx.setPermissionDenied(true);\n        $ctx.setValidationMessage(\"Blocked: user is blocked\");\n        drools.halt();\nend", "json": null}, {"id": 2, "gid": 1, "name": "Block if KYC not verified", "type": "DRL", "sal": 90, "drl": "package com.example.droolspoc.rules;\n\nimport com.example.droolspoc.model.RuleContext;\n\nrule \"Block if KYC not verified\"\n    agenda-group \"COMMON\"\n    salience 90\n    when\n        $ctx : RuleContext(user != null, user.kycVerified == false)\n    then\n        $ctx.setValid(false);\n        $ctx.setPermissionDenied(true);\n        $ctx.setValidationMessage(\"Blocked: KYC not verified\");\n        drools.halt();\nend", "json": null}, {"id": 3, "gid": 2, "name": "Block over-limit debit-restricted BDT transaction", "type": "BUILDER", "sal": 10, "msg": "Blocked: amount exceeds limit on a debit-restricted BDT account", "drl": "package com.example.droolspoc.model;\n\nrule \"TRANSFER_TRANSACTION.TRANSFER::Block over-limit debit-restricted BDT transaction\"\n    agenda-group \"TRANSFER\"\n    salience 10\n    when\n        $ctx : com.example.droolspoc.model.ValidationContext(\n            (transaction.currency == \"BDT\" && product.drRes == 1 && transaction.amount > userLimit.limit)\n        )\n    then\n        $ctx.setValid(false);\n        $ctx.setPermissionDenied(true);\n        $ctx.setValidationMessage(\"Blocked: amount exceeds limit on a debit-restricted BDT account\");\nend", "json": "{\n  \"ruleName\": \"Block over-limit debit-restricted BDT transaction\",\n  \"flow\": \"TRANSFER_TRANSACTION\",\n  \"group\": \"TRANSFER\",\n  \"salience\": 10,\n  \"conditionTree\": {\n    \"type\": \"GROUP\",\n    \"operator\": \"AND\",\n    \"children\": [\n      {\n        \"type\": \"CONDITION\",\n        \"field\": \"transaction.currency\",\n        \"operator\": \"==\",\n        \"value\": \"BDT\"\n      },\n      {\n        \"type\": \"CONDITION\",\n        \"field\": \"product.drRes\",\n        \"operator\": \"==\",\n        \"value\": 1\n      },\n      {\n        \"type\": \"CONDITION\",\n        \"field\": \"transaction.amount\",\n        \"operator\": \">\",\n        \"valueField\": \"userLimit.limit\"\n      }\n    ]\n  },\n  \"then\": {\n    \"decision\": \"block\",\n    \"message\": \"Blocked: amount exceeds limit on a debit-restricted BDT account\"\n  }\n}"}, {"id": 4, "gid": 2, "name": "High-value or cross-border transfer", "type": "BUILDER", "sal": 20, "msg": "Blocked: high-value agent transfer, or cross-border non-BDT transfer", "drl": "package com.example.droolspoc.model;\n\nrule \"TRANSFER_TRANSACTION.TRANSFER::High-value or cross-border transfer\"\n    agenda-group \"TRANSFER\"\n    salience 20\n    when\n        $ctx : com.example.droolspoc.model.ValidationContext(\n            ((transaction.channel == \"AGENT\" && transaction.amount > 50000) || (transaction.country == \"OTHER\" && transaction.currency != \"BDT\"))\n        )\n    then\n        $ctx.setValid(false);\n        $ctx.setPermissionDenied(true);\n        $ctx.setValidationMessage(\"Blocked: high-value agent transfer, or cross-border non-BDT transfer\");\nend", "json": "{\n  \"ruleName\": \"High-value or cross-border transfer\",\n  \"flow\": \"TRANSFER_TRANSACTION\",\n  \"group\": \"TRANSFER\",\n  \"salience\": 20,\n  \"conditionTree\": {\n    \"type\": \"GROUP\",\n    \"operator\": \"OR\",\n    \"children\": [\n      {\n        \"type\": \"GROUP\",\n        \"operator\": \"AND\",\n        \"children\": [\n          {\n            \"type\": \"CONDITION\",\n            \"field\": \"transaction.channel\",\n            \"operator\": \"==\",\n            \"value\": \"AGENT\"\n          },\n          {\n            \"type\": \"CONDITION\",\n            \"field\": \"transaction.amount\",\n            \"operator\": \">\",\n            \"value\": 50000\n          }\n        ]\n      },\n      {\n        \"type\": \"GROUP\",\n        \"operator\": \"AND\",\n        \"children\": [\n          {\n            \"type\": \"CONDITION\",\n            \"field\": \"transaction.country\",\n            \"operator\": \"==\",\n            \"value\": \"OTHER\"\n          },\n          {\n            \"type\": \"CONDITION\",\n            \"field\": \"transaction.currency\",\n            \"operator\": \"!=\",\n            \"value\": \"BDT\"\n          }\n        ]\n      }\n    ]\n  },\n  \"then\": {\n    \"decision\": \"block\",\n    \"message\": \"Blocked: high-value agent transfer, or cross-border non-BDT transfer\"\n  }\n}"}, {"id": 5, "gid": 3, "name": "Block rapid high-value agent transfers", "type": "BUILDER", "sal": 20, "msg": "Blocked: too many high-value agent transfers today", "drl": "package com.example.droolspoc.model;\n\nrule \"TRANSFER_TRANSACTION.VELOCITY::Block rapid high-value agent transfers\"\n    agenda-group \"VELOCITY\"\n    salience 20\n    when\n        $ctx : com.example.droolspoc.model.ValidationContext(\n            (transaction.channel == \"AGENT\" && transaction.amount > 50000 && transaction.dailyTxnCount >= 5)\n        )\n    then\n        $ctx.setValid(false);\n        $ctx.setPermissionDenied(true);\n        $ctx.setValidationMessage(\"Blocked: too many high-value agent transfers today\");\nend", "json": "{\n  \"ruleName\": \"Block rapid high-value agent transfers\",\n  \"flow\": \"TRANSFER_TRANSACTION\",\n  \"group\": \"VELOCITY\",\n  \"salience\": 20,\n  \"conditionTree\": {\n    \"type\": \"GROUP\",\n    \"operator\": \"AND\",\n    \"children\": [\n      {\n        \"type\": \"CONDITION\",\n        \"field\": \"transaction.channel\",\n        \"operator\": \"==\",\n        \"value\": \"AGENT\"\n      },\n      {\n        \"type\": \"CONDITION\",\n        \"field\": \"transaction.amount\",\n        \"operator\": \">\",\n        \"value\": 50000\n      },\n      {\n        \"type\": \"CONDITION\",\n        \"field\": \"transaction.dailyTxnCount\",\n        \"operator\": \">=\",\n        \"value\": 5\n      }\n    ]\n  },\n  \"then\": {\n    \"decision\": \"block\",\n    \"message\": \"Blocked: too many high-value agent transfers today\"\n  }\n}"}, {"id": 6, "gid": 3, "name": "Layered channel & geo screen", "type": "BUILDER", "sal": 20, "msg": "Blocked: layered channel & geo screening", "drl": "package com.example.droolspoc.model;\n\nrule \"TRANSFER_TRANSACTION.VELOCITY::Layered channel & geo screen\"\n    agenda-group \"VELOCITY\"\n    salience 20\n    when\n        $ctx : com.example.droolspoc.model.ValidationContext(\n            ((transaction.amount > 10000 && (transaction.channel == \"ONLINE\" || transaction.channel == \"AGENT\")) && ((transaction.country == \"US\" || transaction.country == \"OTHER\") && transaction.currency != \"BDT\"))\n        )\n    then\n        $ctx.setValid(false);\n        $ctx.setPermissionDenied(true);\n        $ctx.setValidationMessage(\"Blocked: layered channel & geo screening\");\nend", "json": "{\n  \"ruleName\": \"Layered channel & geo screen\",\n  \"flow\": \"TRANSFER_TRANSACTION\",\n  \"group\": \"VELOCITY\",\n  \"salience\": 20,\n  \"conditionTree\": {\n    \"type\": \"GROUP\",\n    \"operator\": \"AND\",\n    \"children\": [\n      {\n        \"type\": \"GROUP\",\n        \"operator\": \"AND\",\n        \"children\": [\n          {\n            \"type\": \"CONDITION\",\n            \"field\": \"transaction.amount\",\n            \"operator\": \">\",\n            \"value\": 10000\n          },\n          {\n            \"type\": \"GROUP\",\n            \"operator\": \"OR\",\n            \"children\": [\n              {\n                \"type\": \"CONDITION\",\n                \"field\": \"transaction.channel\",\n                \"operator\": \"==\",\n                \"value\": \"ONLINE\"\n              },\n              {\n                \"type\": \"CONDITION\",\n                \"field\": \"transaction.channel\",\n                \"operator\": \"==\",\n                \"value\": \"AGENT\"\n              }\n            ]\n          }\n        ]\n      },\n      {\n        \"type\": \"GROUP\",\n        \"operator\": \"AND\",\n        \"children\": [\n          {\n            \"type\": \"GROUP\",\n            \"operator\": \"OR\",\n            \"children\": [\n              {\n                \"type\": \"CONDITION\",\n                \"field\": \"transaction.country\",\n                \"operator\": \"==\",\n                \"value\": \"US\"\n              },\n              {\n                \"type\": \"CONDITION\",\n                \"field\": \"transaction.country\",\n                \"operator\": \"==\",\n                \"value\": \"OTHER\"\n              }\n            ]\n          },\n          {\n            \"type\": \"CONDITION\",\n            \"field\": \"transaction.currency\",\n            \"operator\": \"!=\",\n            \"value\": \"BDT\"\n          }\n        ]\n      }\n    ]\n  },\n  \"then\": {\n    \"decision\": \"block\",\n    \"message\": \"Blocked: layered channel & geo screening\"\n  }\n}"}, {"id": 7, "gid": 4, "name": "Block high-value cross-border non-BDT transfer", "type": "BUILDER", "sal": 20, "msg": "Blocked: cross-border high-value transfer needs manual review", "drl": "package com.example.droolspoc.model;\n\nrule \"TRANSFER_TRANSACTION.COMPLIANCE::Block high-value cross-border non-BDT transfer\"\n    agenda-group \"COMPLIANCE\"\n    salience 20\n    when\n        $ctx : com.example.droolspoc.model.ValidationContext(\n            (transaction.currency != \"BDT\" && transaction.amount >= 100000 && transaction.country == \"OTHER\")\n        )\n    then\n        $ctx.setValid(false);\n        $ctx.setPermissionDenied(true);\n        $ctx.setValidationMessage(\"Blocked: cross-border high-value transfer needs manual review\");\nend", "json": "{\n  \"ruleName\": \"Block high-value cross-border non-BDT transfer\",\n  \"flow\": \"TRANSFER_TRANSACTION\",\n  \"group\": \"COMPLIANCE\",\n  \"salience\": 20,\n  \"conditionTree\": {\n    \"type\": \"GROUP\",\n    \"operator\": \"AND\",\n    \"children\": [\n      {\n        \"type\": \"CONDITION\",\n        \"field\": \"transaction.currency\",\n        \"operator\": \"!=\",\n        \"value\": \"BDT\"\n      },\n      {\n        \"type\": \"CONDITION\",\n        \"field\": \"transaction.amount\",\n        \"operator\": \">=\",\n        \"value\": 100000\n      },\n      {\n        \"type\": \"CONDITION\",\n        \"field\": \"transaction.country\",\n        \"operator\": \"==\",\n        \"value\": \"OTHER\"\n      }\n    ]\n  },\n  \"then\": {\n    \"decision\": \"block\",\n    \"message\": \"Blocked: cross-border high-value transfer needs manual review\"\n  }\n}"}, {"id": 8, "gid": 4, "name": "Deep-nested compliance check", "type": "BUILDER", "sal": 20, "msg": "Blocked: deep-nested compliance condition met", "drl": "package com.example.droolspoc.model;\n\nrule \"TRANSFER_TRANSACTION.COMPLIANCE::Deep-nested compliance check\"\n    agenda-group \"COMPLIANCE\"\n    salience 20\n    when\n        $ctx : com.example.droolspoc.model.ValidationContext(\n            ((((transaction.amount > 5000 || transaction.currency == \"USD\") && product.drRes == 1) || transaction.dailyTxnCount >= 10) && (userLimit.limit >= 100000 || (transaction.amount > userLimit.limit && transaction.dailyTxnCount >= 5)))\n        )\n    then\n        $ctx.setValid(false);\n        $ctx.setPermissionDenied(true);\n        $ctx.setValidationMessage(\"Blocked: deep-nested compliance condition met\");\nend", "json": "{\n  \"ruleName\": \"Deep-nested compliance check\",\n  \"flow\": \"TRANSFER_TRANSACTION\",\n  \"group\": \"COMPLIANCE\",\n  \"salience\": 20,\n  \"conditionTree\": {\n    \"type\": \"GROUP\",\n    \"operator\": \"AND\",\n    \"children\": [\n      {\n        \"type\": \"GROUP\",\n        \"operator\": \"OR\",\n        \"children\": [\n          {\n            \"type\": \"GROUP\",\n            \"operator\": \"AND\",\n            \"children\": [\n              {\n                \"type\": \"GROUP\",\n                \"operator\": \"OR\",\n                \"children\": [\n                  {\n                    \"type\": \"CONDITION\",\n                    \"field\": \"transaction.amount\",\n                    \"operator\": \">\",\n                    \"value\": 5000\n                  },\n                  {\n                    \"type\": \"CONDITION\",\n                    \"field\": \"transaction.currency\",\n                    \"operator\": \"==\",\n                    \"value\": \"USD\"\n                  }\n                ]\n              },\n              {\n                \"type\": \"CONDITION\",\n                \"field\": \"product.drRes\",\n                \"operator\": \"==\",\n                \"value\": 1\n              }\n            ]\n          },\n          {\n            \"type\": \"CONDITION\",\n            \"field\": \"transaction.dailyTxnCount\",\n            \"operator\": \">=\",\n            \"value\": 10\n          }\n        ]\n      },\n      {\n        \"type\": \"GROUP\",\n        \"operator\": \"OR\",\n        \"children\": [\n          {\n            \"type\": \"CONDITION\",\n            \"field\": \"userLimit.limit\",\n            \"operator\": \">=\",\n            \"value\": 100000\n          },\n          {\n            \"type\": \"GROUP\",\n            \"operator\": \"AND\",\n            \"children\": [\n              {\n                \"type\": \"CONDITION\",\n                \"field\": \"transaction.amount\",\n                \"operator\": \">\",\n                \"valueField\": \"userLimit.limit\"\n              },\n              {\n                \"type\": \"CONDITION\",\n                \"field\": \"transaction.dailyTxnCount\",\n                \"operator\": \">=\",\n                \"value\": 5\n              }\n            ]\n          }\n        ]\n      }\n    ]\n  },\n  \"then\": {\n    \"decision\": \"block\",\n    \"message\": \"Blocked: deep-nested compliance condition met\"\n  }\n}"}, {"id": 9, "gid": 5, "name": "Block loan below credit-score threshold", "type": "BUILDER", "sal": 10, "msg": "Blocked: credit score below 600", "drl": "package com.example.droolspoc.model;\n\nrule \"LOAN_APPLICATION.LOAN::Block loan below credit-score threshold\"\n    agenda-group \"LOAN\"\n    salience 10\n    when\n        $ctx : com.example.droolspoc.model.LoanValidationContext(\n            (customer.creditScore < 600)\n        )\n    then\n        $ctx.setValid(false);\n        $ctx.setPermissionDenied(true);\n        $ctx.setValidationMessage(\"Blocked: credit score below 600\");\nend", "json": "{\n  \"ruleName\": \"Block loan below credit-score threshold\",\n  \"flow\": \"LOAN_APPLICATION\",\n  \"group\": \"LOAN\",\n  \"salience\": 10,\n  \"conditionTree\": {\n    \"type\": \"GROUP\",\n    \"operator\": \"AND\",\n    \"children\": [\n      {\n        \"type\": \"CONDITION\",\n        \"field\": \"customer.creditScore\",\n        \"operator\": \"<\",\n        \"value\": 600\n      }\n    ]\n  },\n  \"then\": {\n    \"decision\": \"block\",\n    \"message\": \"Blocked: credit score below 600\"\n  }\n}"}, {"id": 10, "gid": 6, "name": "Block closure with outstanding balance", "type": "BUILDER", "sal": 10, "msg": "Blocked: account has an outstanding balance", "drl": "package com.example.droolspoc.model;\n\nrule \"ACCOUNT_CLOSURE.CLOSURE::Block closure with outstanding balance\"\n    agenda-group \"CLOSURE\"\n    salience 10\n    when\n        $ctx : com.example.droolspoc.model.ClosureValidationContext(\n            (account.balance > 0)\n        )\n    then\n        $ctx.setValid(false);\n        $ctx.setPermissionDenied(true);\n        $ctx.setValidationMessage(\"Blocked: account has an outstanding balance\");\nend", "json": "{\n  \"ruleName\": \"Block closure with outstanding balance\",\n  \"flow\": \"ACCOUNT_CLOSURE\",\n  \"group\": \"CLOSURE\",\n  \"salience\": 10,\n  \"conditionTree\": {\n    \"type\": \"GROUP\",\n    \"operator\": \"AND\",\n    \"children\": [\n      {\n        \"type\": \"CONDITION\",\n        \"field\": \"account.balance\",\n        \"operator\": \">\",\n        \"value\": 0\n      }\n    ]\n  },\n  \"then\": {\n    \"decision\": \"block\",\n    \"message\": \"Blocked: account has an outstanding balance\"\n  }\n}"}, {"id": 11, "gid": 7, "name": "Closure compliance - dormant review", "type": "BUILDER", "sal": 20, "msg": "Blocked: dormant account closure needs compliance review", "drl": "package com.example.droolspoc.model;\n\nrule \"ACCOUNT_CLOSURE.COMPLIANCE::Closure compliance - dormant review\"\n    agenda-group \"COMPLIANCE\"\n    salience 20\n    when\n        $ctx : com.example.droolspoc.model.ClosureValidationContext(\n            (account.status == \"DORMANT\")\n        )\n    then\n        $ctx.setValid(false);\n        $ctx.setPermissionDenied(true);\n        $ctx.setValidationMessage(\"Blocked: dormant account closure needs compliance review\");\nend", "json": "{\n  \"ruleName\": \"Closure compliance - dormant review\",\n  \"flow\": \"ACCOUNT_CLOSURE\",\n  \"group\": \"COMPLIANCE\",\n  \"salience\": 20,\n  \"conditionTree\": {\n    \"type\": \"GROUP\",\n    \"operator\": \"AND\",\n    \"children\": [\n      {\n        \"type\": \"CONDITION\",\n        \"field\": \"account.status\",\n        \"operator\": \"==\",\n        \"value\": \"DORMANT\"\n      }\n    ]\n  },\n  \"then\": {\n    \"decision\": \"block\",\n    \"message\": \"Blocked: dormant account closure needs compliance review\"\n  }\n}"}, {"id": 12, "gid": 7, "name": "Closure compliance - frozen block", "type": "BUILDER", "sal": 20, "msg": "Blocked: a frozen account cannot be closed", "drl": "package com.example.droolspoc.model;\n\nrule \"ACCOUNT_CLOSURE.COMPLIANCE::Closure compliance - frozen block\"\n    agenda-group \"COMPLIANCE\"\n    salience 20\n    when\n        $ctx : com.example.droolspoc.model.ClosureValidationContext(\n            (account.status == \"FROZEN\")\n        )\n    then\n        $ctx.setValid(false);\n        $ctx.setPermissionDenied(true);\n        $ctx.setValidationMessage(\"Blocked: a frozen account cannot be closed\");\nend", "json": "{\n  \"ruleName\": \"Closure compliance - frozen block\",\n  \"flow\": \"ACCOUNT_CLOSURE\",\n  \"group\": \"COMPLIANCE\",\n  \"salience\": 20,\n  \"conditionTree\": {\n    \"type\": \"GROUP\",\n    \"operator\": \"AND\",\n    \"children\": [\n      {\n        \"type\": \"CONDITION\",\n        \"field\": \"account.status\",\n        \"operator\": \"==\",\n        \"value\": \"FROZEN\"\n      }\n    ]\n  },\n  \"then\": {\n    \"decision\": \"block\",\n    \"message\": \"Blocked: a frozen account cannot be closed\"\n  }\n}"}]};
+const GC = {COMMON:'var(--g-common)',TRANSFER:'var(--g-transfer)',VELOCITY:'var(--g-velocity)',COMPLIANCE:'var(--g-compliance)',LOAN:'var(--g-loan)',CLOSURE:'var(--g-closure)'};
+const FC = {TRANSFER_TRANSACTION:'var(--g-transfer)',LOAN_APPLICATION:'var(--g-loan)',ACCOUNT_CLOSURE:'var(--g-closure)'};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const short = s => s.replace('com.example.droolspoc.', '…');
+const fById = id => D.flows.find(f => f.id === id);
+const gById = id => D.groups.find(g => g.id === id);
+const gStyle = code => `style="--gc:${GC[code] || 'var(--muted)'}"`;
+const gChip = g => `<span class="chip gchip" ${gStyle(g.code)}>${g.code}</span>`;
+const NULL = '<span class="null">NULL</span>';
+const fkRef = (id, label) => `<span class="fk-ref">${id}${label?`<small>${esc(label)}</small>`:''}</span>`;
+const nkFlow = id => id === null ? NULL + ' <span class="chip c-shared">shared</span>' : fkRef(id, fById(id).code);
+function groupsOfFlow(flowId){
+  return D.groups.filter(g => g.flow === flowId || g.flow === null)
+    .sort((a,b) => (a.flow===null?0:1)-(b.flow===null?0:1) || a.order-b.order);
 }
-function hiJSON(s){
-  return esc(s)
-    .replace(/("(?:\\.|[^"])*")(\s*:)/g,'<span class="punc">$1</span>$2')
-    .replace(/: ("(?:\\.|[^"])*")/g,': <span class="str">$1</span>')
-    .replace(/\b(true|false|null)\b/g,'<span class="kw">$1</span>')
-    .replace(/: (-?\d+(?:\.\d+)?)/g,': <span class="num2">$1</span>');
-}
-const groupChip = g => `<span class="chip c-${g.toLowerCase()}">${g}</span>`;
-const typeChip = t => `<span class="chip ${t==='DRL'?'c-drl':'c-builder'}">${t}</span>`;
 
-// rule_definition table
-document.querySelector('#ruleTable tbody').innerHTML = RULES.map(r=>`
-  <tr>
-    <td class="num">${r.id}</td>
-    <td>${r.name}</td>
-    <td>${groupChip(r.group)}</td>
-    <td>${typeChip(r.type)}</td>
-    <td>${r.json ? '<span class="chip c-yes">JSON</span>' : '<span class="chip c-mute">null</span>'}</td>
-    <td><span class="chip c-yes">DRL</span></td>
-    <td class="num">1</td>
-    <td><span class="chip c-yes">ACTIVE</span></td>
-    <td class="num">1</td>
-  </tr>`).join('');
-
-// example row in full (the over-limit builder rule)
-const ex = RULES.find(r => r.name === "Deep-nested compliance check") || RULES[2];
-document.getElementById('example').innerHTML = `
-  <div class="card">
-    <div class="card-h"><span class="t">rule_definition</span><span class="d">id = ${ex.id} · ${ex.name}</span><span class="n">BUILDER</span></div>
-    <div class="scroll" style="padding:14px 16px">
-      <div class="twocol">
-        <div><div class="lbl">source_json  (editable source)</div><div class="code"><pre>${hiJSON(ex.json)}</pre></div></div>
-        <div><div class="lbl">drl_text  (generated · engine runs this)</div><div class="code"><pre>${hiDRL(ex.drl)}</pre></div></div>
-      </div>
+/* flow tree */
+document.getElementById('flows').innerHTML = D.flows.map(f => {
+  const stages = groupsOfFlow(f.id);
+  return `<div class="flow" style="--fc:${FC[f.code]}">
+    <div class="flow-h">
+      <div class="flow-name">${f.label}</div>
+      <div class="flow-meta">${f.code} · flow #${f.id}</div>
+      <div class="flow-meta">fact: ${short(f.fact)}</div>
+      <div class="flow-req">routed from <b>${short(f.req)}</b></div>
     </div>
+    <div class="stages">${stages.map((g,i) => {
+      const rules = D.rules.filter(r => r.gid === g.id);
+      const hl = g.code === 'COMPLIANCE' ? ' hl' : '';
+      return `<div class="stage${g.flow === null ? ' shared' : ''}${hl}" ${gStyle(g.code)}>
+        <div class="stage-h"><span class="ord">${i+1}</span><span class="gname">${g.code}</span>
+          ${g.flow === null ? '<span class="chip c-shared">shared</span>' : ''}<span class="gid">group #${g.id}</span></div>
+        <ul class="rlist">${rules.map(r => `<li><span class="rid">#${r.id}</span>${esc(r.name)}</li>`).join('')}</ul>
+      </div>`;
+    }).join('')}</div>
   </div>`;
+}).join('');
 
-// all DRL
-document.getElementById('drlList').innerHTML = RULES.map(r=>`
-  <div class="codewrap">
-    <div class="codehead"><span class="nm">#${r.id} · ${r.name}</span>${groupChip(r.group)}${typeChip(r.type)}</div>
-    <div class="code"><pre>${hiDRL(r.drl)}</pre></div>
-  </div>`).join('');
+/* runtime */
+document.getElementById('runtime').innerHTML = D.flows.map(f => {
+  const stages = groupsOfFlow(f.id);
+  return `<div class="rt-row">
+    <span class="rt-req">${short(f.req)}.class</span><span class="rt-arrow">→</span>
+    <span class="rt-flow" style="color:${FC[f.code]}">${f.code}</span><span class="rt-arrow">→</span>
+    ${stages.map((g,i) => `${i?'<span class="rt-arrow">›</span>':''}<span class="chip gchip" ${gStyle(g.code)}>${g.code} <span style="opacity:.6">#${g.id}</span></span>`).join('')}
+  </div>`;
+}).join('');
 
-// all JSON (builder only)
-document.getElementById('jsonList').innerHTML = RULES.filter(r=>r.json).map(r=>`
-  <div class="codewrap">
-    <div class="codehead"><span class="nm">#${r.id} · ${r.name}</span>${groupChip(r.group)}</div>
-    <div class="code"><pre>${hiJSON(r.json)}</pre></div>
-  </div>`).join('');
+/* tables */
+function table(name, desc, cols, rows) {
+  const head = cols.map(c => `<th${c.n?' class="num"':''}>${c.h}${c.k?`<span class="ky ${c.k==='PK'?'pk':c.k.startsWith('FK')?'fk':''}">${c.k}</span>`:''}</th>`).join('');
+  return `<div class="card"><div class="card-h"><span class="t">${name}</span><span class="d">${desc}</span><span class="n">${rows.length} rows</span></div>
+    <div class="scroll"><table><thead><tr>${head}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((v,i)=>`<td${cols[i].n?' class="num"':''}>${v}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
+}
+let T = '';
+T += table('RULE_FLOW', 'flow master + router · developer-managed · holds request_class &amp; fact_type ONCE · active toggle',
+  [{h:'id',k:'PK',n:1},{h:'flow_code',k:'UQ'},{h:'request_class',k:'UQ'},{h:'fact_type'},{h:'active'}],
+  D.flows.map(f => [f.id, `<span class="k">${f.code}</span>`, `<span class="k">${short(f.req)}</span>`, `<span class="k">${short(f.fact)}</span>`, 'true']));
+T += table('RULE_GROUP', 'groups per flow · COMMON = one shared row (flow_id NULL) · active toggle',
+  [{h:'id',k:'PK',n:1},{h:'flow_id',k:'FK'},{h:'group_code'},{h:'order_no',n:1},{h:'active'}],
+  D.groups.map(g => [g.id, nkFlow(g.flow), gChip(g), g.order, 'true']));
+T += table('RULE_DEFINITION', 'every rule points at one group · UNIQUE(group_id, rule_name) · keeps BOTH source_json (editable) and drl_text (runs) · active toggle · salience lives in the DRL/JSON',
+  [{h:'id',k:'PK',n:1},{h:'group_id',k:'FK'},{h:'rule_name'},{h:'source_type'},{h:'source_json'},{h:'drl_text'},{h:'active'}],
+  D.rules.map(r => { const g = gById(r.gid); const f = g.flow?fById(g.flow):null; return [r.id,
+    `${fkRef(g.id,'')} ${gChip(g)}${f?`<span class="gid"> ${f.code}</span>`:''}`,
+    esc(r.name), `<span class="chip ${r.type==='DRL'?'c-drl':'c-builder'}">${r.type}</span>`,
+    r.json ? 'JSON' : NULL, 'DRL', 'true']; }));
+T += table('RULE_FIELD_CATALOG', 'fields the builder offers · flow_id NULL = shared · all columns',
+  [{h:'id',k:'PK',n:1},{h:'flow_id',k:'FK'},{h:'field_key'},{h:'label'},{h:'data_type'},{h:'drl_path'},{h:'allowed_ops'},{h:'allowed_values'}],
+  D.cat.map(c => [c[0], nkFlow(c[1]), `<span class="k">${c[2]}</span>`, c[3], c[4], `<span class="k">${c[5]}</span>`, `<span class="k">${c[6]}</span>`, `<span style="color:var(--muted)">${esc(c[7])}</span>`]));
+document.getElementById('tables').innerHTML = T;
 
-document.getElementById("theme").onclick=function(){
-  var r=document.documentElement;
-  var cur=r.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
-  r.setAttribute("data-theme",cur==="dark"?"light":"dark");
+/* code */
+function hiDRL(s){return esc(s).replace(/(&quot;[^&]*?&quot;|"[^"]*")/g,'<span class="str">$1</span>').replace(/\b(rule|agenda-group|salience|when|then|end|global|import|package|eval)\b/g,'<span class="kw">$1</span>').replace(/(\$ctx|globalContext)/g,'<span class="var">$1</span>');}
+function hiJSON(s){return esc(s).replace(/(&quot;(?:[^&]|&(?!quot;))*?&quot;)(\s*:)/g,'<span class="punc">$1</span>$2').replace(/: (&quot;(?:[^&]|&(?!quot;))*?&quot;)/g,': <span class="str">$1</span>').replace(/: (-?\d+(?:\.\d+)?)/g,': <span class="num2">$1</span>');}
+document.getElementById('code').innerHTML = D.rules.map(r => {
+  const g = gById(r.gid);
+  return `<details class="cd"><summary><span style="font-family:var(--mono);color:var(--faint)">#${r.id}</span> ${esc(r.name)} ${gChip(g)}<span class="gid">group #${g.id}</span>
+      <span class="chip ${r.type==='DRL'?'c-drl':'c-builder'}">${r.type}</span></summary>
+    <div class="twocol${r.json?'':' one'}">
+      ${r.json?`<div><div class="lbl">source_json (editable)</div><div class="code"><pre>${hiJSON(r.json)}</pre></div></div>`:''}
+      <div><div class="lbl">drl_text (engine runs this)</div><div class="code"><pre>${hiDRL(r.drl)}</pre></div></div>
+    </div></details>`;
+}).join('');
+
+/* api */
+const API = [
+  ['GET','/admin/flows','List flows + their groups (with active flags)'],
+  ['POST','/admin/flows','Create / update a flow (flowCode, requestClass, factType, label)'],
+  ['PUT','/admin/flows/{flowCode}/active','Activate / deactivate a flow — body {active:true|false}'],
+  ['DELETE','/admin/flows/{flowCode}','Delete a flow — 409 if it has groups/fields, unless ?force=true'],
+  ['GET','/admin/flows/{flowCode}/groups','Groups the flow runs (incl. shared COMMON), in order'],
+  ['POST','/admin/flows/{flowCode}/groups','Add a group to this flow'],
+  ['PUT','/admin/flows/{flowCode}/groups/order','Reorder the flow\'s groups (order_no)'],
+  ['PUT','/admin/groups/{groupId}/active','Activate / deactivate a group — body {active:…}'],
+  ['DELETE','/admin/groups/{groupId}','Delete a group — 409 if it has rules, unless ?force=true'],
+  ['GET','/admin/groups/{groupId}/rules','Rules in one group (active + inactive)'],
+  ['POST','/admin/groups/{groupId}/rules','Create / replace a rule in that group'],
+  ['GET','/admin/rules/{id}','One rule'],
+  ['PUT','/admin/rules/{id}','Update a rule'],
+  ['PUT','/admin/rules/{id}/active','Activate / deactivate a rule — body {active:…}'],
+  ['DELETE','/admin/rules/{id}','Permanently delete a rule (row removed)'],
+  ['POST','/admin/rules/preview','Generate + compile-check DRL without saving'],
+  ['GET','/admin/flows/{flowCode}/fields','Builder fields for the flow (+ shared)'],
+];
+const MC = {GET:'m-get',POST:'m-post',PUT:'m-put',DELETE:'m-del'};
+document.getElementById('api').innerHTML = API.map(a => `<tr><td><b class="${MC[a[0]]}" style="font-family:var(--mono);font-size:12px">${a[0]}</b></td><td class="k">${esc(a[1])}</td><td>${esc(a[2])}</td></tr>`).join('');
+
+document.getElementById('theme').onclick = function(){
+  const r = document.documentElement;
+  const cur = r.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+  r.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
 };
 </script>
-
 </body></html>

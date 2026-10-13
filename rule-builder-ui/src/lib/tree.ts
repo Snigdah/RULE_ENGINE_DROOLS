@@ -12,7 +12,7 @@ export const MAX_GROUP_DEPTH = 6
 export function blankLeaf(fields: FieldCatalogRow[]): ConditionLeaf {
   const f = fields[0]
   return f
-    ? { type: 'CONDITION', field: f.fieldKey, operator: f.allowedOps.split(',')[0] || '==', value: '' }
+    ? { type: 'CONDITION', field: f.fieldKey, operator: f.allowedOps.split(/[,\s]+/).filter(Boolean)[0] || '==', value: '' }
     : { type: 'CONDITION', field: '', operator: '==', value: '' }
 }
 

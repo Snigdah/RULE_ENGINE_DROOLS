@@ -1,13 +1,13 @@
 import type { CSSProperties } from 'react'
-import type { RuleDefinition } from '../api/ruleEngineApi'
+import type { RuleView } from '../api/ruleEngineApi'
 import type { FlowMeta } from '../data/catalog'
 import { accentOf } from '../data/catalog'
 import { IconFlows, IconArrow } from './icons'
 
-/** Level 1 — pick a flow. Flows are developer-defined (read-only here). */
+/** Level 1 — pick a flow. Flows are developer-defined; managed (activate/delete) inside. */
 export default function FlowsList({
   flows, rules, onOpen,
-}: { flows: FlowMeta[]; rules: RuleDefinition[]; onOpen: (flowName: string) => void }) {
+}: { flows: FlowMeta[]; rules: RuleView[]; onOpen: (flowCode: string) => void }) {
   if (flows.length === 0) {
     return (
       <div className="fl-page">
@@ -18,25 +18,28 @@ export default function FlowsList({
       </div>
     )
   }
-  const rulesIn = (f: FlowMeta) => rules.filter(r => f.groups.includes(r.agendaGroup)).length
+  const rulesIn = (f: FlowMeta) => {
+    const ids = new Set(f.groups.map(g => g.id))
+    return rules.filter(r => ids.has(r.groupId)).length
+  }
 
   return (
     <div className="fl-page">
       <div className="drill-intro">
-        Pick a flow to manage its rule groups and rules. Flows themselves are fixed — developers define them.
+        Pick a flow to manage its rule groups and rules. Open a flow to activate/deactivate or delete it.
       </div>
       <div className="fl-pick">
         {flows.map(f => {
-          const a = accentOf(f.flowName)
+          const a = accentOf(f.flowCode)
           return (
-            <button key={f.flowName} className="fl-card as-link" style={{ '--acc': a } as CSSProperties}
-              onClick={() => onOpen(f.flowName)}>
+            <button key={f.flowCode} className="fl-card as-link" style={{ '--acc': a } as CSSProperties}
+              onClick={() => onOpen(f.flowCode)}>
               <div className="fl-card-top">
                 <div className="fl-ico"><IconFlows width={20} height={20} /></div>
                 <span className="fl-open"><IconArrow width={16} height={16} /></span>
               </div>
-              <div className="fl-cname">{f.label}</div>
-              <div className="fl-cflow">{f.flowName}</div>
+              <div className="fl-cname">{f.label}{!f.active && <span className="gtag" style={{ color: 'var(--text-3)' }}> · inactive</span>}</div>
+              <div className="fl-cflow">{f.flowCode}</div>
               <div className="fl-cmeta">
                 <span className="fl-pillnum"><b>{rulesIn(f)}</b> rules</span>
                 <span className="fl-pillnum"><b>{f.groups.length}</b> groups</span>

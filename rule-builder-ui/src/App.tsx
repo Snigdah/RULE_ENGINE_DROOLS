@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
-import type { RuleDefinition } from './api/ruleEngineApi'
+import type { RuleView } from './api/ruleEngineApi'
 import { api } from './api/ruleEngineApi'
 import { buildFlowMetas, prettyFlow } from './data/catalog'
-import type { FlowMeta } from './data/catalog'
+import type { FlowMeta, GroupMeta } from './data/catalog'
 import Sidebar from './components/Sidebar'
 import RulesList from './components/RulesList'
 import RuleBuilder from './components/RuleBuilder'
@@ -15,107 +15,110 @@ import { IconCheck, IconClose } from './components/icons'
 
 interface Data {
   flows: FlowMeta[]
-  rules: RuleDefinition[]
+  rules: RuleView[]
   loading: boolean
   error: string | null
-  reload: () => void
-  reloadRules: () => Promise<void>
-  reloadFlows: () => Promise<void>
+  reload: () => Promise<void>
   flash: (m: string) => void
 }
 
-// ---- builder route wrapper: resolves :ruleName from the loaded rules ----
+const findFlow = (flows: FlowMeta[], code?: string) =>
+  code ? flows.find(f => f.flowCode === decodeURIComponent(code)) : undefined
+const findGroup = (flow: FlowMeta | undefined, groupId?: string): GroupMeta | undefined =>
+  flow && groupId ? flow.groups.find(g => String(g.id) === groupId) : undefined
+
+// ---- builder route wrappers ----
 function BuilderPage({ d }: { d: Data }) {
-  const { ruleName } = useParams()
+  const { ruleId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
   const backTo = (location.state as { from?: string } | null)?.from ?? '/rules'
-  const editing = ruleName
-    ? d.rules.find(r => r.ruleName === decodeURIComponent(ruleName)) ?? null
-    : null
-
-  if (ruleName && !editing) return <Navigate to="/rules" replace />
-
+  const editing = ruleId ? d.rules.find(r => String(r.id) === ruleId) ?? null : null
+  if (ruleId && !editing) return <Navigate to="/rules" replace />
   return (
     <RuleBuilder
-      flows={d.flows}
-      editing={editing}
-      onBack={() => navigate(backTo)}
-      onCancel={() => navigate(backTo)}
-      onSaved={async (name) => { await d.reloadRules(); d.flash(`"${name}" saved`); navigate(backTo) }}
+      flows={d.flows} editing={editing}
+      onBack={() => navigate(backTo)} onCancel={() => navigate(backTo)}
+      onSaved={async (name) => { await d.reload(); d.flash(`"${name}" saved`); navigate(backTo) }}
     />
   )
 }
 
-// ---- flow drill-down route wrappers ----
 function FlowDetailPage({ d }: { d: Data }) {
-  const { flowName } = useParams()
+  const { flowCode } = useParams()
   const navigate = useNavigate()
-  const flow = flowName ? d.flows.find(f => f.flowName === decodeURIComponent(flowName)) : undefined
+  const flow = findFlow(d.flows, flowCode)
   if (!flow) return <Navigate to="/flows" replace />
   return (
     <FlowDetail
       flow={flow} rules={d.rules}
       onBack={() => navigate('/flows')}
-      onOpenGroup={(g) => navigate(`/flows/${encodeURIComponent(flow.flowName)}/${encodeURIComponent(g)}`)}
-      onAddGroup={async (name) => { await api.upsertFlow(flow.flowName, [...flow.groups, name]); await d.reloadFlows(); d.flash(`Group "${name}" added`) }}
-      onDeleteGroup={async (group) => {
-        const victims = d.rules.filter(r => r.agendaGroup === group)
-        for (const r of victims) { await api.deleteRule(r.ruleName) }
-        await api.upsertFlow(flow.flowName, flow.groups.filter(g => g !== group))
-        await Promise.all([d.reloadFlows(), d.reloadRules()])
-        d.flash(`Group "${group}" deleted`)
+      onOpenGroup={(g) => navigate(`/flows/${encodeURIComponent(flow.flowCode)}/g/${g.id}`)}
+      onAddGroup={async (code, shared) => {
+        if (shared) await api.addSharedGroup(code); else await api.addGroup(flow.flowCode, code)
+        await d.reload(); d.flash(`Group "${code}" added`)
       }}
+      onDeleteGroup={async (g) => { await api.deleteGroup(g.id, true); await d.reload(); d.flash(`Group "${g.code}" deleted`) }}
+      onToggleGroup={async (g) => { await api.setGroupActive(g.id, !g.active); await d.reload(); d.flash(`Group "${g.code}" ${g.active ? 'disabled' : 'enabled'}`) }}
+      onToggleFlow={async () => { await api.setFlowActive(flow.flowCode, !flow.active); await d.reload(); d.flash(`Flow ${flow.active ? 'disabled' : 'enabled'}`) }}
+      onDeleteFlow={async () => { await api.deleteFlow(flow.flowCode, true); await d.reload(); d.flash(`Flow "${flow.flowCode}" deleted`); navigate('/flows') }}
     />
   )
 }
 
 function GroupDetailPage({ d }: { d: Data }) {
-  const { flowName, group } = useParams()
+  const { flowCode, groupId } = useParams()
   const navigate = useNavigate()
-  const flow = flowName ? d.flows.find(f => f.flowName === decodeURIComponent(flowName)) : undefined
-  const g = group ? decodeURIComponent(group) : ''
-  if (!flow || !flow.groups.includes(g)) return <Navigate to="/flows" replace />
+  const flow = findFlow(d.flows, flowCode)
+  const group = findGroup(flow, groupId)
+  if (!flow || !group) return <Navigate to="/flows" replace />
+  const base = `/flows/${encodeURIComponent(flow.flowCode)}/g/${group.id}`
   return (
     <GroupDetail
-      flow={flow} group={g} rules={d.rules}
-      onBack={() => navigate(`/flows/${encodeURIComponent(flow.flowName)}`)}
-      onEditRule={(r) => navigate(`/rules/${encodeURIComponent(r.ruleName)}/edit`, { state: { from: `/flows/${encodeURIComponent(flow.flowName)}/${encodeURIComponent(g)}` } })}
-      onAddRule={() => navigate(`/flows/${encodeURIComponent(flow.flowName)}/${encodeURIComponent(g)}/new`)}
-      onDeleteRule={async (r) => { await api.deleteRule(r.ruleName); await d.reloadRules(); d.flash(`"${r.ruleName}" deleted`) }}
+      flow={flow} group={group} rules={d.rules}
+      onBack={() => navigate(`/flows/${encodeURIComponent(flow.flowCode)}`)}
+      onEditRule={(r) => navigate(`/rules/${r.id}/edit`, { state: { from: base } })}
+      onAddRule={() => navigate(`${base}/new`)}
+      onDeleteRule={async (r) => { await api.deleteRule(r.id); await d.reload(); d.flash(`"${r.ruleName}" deleted`) }}
+      onToggleRule={async (r) => { await api.setRuleActive(r.id, !r.active); await d.reload(); d.flash(`"${r.ruleName}" ${r.active ? 'disabled' : 'enabled'}`) }}
     />
   )
 }
 
 function NewRuleInGroupPage({ d }: { d: Data }) {
-  const { flowName, group } = useParams()
+  const { flowCode, groupId } = useParams()
   const navigate = useNavigate()
-  const flow = flowName ? d.flows.find(f => f.flowName === decodeURIComponent(flowName)) : undefined
-  const g = group ? decodeURIComponent(group) : ''
-  if (!flow || !flow.groups.includes(g)) return <Navigate to="/flows" replace />
-  const back = `/flows/${encodeURIComponent(flow.flowName)}/${encodeURIComponent(g)}`
+  const flow = findFlow(d.flows, flowCode)
+  const group = findGroup(flow, groupId)
+  if (!flow || !group) return <Navigate to="/flows" replace />
+  const back = `/flows/${encodeURIComponent(flow.flowCode)}/g/${group.id}`
   return (
     <RuleBuilder
-      flows={d.flows} editing={null} presetFlow={flow.flowName} presetGroup={g}
+      flows={d.flows} editing={null} presetFlow={flow.flowCode} presetGroup={group.code}
       onBack={() => navigate(back)} onCancel={() => navigate(back)}
-      onSaved={async (name) => { await d.reloadRules(); d.flash(`"${name}" saved`); navigate(back) }}
+      onSaved={async (name) => { await d.reload(); d.flash(`"${name}" saved`); navigate(back) }}
     />
   )
 }
 
-function pageTitle(path: string, rules: RuleDefinition[]): string {
+function pageTitle(path: string, rules: RuleView[], flows: FlowMeta[]): string {
   if (path === '/rules') return 'Rules'
   if (path === '/rules/new') return 'Visual Rule Builder'
   if (path.startsWith('/rules/') && path.endsWith('/edit')) {
-    const raw = decodeURIComponent(path.slice('/rules/'.length, -'/edit'.length))
-    const r = rules.find(x => x.ruleName === raw)
+    const id = path.slice('/rules/'.length, -'/edit'.length)
+    const r = rules.find(x => String(x.id) === id)
     return r ? `Edit · ${r.ruleName}` : 'Edit rule'
   }
   if (path === '/flows') return 'Flows'
   if (path.startsWith('/flows/')) {
-    const seg = path.split('/').filter(Boolean)
-    if (seg[3] === 'new') return 'New rule'
-    if (seg[2]) return decodeURIComponent(seg[2])
+    const seg = path.split('/').filter(Boolean)   // flows, {code}, g, {id}, new?
+    const flow = flows.find(f => f.flowCode === decodeURIComponent(seg[1] ?? ''))
+    if (seg[4] === 'new') return 'New rule'
+    if (seg[2] === 'g' && seg[3] && flow) {
+      const g = flow.groups.find(x => String(x.id) === seg[3])
+      if (g) return g.code
+    }
+    if (flow) return flow.label
     if (seg[1]) return prettyFlow(decodeURIComponent(seg[1]))
   }
   if (path === '/test') return 'Test Console'
@@ -133,7 +136,7 @@ function Shell({ d }: { d: Data }) {
       <header className="topbar">
         <div>
           <div className="crumb">Workspace</div>
-          <h1>{pageTitle(location.pathname, d.rules)}</h1>
+          <h1>{pageTitle(location.pathname, d.rules, d.flows)}</h1>
         </div>
         <div className="flex">
           <span className={'conn ' + (connected ? 'live' : 'down')}>
@@ -161,7 +164,7 @@ function Shell({ d }: { d: Data }) {
                 POC 1 DRL backend (and PostgreSQL), then retry.
                 <br /><span style={{ color: 'var(--text-3)' }}>{d.error}</span>
               </div>
-              <button className="btn btn-primary" onClick={d.reload} style={{ margin: '0 auto' }}>Retry</button>
+              <button className="btn btn-primary" onClick={() => void d.reload()} style={{ margin: '0 auto' }}>Retry</button>
             </div>
           </div>
         ) : (
@@ -171,16 +174,17 @@ function Shell({ d }: { d: Data }) {
               <RulesList
                 rules={d.rules} flows={d.flows}
                 onNew={() => navigate('/rules/new')}
-                onEdit={(r) => navigate(`/rules/${encodeURIComponent(r.ruleName)}/edit`)}
-                onDelete={async (name) => { await api.deleteRule(name); await d.reloadRules(); d.flash(`"${name}" deleted`) }}
+                onEdit={(r) => navigate(`/rules/${r.id}/edit`)}
+                onDelete={async (r) => { await api.deleteRule(r.id); await d.reload(); d.flash(`"${r.ruleName}" deleted`) }}
+                onToggle={async (r) => { await api.setRuleActive(r.id, !r.active); await d.reload(); d.flash(`"${r.ruleName}" ${r.active ? 'disabled' : 'enabled'}`) }}
               />
             } />
             <Route path="/rules/new" element={<BuilderPage d={d} />} />
-            <Route path="/rules/:ruleName/edit" element={<BuilderPage d={d} />} />
-            <Route path="/flows" element={<FlowsList flows={d.flows} rules={d.rules} onOpen={(fn) => navigate(`/flows/${encodeURIComponent(fn)}`)} />} />
-            <Route path="/flows/:flowName" element={<FlowDetailPage d={d} />} />
-            <Route path="/flows/:flowName/:group" element={<GroupDetailPage d={d} />} />
-            <Route path="/flows/:flowName/:group/new" element={<NewRuleInGroupPage d={d} />} />
+            <Route path="/rules/:ruleId/edit" element={<BuilderPage d={d} />} />
+            <Route path="/flows" element={<FlowsList flows={d.flows} rules={d.rules} onOpen={(fc) => navigate(`/flows/${encodeURIComponent(fc)}`)} />} />
+            <Route path="/flows/:flowCode" element={<FlowDetailPage d={d} />} />
+            <Route path="/flows/:flowCode/g/:groupId" element={<GroupDetailPage d={d} />} />
+            <Route path="/flows/:flowCode/g/:groupId/new" element={<NewRuleInGroupPage d={d} />} />
             <Route path="/test" element={<TestConsole />} />
             <Route path="*" element={<Navigate to="/rules" replace />} />
           </Routes>
@@ -192,37 +196,33 @@ function Shell({ d }: { d: Data }) {
 
 export default function App() {
   const [flows, setFlows] = useState<FlowMeta[]>([])
-  const [rules, setRules] = useState<RuleDefinition[]>([])
+  const [rules, setRules] = useState<RuleView[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [first, setFirst] = useState(true)
 
   const load = useCallback(async () => {
-    setLoading(true); setError(null)
+    if (first) setLoading(true)
+    setError(null)
     try {
-      const [ov, rs] = await Promise.all([api.overview(), api.listRules()])
-      setFlows(buildFlowMetas(ov))
-      setRules(rs.filter(r => r.active))   // only active rules (soft-deleted ones are hidden)
+      const metas = buildFlowMetas(await api.listFlows())
+      const groupIds = [...new Set(metas.flatMap(f => f.groups.map(g => g.id)))]
+      const arrays = await Promise.all(groupIds.map(id => api.rulesInGroup(id)))
+      setFlows(metas)
+      setRules(arrays.flat())
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err))
-    } finally { setLoading(false) }
-  }, [])
+    } finally { setLoading(false); setFirst(false) }
+  }, [first])
 
-  useEffect(() => { load() }, [load])
-
-  const reloadRules = useCallback(async () => {
-    try { setRules((await api.listRules()).filter(r => r.active)) } catch { /* keep current */ }
-  }, [])
-
-  const reloadFlows = useCallback(async () => {
-    try { setFlows(buildFlowMetas(await api.overview())) } catch { /* keep current */ }
-  }, [])
+  useEffect(() => { void load() }, [load])
 
   const flash = useCallback((msg: string) => {
     setToast(msg); setTimeout(() => setToast(null), 2600)
   }, [])
 
-  const d: Data = { flows, rules, loading, error, reload: load, reloadRules, reloadFlows, flash }
+  const d: Data = { flows, rules, loading, error, reload: load, flash }
 
   return (
     <BrowserRouter>

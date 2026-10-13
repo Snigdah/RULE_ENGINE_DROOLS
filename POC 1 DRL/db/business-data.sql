@@ -1,6 +1,7 @@
 -- =============================================================================
---  Business dummy data (PostgreSQL) - copy/paste into psql.
---  Tables owned by this POC. Rules/flows/mappings are loaded via the admin API.
+--  Business dummy data (PostgreSQL) - copy/paste into psql / pgAdmin.
+--  Only the re_* tables this POC owns. Flows, groups, FIELDS and rules are all
+--  seeded via the Admin API now (seed.ps1 / seed.sh) - not here.
 --    psql -U postgres -d ruleengine -f db/business-data.sql
 -- =============================================================================
 
@@ -28,25 +29,8 @@ INSERT INTO re_customer (id, user_id, credit_score, full_name) VALUES (nextval('
 INSERT INTO re_customer (id, user_id, credit_score, full_name) VALUES (nextval('re_customer_seq'), 'USER-002', 700, 'Blocked Bob');
 INSERT INTO re_customer (id, user_id, credit_score, full_name) VALUES (nextval('re_customer_seq'), 'USER-004', 550, 'Low-score Lee');
 
--- closure: accounts (ACC-901 has an outstanding balance)
+-- closure: accounts (ACC-901 outstanding balance; ACC-902 dormant; ACC-903 frozen)
 INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_account_seq'), 'ACC-900', 0,       'ACTIVE');
 INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_account_seq'), 'ACC-901', 1500.00, 'ACTIVE');
-
--- field catalog (library table, but no POST endpoint - seed it here)
-INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), 'user.kycVerified', 'COMMON', 'KYC Verified', 'BOOLEAN', 'user.kycVerified', '==', 'Yes (true), No (false)');
-INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), 'transaction.amount', 'TRANSFER_TRANSACTION', 'Transaction Amount', 'NUMBER', 'transaction.amount', '>,<,>=,<=,==', NULL);
-INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), 'transaction.currency', 'TRANSFER_TRANSACTION', 'Currency', 'ENUM', 'transaction.currency', '==,!=', 'BDT,USD,EUR,GBP');
-INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), 'product.drRes', 'TRANSFER_TRANSACTION', 'Debit Restricted', 'BOOLEAN', 'product.drRes', '==', 'Yes (1), No (0)');
-INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), 'userLimit.limit', 'TRANSFER_TRANSACTION', 'User Limit', 'NUMBER', 'userLimit.limit', '>,<,>=,<=', NULL);
-INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), 'loan.amount', 'LOAN_APPLICATION', 'Loan Amount', 'NUMBER', 'loan.amount', '>,<,>=,<=', NULL);
-INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), 'customer.creditScore', 'LOAN_APPLICATION', 'Credit Score', 'NUMBER', 'customer.creditScore', '>,<,>=,<=', NULL);
-INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), 'account.balance', 'ACCOUNT_CLOSURE', 'Account Balance', 'NUMBER', 'account.balance', '>,<,>=,<=,==,!=', NULL);
-INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), 'transaction.channel', 'TRANSFER_TRANSACTION', 'Channel', 'ENUM', 'transaction.channel', '==,!=', 'ATM,POS,ONLINE,BRANCH,AGENT');
-INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), 'transaction.country', 'TRANSFER_TRANSACTION', 'Destination Country', 'ENUM', 'transaction.country', '==,!=', 'BD,US,UK,AE,SG,OTHER');
-INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), 'transaction.dailyTxnCount', 'TRANSFER_TRANSACTION', 'Daily Txn Count', 'NUMBER', 'transaction.dailyTxnCount', '>,<,>=,<=,==', NULL);
-
--- closure COMPLIANCE demo additions
-INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_account_seq'), 'ACC-902', 0, 'DORMANT');
-INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_account_seq'), 'ACC-903', 0, 'FROZEN');
-INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values)
-VALUES (nextval('rule_field_catalog_seq'), 'account.status', 'ACCOUNT_CLOSURE', 'Account Status', 'ENUM', 'account.status', '==,!=', 'ACTIVE,DORMANT,FROZEN,CLOSED');
+INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_account_seq'), 'ACC-902', 0,       'DORMANT');
+INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_account_seq'), 'ACC-903', 0,       'FROZEN');
