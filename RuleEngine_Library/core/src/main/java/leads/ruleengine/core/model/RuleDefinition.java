@@ -2,12 +2,16 @@ package leads.ruleengine.core.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import java.time.LocalDateTime;
 
@@ -15,30 +19,31 @@ import java.time.LocalDateTime;
  * One rule, stored in the database so rules can be changed at RUNTIME (save a new version, the
  * engine validates and hot-swaps it - no restart, no redeploy).
  *
- * <p>This replaces the older "one DRL file per row" model. A rule now carries BOTH forms:
+ * <p><b>A rule belongs to exactly one group ROW</b> ({@link #group}, a FK to {@link RuleGroup}),
+ * not to a group name. That is the whole point of the redesign: two flows can each have a
+ * {@code COMPLIANCE} group with completely different rules, and the same display name may exist
+ * in both - {@code UNIQUE(group_id, rule_name)}, not a global unique.</p>
+ *
+ * <p>A rule carries BOTH forms:
  * <ul>
- *   <li>{@code sourceJson} - how the rule was authored in the Visual Rule Builder (the editable
+ *   <li>{@code sourceJson} - how the rule was authored in the Visual Rule Builder (editable
  *       source of truth). {@code null} for rules a developer hand-wrote in DRL.</li>
  *   <li>{@code drlText} - the executable DRL. For a BUILDER rule the backend generates it from
  *       {@code sourceJson}; for a DRL rule it is written by hand. <b>The engine only ever runs
  *       {@code drlText}.</b></li>
  * </ul>
  *
- * <p><b>A rule belongs to one group, never a flow.</b> {@code agendaGroup} is the only routing
- * link a rule stores. A flow (see {@link FlowGroup}) pulls in groups, so a rule placed in a
- * shared group (e.g. {@code COMMON}) is reused by every flow that includes that group - with no
- * duplication and no many-to-many table.</p>
- *
  * <p><b>Oracle notes:</b> {@code sourceJson}/{@code drlText} are {@link Lob} (CLOB); the id uses
  * a {@code SEQUENCE}; {@code updatedAt} is a {@link LocalDateTime} so it maps to a plain
- * {@code TIMESTAMP} (an {@code Instant} would be read as timestamp-with-time-zone and throw
- * {@code ORA-18716}); the version column is {@code VERSION_NO} to avoid clashing with JPA's
- * optimistic-locking {@code @Version}.</p>
+ * {@code TIMESTAMP}; the version column is {@code VERSION_NO} to avoid clashing with JPA's
+ * optimistic-locking {@code @Version}. Salience is not a column - it lives inside the DRL (and
+ * the builder JSON), so it is versioned with the rule itself.</p>
  *
  * @author K M Farhat Snigdah
  */
 @Entity
-@Table(name = "RULE_DEFINITION")
+@Table(name = "RULE_DEFINITION",
+        uniqueConstraints = @UniqueConstraint(name = "UK_RULE_DEFINITION_NAME", columnNames = {"GROUP_ID", "RULE_NAME"}))
 public class RuleDefinition {
 
     /** Rule was hand-written in DRL by a developer. {@code sourceJson} is null. */
@@ -51,13 +56,14 @@ public class RuleDefinition {
     @SequenceGenerator(name = "rule_definition_seq", sequenceName = "RULE_DEFINITION_SEQ", allocationSize = 1)
     private Long id;
 
-    /** Human-readable rule name, unique. Also used as the DRL resource name when compiling. */
-    @Column(name = "RULE_NAME", nullable = false, unique = true, length = 255)
-    private String ruleName;
+    /** The single group this rule belongs to. LAZY - the rule base reads only drlText + id. */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "GROUP_ID", nullable = false)
+    private RuleGroup group;
 
-    /** The single group this rule belongs to (e.g. COMMON, TRANSFER, LOAN). */
-    @Column(name = "AGENDA_GROUP", nullable = false, length = 255)
-    private String agendaGroup;
+    /** Human-readable rule name. Unique within its group only (not globally). */
+    @Column(name = "RULE_NAME", nullable = false, length = 255)
+    private String ruleName;
 
     /** {@link #SOURCE_DRL} or {@link #SOURCE_BUILDER}. */
     @Column(name = "SOURCE_TYPE", nullable = false, length = 20)
@@ -73,15 +79,11 @@ public class RuleDefinition {
     @Column(name = "DRL_TEXT", nullable = false)
     private String drlText;
 
-    /** Bumped on every successful re-save of the same rule name. */
+    /** Bumped on every successful re-save of the same rule. */
     @Column(name = "VERSION_NO", nullable = false)
     private Integer version = 1;
 
-    /**
-     * Simple lifecycle label. Defaults to {@code ACTIVE}. Kept as a plain string so a fuller
-     * maker-checker lifecycle (DRAFT/APPROVED/RETIRED...) can be layered on later without a
-     * schema change - but nothing heavier is built now.
-     */
+    /** Simple lifecycle label. Defaults to {@code ACTIVE}. */
     @Column(name = "STATUS", nullable = false, length = 20)
     private String status = "ACTIVE";
 
@@ -89,7 +91,7 @@ public class RuleDefinition {
     @Column(name = "ACTIVE", nullable = false)
     private boolean active = true;
 
-    /** Who last saved the rule (optional - filled from the admin call when available). */
+    /** Who last saved the rule (optional). */
     @Column(name = "CREATED_BY", length = 100)
     private String createdBy;
 
@@ -104,20 +106,20 @@ public class RuleDefinition {
         this.id = id;
     }
 
+    public RuleGroup getGroup() {
+        return group;
+    }
+
+    public void setGroup(RuleGroup group) {
+        this.group = group;
+    }
+
     public String getRuleName() {
         return ruleName;
     }
 
     public void setRuleName(String ruleName) {
         this.ruleName = ruleName;
-    }
-
-    public String getAgendaGroup() {
-        return agendaGroup;
-    }
-
-    public void setAgendaGroup(String agendaGroup) {
-        this.agendaGroup = agendaGroup;
     }
 
     public String getSourceType() {

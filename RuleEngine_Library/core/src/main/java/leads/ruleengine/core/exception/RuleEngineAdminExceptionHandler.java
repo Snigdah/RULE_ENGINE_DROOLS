@@ -34,9 +34,21 @@ public class RuleEngineAdminExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
-    /** Missing flow/mapping row referenced from an admin call -> 400. */
+    /** Missing flow/group referenced from an admin call -> 400. */
     @ExceptionHandler(FlowNotConfiguredException.class)
     public ResponseEntity<Map<String, Object>> handleFlowNotConfigured(FlowNotConfiguredException ex) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /** A group still holds rules and was not force-deleted -> 409. */
+    @ExceptionHandler(GroupInUseException.class)
+    public ResponseEntity<Map<String, Object>> handleGroupInUse(GroupInUseException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    /** Bad admin input (unknown id, missing sourceJson/drl, duplicate name, ...) -> 400. */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 

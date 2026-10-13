@@ -1,12 +1,13 @@
 package leads.ruleengine.core.controller;
 
 import jakarta.validation.Valid;
+import leads.ruleengine.core.dto.ActiveRequest;
 import leads.ruleengine.core.dto.BuilderRuleSpec;
+import leads.ruleengine.core.dto.FieldRequest;
 import leads.ruleengine.core.dto.RuleDefinitionRequest;
 import leads.ruleengine.core.dto.RulePreviewResponse;
-import leads.ruleengine.core.model.RuleDefinition;
+import leads.ruleengine.core.dto.RuleView;
 import leads.ruleengine.core.model.RuleFieldCatalog;
-import leads.ruleengine.core.repository.RuleFieldCatalogRepository;
 import leads.ruleengine.core.service.RuleAdminService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
@@ -14,71 +15,98 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 /**
- * Runtime rule management for the Visual Rule Builder and for hand-written DRL.
+ * Runtime rule management for the Visual Rule Builder and for hand-written DRL. Rules are
+ * addressed by group (to create) and by id (to read / update / delete).
  *
  * <ul>
- *   <li>{@code GET  /admin/rules} - list stored rules.</li>
- *   <li>{@code POST /admin/rules} - save a rule (BUILDER JSON or DRL). A bad rule is rejected
- *       (400) without disturbing the live engine.</li>
- *   <li>{@code DELETE /admin/rules/{ruleName}} - deactivate a rule.</li>
- *   <li>{@code GET  /admin/rules/fields?flow=FLOW} - the field catalog the builder dropdowns use,
- *       scoped to the flow plus the shared COMMON fields.</li>
+ *   <li>{@code GET  /admin/groups/{groupId}/rules} - rules in one exact group.</li>
+ *   <li>{@code POST /admin/groups/{groupId}/rules} - save a rule into that group (BUILDER or DRL).</li>
+ *   <li>{@code GET/PUT/DELETE /admin/rules/{id}} - read / update / permanently delete one rule.</li>
+ *   <li>{@code PUT /admin/rules/{id}/active} - activate/deactivate a rule (the on/off toggle).</li>
+ *   <li>{@code POST /admin/rules/preview} - generate + compile-check DRL without saving.</li>
+ *   <li>{@code GET  /admin/flows/{flowCode}/fields} - builder field palette (flow + shared).</li>
  * </ul>
  *
- * <p>Exposed only when {@code rule-engine.admin.enabled} is true (the default). Set it to
- * {@code false} in a service that wants rules managed elsewhere, or secure this path with the
- * AuthZ library.</p>
+ * <p>Exposed only when {@code rule-engine.admin.enabled} is true (the default).</p>
  *
  * @author K M Farhat Snigdah
  */
 @RestController
-@RequestMapping("/admin/rules")
+@RequestMapping("/admin")
 @ConditionalOnProperty(prefix = "rule-engine.admin", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class RuleAdminController {
 
     private final RuleAdminService ruleAdminService;
-    private final RuleFieldCatalogRepository ruleFieldCatalogRepository;
 
-    public RuleAdminController(RuleAdminService ruleAdminService,
-                              RuleFieldCatalogRepository ruleFieldCatalogRepository) {
+    public RuleAdminController(RuleAdminService ruleAdminService) {
         this.ruleAdminService = ruleAdminService;
-        this.ruleFieldCatalogRepository = ruleFieldCatalogRepository;
     }
 
-    @GetMapping
-    public List<RuleDefinition> list() {
-        return ruleAdminService.list();
+    @GetMapping("/groups/{groupId}/rules")
+    public List<RuleView> listByGroup(@PathVariable Long groupId) {
+        return ruleAdminService.listByGroup(groupId);
     }
 
-    /** Save a rule: BUILDER (send {@code sourceJson}) or DRL (send {@code drl}). */
-    @PostMapping
-    public ResponseEntity<RuleDefinition> save(@Valid @RequestBody RuleDefinitionRequest request) {
-        return ResponseEntity.ok(ruleAdminService.save(request));
+    @PostMapping("/groups/{groupId}/rules")
+    public ResponseEntity<RuleView> save(@PathVariable Long groupId,
+                                         @Valid @RequestBody RuleDefinitionRequest request) {
+        return ResponseEntity.ok(ruleAdminService.saveInGroup(groupId, request));
+    }
+
+    @GetMapping("/rules/{id}")
+    public RuleView get(@PathVariable Long id) {
+        return ruleAdminService.get(id);
+    }
+
+    @PutMapping("/rules/{id}")
+    public ResponseEntity<RuleView> update(@PathVariable Long id,
+                                           @Valid @RequestBody RuleDefinitionRequest request) {
+        return ResponseEntity.ok(ruleAdminService.update(id, request));
+    }
+
+    /** Permanently delete a rule (the row is removed). Use the active toggle to merely disable it. */
+    @DeleteMapping("/rules/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        ruleAdminService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Activate / deactivate a rule without deleting it (the UI on/off radio). */
+    @PutMapping("/rules/{id}/active")
+    public RuleView setActive(@PathVariable Long id, @Valid @RequestBody ActiveRequest request) {
+        return ruleAdminService.setActive(id, request.active());
     }
 
     /** Preview the generated DRL for a builder spec, without saving it. */
-    @PostMapping("/preview")
+    @PostMapping("/rules/preview")
     public RulePreviewResponse preview(@RequestBody BuilderRuleSpec spec) {
         return ruleAdminService.preview(spec);
     }
 
-    @DeleteMapping("/{ruleName}")
-    public ResponseEntity<Void> delete(@PathVariable String ruleName) {
-        ruleAdminService.delete(ruleName);
-        return ResponseEntity.noContent().build();
+    /** Fields available to the builder for a flow (flow-scoped rows + shared rows). */
+    @GetMapping("/flows/{flowCode}/fields")
+    public List<RuleFieldCatalog> fields(@PathVariable String flowCode) {
+        return ruleAdminService.fields(flowCode);
     }
 
-    /** Fields available to the builder for a flow (flow-scoped rows + shared COMMON rows). */
-    @GetMapping("/fields")
-    public List<RuleFieldCatalog> fields(@RequestParam String flow) {
-        return ruleFieldCatalogRepository.findByFlowNameInOrderByLabelAsc(List.of(flow, "COMMON"));
+    /** Add a builder field to the catalog (blank flowCode = shared). */
+    @PostMapping("/fields")
+    public RuleFieldCatalog addField(@Valid @RequestBody FieldRequest request) {
+        return ruleAdminService.addField(request);
+    }
+
+    /** Permanently delete a catalog field. */
+    @DeleteMapping("/fields/{id}")
+    public ResponseEntity<Void> deleteField(@PathVariable Long id) {
+        ruleAdminService.deleteField(id);
+        return ResponseEntity.noContent().build();
     }
 }

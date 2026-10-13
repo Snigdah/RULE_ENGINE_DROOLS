@@ -16,12 +16,12 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * self-registers - no glue code, same idea as the AuthZ library.</p>
  *
  * <p><b>Why this goes beyond the AuthZ pattern:</b> AuthZ is stateless and ships no JPA.
- * This library ships its OWN entities ({@code rule_definition}, {@code rule_field_catalog},
- * {@code flow_group}, {@code request_flow_map}), which live in {@code leads.ruleengine.core.model} - a
- * different package from the host app. Spring would not scan them by default, so we
- * explicitly point {@link EntityScan} and {@link EnableJpaRepositories} at the library
- * packages. The consumer keeps its own {@code @SpringBootApplication} scanning its own
- * business entities; both coexist.</p>
+ * This library ships its OWN entities ({@code rule_flow}, {@code rule_group},
+ * {@code rule_definition}, {@code rule_field_catalog}), which live in
+ * {@code leads.ruleengine.core.model} - a different package from the host app. Spring would not
+ * scan them by default, so we explicitly point {@link EntityScan} and {@link EnableJpaRepositories}
+ * at the library packages. The consumer keeps its own {@code @SpringBootApplication} scanning its
+ * own business entities; both coexist.</p>
  *
  * <p>{@link ComponentScan} picks up the library's services, controllers, context loaders
  * and exception handling. It is scoped to {@code leads.ruleengine.core}, so it never

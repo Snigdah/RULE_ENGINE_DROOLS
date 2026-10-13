@@ -120,9 +120,15 @@ public class RuleBaseProvider {
         return kieServices.newKieContainer(releaseId);
     }
 
-    /** A filesystem-safe, unique .drl resource name derived from the (unique) rule name. */
+    /**
+     * A filesystem-safe, UNIQUE .drl resource name. Keyed on the rule id (rule names are no
+     * longer globally unique - the same name can exist in two groups), with a hash fallback for
+     * an unsaved probe rule that has no id yet (preview / validate-before-save).
+     */
     private String resourceName(RuleDefinition rule) {
-        String safe = rule.getRuleName().replaceAll("[^A-Za-z0-9_]", "_");
-        return safe + ".drl";
+        String base = rule.getId() != null
+                ? "rule_" + rule.getId()
+                : "rule_new_" + Integer.toHexString(System.identityHashCode(rule));
+        return base + ".drl";
     }
 }

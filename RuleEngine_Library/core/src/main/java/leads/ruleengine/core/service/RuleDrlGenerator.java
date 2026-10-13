@@ -6,9 +6,7 @@ import leads.ruleengine.core.dto.ConditionGroup;
 import leads.ruleengine.core.dto.ConditionLeaf;
 import leads.ruleengine.core.dto.ConditionNode;
 import leads.ruleengine.core.exception.RuleCompilationException;
-import leads.ruleengine.core.model.FlowGroup;
 import leads.ruleengine.core.model.RuleFieldCatalog;
-import leads.ruleengine.core.repository.FlowGroupRepository;
 import leads.ruleengine.core.repository.RuleFieldCatalogRepository;
 import org.springframework.stereotype.Component;
 
@@ -17,20 +15,24 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Turns a Visual Rule Builder spec ({@code SOURCE_JSON}) into executable DRL ({@code DRL_TEXT}).
+ * Turns a Visual Rule Builder spec (SOURCE_JSON) into executable DRL (DRL_TEXT).
  *
- * <p><b>Condition tree.</b> The spec carries a recursive {@link ConditionNode} tree, so a rule can
- * nest AND/OR to any depth — e.g. {@code (A AND B) OR (C AND D)}. The generator walks the tree
- * recursively, wrapping every group in parentheses and joining children with {@code &&}/{@code ||}.</p>
+ * <p><b>Condition tree.</b> The spec carries a recursive {@link ConditionNode} tree, so a rule
+ * can nest AND/OR to any depth - e.g. {@code (A AND B) OR (C AND D)}. The generator walks the
+ * tree recursively, wrapping every group in parentheses and joining children with {@code &&}/{@code ||}.</p>
  *
- * <p><b>Fully DB-driven.</b> Each leaf's real path and data type come from {@code RULE_FIELD_CATALOG};
- * the fact/context type the rule matches comes from {@code FLOW_GROUP.FACT_TYPE} for the flow.</p>
+ * <p><b>DB-driven, but context comes from the caller.</b> Each leaf's real path and data type
+ * come from {@code RULE_FIELD_CATALOG}. The fact/context type, the agenda-group name and the
+ * unique-name qualifier are resolved by {@code RuleAdminService} from the rule's <b>group</b>
+ * (and the group's flow) and passed in - the generator no longer reads routing tables itself.</p>
+ *
+ * <p><b>Unique rule names.</b> Display names are only unique per group now, so two groups may
+ * hold a rule with the same name. To keep the compiled Drools rule names unique, the generator
+ * prefixes the DRL {@code rule "..."} with a {@code qualifier} (e.g.
+ * {@code TRANSFER_TRANSACTION.COMPLIANCE}), while the {@code agenda-group} stays the plain code.</p>
  *
  * <p><b>IF / ELSE.</b> An optional {@code otherwise} branch emits a second rule whose tree is the
- * De-Morgan negation of the first: every group flips AND&harr;OR and every leaf operator is negated.</p>
- *
- * <p><b>Result contract.</b> The generated {@code then} calls {@code setValid(boolean)},
- * {@code setPermissionDenied(boolean)} and (with a message) {@code setValidationMessage(String)}.</p>
+ * De-Morgan negation of the first.</p>
  *
  * @author K M Farhat Snigdah
  */
@@ -40,68 +42,59 @@ public class RuleDrlGenerator {
     /** Guard against pathological input: the tree may not nest deeper than this. */
     private static final int MAX_DEPTH = 10;
 
-    private final FlowGroupRepository flowGroupRepository;
     private final RuleFieldCatalogRepository catalogRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public RuleDrlGenerator(FlowGroupRepository flowGroupRepository,
-                            RuleFieldCatalogRepository catalogRepository) {
-        this.flowGroupRepository = flowGroupRepository;
+    public RuleDrlGenerator(RuleFieldCatalogRepository catalogRepository) {
         this.catalogRepository = catalogRepository;
     }
 
-    /** Parse the builder JSON and generate DRL. */
-    public String fromJson(String sourceJson) {
+    /** Parse the builder JSON and generate DRL with the given resolved context. */
+    public String fromJson(String sourceJson, String factFqn, String agendaGroup, String qualifier) {
         BuilderRuleSpec spec;
         try {
             spec = objectMapper.readValue(sourceJson, BuilderRuleSpec.class);
         } catch (Exception e) {
             throw new RuleCompilationException("Invalid builder JSON: " + e.getMessage());
         }
-        return generate(spec);
+        return generate(spec, factFqn, agendaGroup, qualifier);
     }
 
-    /** Generate DRL from an already-parsed spec. */
-    public String generate(BuilderRuleSpec spec) {
+    /**
+     * Generate DRL from an already-parsed spec.
+     *
+     * @param spec        the builder spec (condition tree + outcomes)
+     * @param factFqn     the fully-qualified context class the rule matches ({@code $ctx : factFqn(...)})
+     * @param agendaGroup the Drools agenda-group name (the group's code)
+     * @param qualifier   prefix that makes the compiled rule name unique, e.g. {@code FLOW.GROUP}
+     */
+    public String generate(BuilderRuleSpec spec, String factFqn, String agendaGroup, String qualifier) {
         if (spec.conditionTree == null) {
             throw new RuleCompilationException("Rule '" + spec.ruleName + "' has no condition tree.");
         }
-        String factFqn = resolveFactType(spec);
+        if (factFqn == null || factFqn.isBlank()) {
+            throw new RuleCompilationException("Rule '" + spec.ruleName + "' has no fact type to match on.");
+        }
         String pkg = factFqn.contains(".") ? factFqn.substring(0, factFqn.lastIndexOf('.')) : "rules";
+        String prefix = (qualifier == null || qualifier.isBlank()) ? "" : qualifier + "::";
 
         StringBuilder sb = new StringBuilder();
         sb.append("package ").append(pkg).append(";\n\n");
-        sb.append(ruleBlock(spec.ruleName, spec, factFqn,
+        sb.append(ruleBlock(prefix + spec.ruleName, spec, factFqn, agendaGroup,
                 generateNode(spec.conditionTree, false, 0), spec.then));
         if (spec.otherwise != null && spec.otherwise.decision != null) {
             sb.append("\n\n");
-            sb.append(ruleBlock(spec.ruleName + " - otherwise", spec, factFqn,
+            sb.append(ruleBlock(prefix + spec.ruleName + " - otherwise", spec, factFqn, agendaGroup,
                     generateNode(spec.conditionTree, true, 0), spec.otherwise));
         }
         return sb.toString();
     }
 
-    /** Fact/context type for the rule's flow, from REQUEST_FLOW_MAP.fact_type - DB-driven. */
-    private String resolveFactType(BuilderRuleSpec spec) {
-        if (spec.flow == null || spec.flow.isBlank()) {
-            throw new RuleCompilationException("Builder rule '" + spec.ruleName + "' has no flow.");
-        }
-        String factFqn = flowGroupRepository.findFirstByFlowName(spec.flow)
-                .map(FlowGroup::getFactType)
-                .orElse(null);
-        if (factFqn == null || factFqn.isBlank()) {
-            throw new RuleCompilationException(
-                    "No fact type for flow '" + spec.flow + "'. Set FACT_TYPE on the flow's FLOW_GROUP rows "
-                            + "(or POST /admin/flows with factType).");
-        }
-        return factFqn;
-    }
-
-    private String ruleBlock(String name, BuilderRuleSpec spec, String factFqn, String pattern,
-                             BuilderRuleSpec.Outcome outcome) {
+    private String ruleBlock(String name, BuilderRuleSpec spec, String factFqn, String agendaGroup,
+                             String pattern, BuilderRuleSpec.Outcome outcome) {
         int salience = spec.salience == null ? 0 : spec.salience;
         return "rule \"" + name + "\"\n"
-                + "    agenda-group \"" + spec.agendaGroup + "\"\n"
+                + "    agenda-group \"" + agendaGroup + "\"\n"
                 + "    salience " + salience + "\n"
                 + "    when\n"
                 + "        $ctx : " + factFqn + "(\n"
@@ -114,7 +107,7 @@ public class RuleDrlGenerator {
 
     // ---- recursive tree walk -------------------------------------------------------------
 
-    /** Render any node to a DRL boolean expression. {@code negate} applies De-Morgan on the way down. */
+    /** Render any node to a DRL boolean expression. negate applies De-Morgan on the way down. */
     private String generateNode(ConditionNode node, boolean negate, int depth) {
         if (node == null) {
             throw new RuleCompilationException("Condition node cannot be null.");

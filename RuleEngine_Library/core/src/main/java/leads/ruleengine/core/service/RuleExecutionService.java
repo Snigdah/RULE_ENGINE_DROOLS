@@ -12,9 +12,9 @@ import java.util.List;
  * OPTIONAL - a service uses it only if its rules need it.
  *
  * <p>Routing is driven by the REQUEST class the caller passes: its name selects the flow
- * ({@code REQUEST_FLOW_MAP.REQUEST_TYPE}), the flow selects the ordered agenda groups, and the
- * session fires them in that order. The {@code fact} (context) is what the rules read; the
- * request class only decides the route.</p>
+ * ({@code RULE_FLOW.request_class}), the flow selects the ordered agenda groups, and the session
+ * fires them in that order. The {@code fact} (context) is what the rules read; the request class
+ * only decides the route.</p>
  *
  * <pre>
  *   ruleExecutionService.execute(context, LoanRequest.class);                 // rules read only the fact
@@ -48,8 +48,8 @@ public class RuleExecutionService {
     }
 
     private void run(Object fact, Class<?> requestType, GlobalContext globalContext) {
-        String flow = flowResolver.flowFor(requestType.getName());
-        List<String> groups = flowResolver.groupsFor(flow);
+        Long flowId = flowResolver.flowFor(requestType.getName());
+        List<String> groups = flowResolver.groupsFor(flowId);
 
         KieSession session = ruleBaseProvider.getContainer().newKieSession();
         try {
