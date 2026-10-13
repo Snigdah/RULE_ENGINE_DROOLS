@@ -40,7 +40,7 @@ public class LoanRuleService {
 
     public LoanResponse validate(LoanRequest request) {
         LoanValidationContext context = buildContext(request);
-        ruleEngine.execute(context, globalContext);
+        ruleEngine.execute(context, LoanRequest.class, globalContext);
 
         return new LoanResponse(
                 context.isValid(),

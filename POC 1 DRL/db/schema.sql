@@ -39,15 +39,16 @@ CREATE TABLE flow_group (
     id           BIGINT       NOT NULL PRIMARY KEY,
     flow_name    VARCHAR(255) NOT NULL,
     agenda_group VARCHAR(255) NOT NULL,
-    order_no     INTEGER      NOT NULL
+    order_no     INTEGER      NOT NULL,
+    fact_type    VARCHAR(500)
 );
 CREATE INDEX ix_flow_group_flow ON flow_group (flow_name);
 
 CREATE SEQUENCE request_flow_map_seq START WITH 1 INCREMENT BY 1;
 CREATE TABLE request_flow_map (
-    id        BIGINT       NOT NULL PRIMARY KEY,
-    fact_type VARCHAR(500) NOT NULL UNIQUE,
-    flow_name VARCHAR(255) NOT NULL
+    id           BIGINT       NOT NULL PRIMARY KEY,
+    request_type VARCHAR(500) NOT NULL UNIQUE,
+    flow_name    VARCHAR(255) NOT NULL
 );
 
 -- ============================ BUSINESS TABLES ================================

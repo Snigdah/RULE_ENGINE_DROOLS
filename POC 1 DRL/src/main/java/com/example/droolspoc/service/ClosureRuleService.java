@@ -38,7 +38,7 @@ public class ClosureRuleService {
 
     public AccountCloseResponse validate(AccountCloseRequest request) {
         ClosureValidationContext context = buildContext(request);
-        ruleEngine.execute(context, globalContext);
+        ruleEngine.execute(context, AccountCloseRequest.class, globalContext);
 
         return new AccountCloseResponse(
                 context.isValid(),

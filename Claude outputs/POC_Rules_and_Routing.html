@@ -101,13 +101,13 @@
   <div class="eyebrow">Routing tables</div>
 
   <div class="card">
-    <div class="card-h"><span class="t">request_flow_map</span><span class="d">request class → flow → fact type</span><span class="n">3 rows</span></div>
+    <div class="card-h"><span class="t">request_flow_map</span><span class="d">request class → flow (routing key only)</span><span class="n">3 rows</span></div>
     <div class="scroll"><table>
-      <thead><tr><th>request_class</th><th>flow_name</th><th>fact_type</th></tr></thead>
+      <thead><tr><th>request_type</th><th>flow_name</th></tr></thead>
       <tbody>
-        <tr><td class="k">…dto.TransactionRequest</td><td><span class="chip c-transfer">TRANSFER_TRANSACTION</span></td><td class="k">…model.ValidationContext</td></tr>
-        <tr><td class="k">…dto.LoanRequest</td><td><span class="chip c-loan">LOAN_APPLICATION</span></td><td class="k">…model.LoanValidationContext</td></tr>
-        <tr><td class="k">…dto.AccountCloseRequest</td><td><span class="chip c-closure">ACCOUNT_CLOSURE</span></td><td class="k">…model.ClosureValidationContext</td></tr>
+        <tr><td class="k">…dto.TransactionRequest</td><td><span class="chip c-transfer">TRANSFER_TRANSACTION</span></td></tr>
+        <tr><td class="k">…dto.LoanRequest</td><td><span class="chip c-loan">LOAN_APPLICATION</span></td></tr>
+        <tr><td class="k">…dto.AccountCloseRequest</td><td><span class="chip c-closure">ACCOUNT_CLOSURE</span></td></tr>
       </tbody>
     </table></div>
   </div>
@@ -115,16 +115,16 @@
   <div class="card">
     <div class="card-h"><span class="t">flow_group</span><span class="d">flow → ordered agenda groups (COMMON fires first)</span><span class="n">8 rows</span></div>
     <div class="scroll"><table>
-      <thead><tr><th>flow_name</th><th>agenda_group</th><th class="num">order_no</th></tr></thead>
+      <thead><tr><th>flow_name</th><th>agenda_group</th><th class="num">order_no</th><th>fact_type</th></tr></thead>
       <tbody>
-        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-common">COMMON</span></td><td class="num">1</td></tr>
-        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-transfer">TRANSFER</span></td><td class="num">2</td></tr>
-        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-velocity">VELOCITY</span></td><td class="num">3</td></tr>
-        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-compliance">COMPLIANCE</span></td><td class="num">4</td></tr>
-        <tr><td class="k">LOAN_APPLICATION</td><td><span class="chip c-common">COMMON</span></td><td class="num">1</td></tr>
-        <tr><td class="k">LOAN_APPLICATION</td><td><span class="chip c-loan">LOAN</span></td><td class="num">2</td></tr>
-        <tr><td class="k">ACCOUNT_CLOSURE</td><td><span class="chip c-common">COMMON</span></td><td class="num">1</td></tr>
-        <tr><td class="k">ACCOUNT_CLOSURE</td><td><span class="chip c-closure">CLOSURE</span></td><td class="num">2</td></tr>
+        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-common">COMMON</span></td><td class="num">1</td><td class="k">…model.ValidationContext</td></tr>
+        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-transfer">TRANSFER</span></td><td class="num">2</td><td class="k">…model.ValidationContext</td></tr>
+        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-velocity">VELOCITY</span></td><td class="num">3</td><td class="k">…model.ValidationContext</td></tr>
+        <tr><td class="k">TRANSFER_TRANSACTION</td><td><span class="chip c-compliance">COMPLIANCE</span></td><td class="num">4</td><td class="k">…model.ValidationContext</td></tr>
+        <tr><td class="k">LOAN_APPLICATION</td><td><span class="chip c-common">COMMON</span></td><td class="num">1</td><td class="k">…model.LoanValidationContext</td></tr>
+        <tr><td class="k">LOAN_APPLICATION</td><td><span class="chip c-loan">LOAN</span></td><td class="num">2</td><td class="k">…model.LoanValidationContext</td></tr>
+        <tr><td class="k">ACCOUNT_CLOSURE</td><td><span class="chip c-common">COMMON</span></td><td class="num">1</td><td class="k">…model.ClosureValidationContext</td></tr>
+        <tr><td class="k">ACCOUNT_CLOSURE</td><td><span class="chip c-closure">CLOSURE</span></td><td class="num">2</td><td class="k">…model.ClosureValidationContext</td></tr>
       </tbody>
     </table></div>
   </div>

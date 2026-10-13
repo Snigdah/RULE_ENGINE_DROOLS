@@ -85,10 +85,11 @@ export interface FieldCatalogRow {
   allowedValues: string | null
 }
 
-/** GET /admin/flows/overview  ->  { mappings: {factFQN: flow}, flows: {flow: [groups]} } */
+/** GET /admin/flows/overview -> { mappings: {requestFQN: flow}, flows: {flow: [groups]}, factTypes: {flow: contextFQN} } */
 export interface FlowOverview {
-  mappings: Record<string, string>
-  flows: Record<string, string[]>
+  mappings: Record<string, string>      // request class -> flow (routing)
+  flows: Record<string, string[]>       // flow -> ordered agenda groups
+  factTypes: Record<string, string>     // flow -> context/fact class (code-gen + display)
 }
 
 
@@ -155,11 +156,11 @@ export const api = {
   listFlows: () => fetch('/admin/flows').then(r => handle<Record<string, string[]>>(r)),
   listMappings: () => fetch('/admin/flows/mappings').then(r => handle<Record<string, string>>(r)),
   overview: () => fetch('/admin/flows/overview').then(r => handle<FlowOverview>(r)),
-  upsertFlow: (flowName: string, groups: string[]) =>
-    fetch('/admin/flows', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ flowName, groups }) })
+  upsertFlow: (flowName: string, groups: string[], factType?: string) =>
+    fetch('/admin/flows', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ flowName, factType, groups }) })
       .then(r => handle<void>(r)),
-  upsertMapping: (factType: string, flowName: string) =>
-    fetch('/admin/flows/mappings', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ factType, flowName }) })
+  upsertMapping: (requestType: string, flowName: string) =>
+    fetch('/admin/flows/mappings', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ requestType, flowName }) })
       .then(r => handle<void>(r)),
 
   // --- business flows (run a request through the engine) ---

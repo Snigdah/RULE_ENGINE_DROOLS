@@ -18,7 +18,7 @@ INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_acc
 INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_account_seq'), 'ACC-903', 0, 'FROZEN');
 
 -- 3) add COMPLIANCE as the closure flow's 3rd stage: COMMON -> CLOSURE -> COMPLIANCE
-INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'ACCOUNT_CLOSURE', 'COMPLIANCE', 3);
+INSERT INTO flow_group (id, flow_name, agenda_group, order_no, fact_type) VALUES (nextval('flow_group_seq'), 'ACCOUNT_CLOSURE', 'COMPLIANCE', 3, 'com.example.droolspoc.model.ClosureValidationContext');
 
 -- Closure compliance - dormant review
 INSERT INTO rule_definition (id, rule_name, agenda_group, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at)

@@ -16,7 +16,7 @@ Domain: `com.example.droolspoc` · Engine base URL: `http://localhost:8080`
 | RULE_FIELD_CATALOG | **none (read-only)** | **SQL only** (section 1) |
 
 **Run order:** 1) catalog SQL → 2) flows → 3) mappings → 4) rules.
-Mappings must exist *before* builder rules (the DRL generator reads the flow's fact type); catalog must exist first so ENUM values are quoted correctly. Backend must be running with the model classes (incl. `channel`/`country`/`dailyTxnCount`).
+Flows must exist *before* builder rules (the DRL generator reads the flow's FACT_TYPE from FLOW_GROUP). Mappings route request classes; catalog must exist first so ENUM values are quoted correctly. Backend must be running with the model classes (incl. `channel`/`country`/`dailyTxnCount`).
 
 ---
 
@@ -54,15 +54,15 @@ _(Oracle: swap `nextval('rule_field_catalog_seq')` → `RULE_FIELD_CATALOG_SEQ.N
 ## 2) FLOW_GROUP — define each flow's ordered groups
 
 ```bash
-curl.exe -X POST http://localhost:8080/admin/flows -H "Content-Type: application/json" -d "{\"flowName\": \"TRANSFER_TRANSACTION\", \"groups\": [\"COMMON\", \"TRANSFER\", \"VELOCITY\", \"COMPLIANCE\"]}"
+curl.exe -X POST http://localhost:8080/admin/flows -H "Content-Type: application/json" -d "{\"flowName\": \"TRANSFER_TRANSACTION\", \"factType\": \"com.example.droolspoc.model.ValidationContext\", \"groups\": [\"COMMON\", \"TRANSFER\", \"VELOCITY\", \"COMPLIANCE\"]}"
 ```
 
 ```bash
-curl.exe -X POST http://localhost:8080/admin/flows -H "Content-Type: application/json" -d "{\"flowName\": \"LOAN_APPLICATION\", \"groups\": [\"COMMON\", \"LOAN\"]}"
+curl.exe -X POST http://localhost:8080/admin/flows -H "Content-Type: application/json" -d "{\"flowName\": \"LOAN_APPLICATION\", \"factType\": \"com.example.droolspoc.model.LoanValidationContext\", \"groups\": [\"COMMON\", \"LOAN\"]}"
 ```
 
 ```bash
-curl.exe -X POST http://localhost:8080/admin/flows -H "Content-Type: application/json" -d "{\"flowName\": \"ACCOUNT_CLOSURE\", \"groups\": [\"COMMON\", \"CLOSURE\"]}"
+curl.exe -X POST http://localhost:8080/admin/flows -H "Content-Type: application/json" -d "{\"flowName\": \"ACCOUNT_CLOSURE\", \"factType\": \"com.example.droolspoc.model.ClosureValidationContext\", \"groups\": [\"COMMON\", \"CLOSURE\"]}"
 ```
 
 ---
@@ -70,15 +70,15 @@ curl.exe -X POST http://localhost:8080/admin/flows -H "Content-Type: application
 ## 3) REQUEST_FLOW_MAP — map each context class to its flow
 
 ```bash
-curl.exe -X POST http://localhost:8080/admin/flows/mappings -H "Content-Type: application/json" -d "{\"factType\": \"com.example.droolspoc.model.ValidationContext\", \"flowName\": \"TRANSFER_TRANSACTION\"}"
+curl.exe -X POST http://localhost:8080/admin/flows/mappings -H "Content-Type: application/json" -d "{\"requestType\": \"com.example.droolspoc.dto.TransactionRequest\", \"flowName\": \"TRANSFER_TRANSACTION\"}"
 ```
 
 ```bash
-curl.exe -X POST http://localhost:8080/admin/flows/mappings -H "Content-Type: application/json" -d "{\"factType\": \"com.example.droolspoc.model.LoanValidationContext\", \"flowName\": \"LOAN_APPLICATION\"}"
+curl.exe -X POST http://localhost:8080/admin/flows/mappings -H "Content-Type: application/json" -d "{\"requestType\": \"com.example.droolspoc.dto.LoanRequest\", \"flowName\": \"LOAN_APPLICATION\"}"
 ```
 
 ```bash
-curl.exe -X POST http://localhost:8080/admin/flows/mappings -H "Content-Type: application/json" -d "{\"factType\": \"com.example.droolspoc.model.ClosureValidationContext\", \"flowName\": \"ACCOUNT_CLOSURE\"}"
+curl.exe -X POST http://localhost:8080/admin/flows/mappings -H "Content-Type: application/json" -d "{\"requestType\": \"com.example.droolspoc.dto.AccountCloseRequest\", \"flowName\": \"ACCOUNT_CLOSURE\"}"
 ```
 
 ---

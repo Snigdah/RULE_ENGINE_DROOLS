@@ -36,10 +36,9 @@ export function prettyFlow(name: string): string {
 
 /** Turn /admin/flows/overview into the FlowMeta list the UI uses. */
 export function buildFlowMetas(ov: FlowOverview): FlowMeta[] {
-  const flowToFact: Record<string, string> = {}
-  for (const [fact, flow] of Object.entries(ov.mappings ?? {})) flowToFact[flow] = fact
+  const factTypes = ov.factTypes ?? {}
   return Object.entries(ov.flows ?? {}).map(([flowName, groups]) => {
-    const factType = flowToFact[flowName] ?? ''
+    const factType = factTypes[flowName] ?? ''
     return {
       flowName,
       label: prettyFlow(flowName),

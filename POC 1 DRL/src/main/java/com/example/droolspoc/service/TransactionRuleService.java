@@ -40,7 +40,7 @@ public class TransactionRuleService {
 
     public TransactionResponse validate(TransactionRequest request) {
         ValidationContext context = buildContext(request);
-        ruleEngine.execute(context, globalContext);
+        ruleEngine.execute(context, TransactionRequest.class, globalContext);
 
         return new TransactionResponse(
                 context.isValid(),

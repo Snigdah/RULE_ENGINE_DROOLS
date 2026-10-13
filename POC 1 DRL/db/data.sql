@@ -5,22 +5,22 @@
 -- =============================================================================
 
 -- ---- request class -> flow --------------------------------------------------
-INSERT INTO request_flow_map (id, fact_type, flow_name) VALUES
-    (nextval('request_flow_map_seq'), 'com.example.droolspoc.model.ValidationContext', 'TRANSFER_TRANSACTION');
-INSERT INTO request_flow_map (id, fact_type, flow_name) VALUES
-    (nextval('request_flow_map_seq'), 'com.example.droolspoc.model.LoanValidationContext', 'LOAN_APPLICATION');
-INSERT INTO request_flow_map (id, fact_type, flow_name) VALUES
-    (nextval('request_flow_map_seq'), 'com.example.droolspoc.model.ClosureValidationContext', 'ACCOUNT_CLOSURE');
+INSERT INTO request_flow_map (id, request_type, flow_name) VALUES
+    (nextval('request_flow_map_seq'), 'com.example.droolspoc.dto.TransactionRequest', 'TRANSFER_TRANSACTION');
+INSERT INTO request_flow_map (id, request_type, flow_name) VALUES
+    (nextval('request_flow_map_seq'), 'com.example.droolspoc.dto.LoanRequest', 'LOAN_APPLICATION');
+INSERT INTO request_flow_map (id, request_type, flow_name) VALUES
+    (nextval('request_flow_map_seq'), 'com.example.droolspoc.dto.AccountCloseRequest', 'ACCOUNT_CLOSURE');
 
 -- ---- flow -> ordered agenda groups (COMMON first, then the flow's own) ------
-INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'TRANSFER_TRANSACTION', 'COMMON',   1);
-INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'TRANSFER_TRANSACTION', 'TRANSFER', 2);
-INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'TRANSFER_TRANSACTION', 'VELOCITY',   3);
-INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'TRANSFER_TRANSACTION', 'COMPLIANCE', 4);
-INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'LOAN_APPLICATION',     'COMMON',   1);
-INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'LOAN_APPLICATION',     'LOAN',     2);
-INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'ACCOUNT_CLOSURE',      'COMMON',   1);
-INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'ACCOUNT_CLOSURE',      'CLOSURE',  2);
+INSERT INTO flow_group (id, flow_name, agenda_group, order_no, fact_type) VALUES (nextval('flow_group_seq'), 'TRANSFER_TRANSACTION', 'COMMON', 1, 'com.example.droolspoc.model.ValidationContext');
+INSERT INTO flow_group (id, flow_name, agenda_group, order_no, fact_type) VALUES (nextval('flow_group_seq'), 'TRANSFER_TRANSACTION', 'TRANSFER', 2, 'com.example.droolspoc.model.ValidationContext');
+INSERT INTO flow_group (id, flow_name, agenda_group, order_no, fact_type) VALUES (nextval('flow_group_seq'), 'TRANSFER_TRANSACTION', 'VELOCITY', 3, 'com.example.droolspoc.model.ValidationContext');
+INSERT INTO flow_group (id, flow_name, agenda_group, order_no, fact_type) VALUES (nextval('flow_group_seq'), 'TRANSFER_TRANSACTION', 'COMPLIANCE', 4, 'com.example.droolspoc.model.ValidationContext');
+INSERT INTO flow_group (id, flow_name, agenda_group, order_no, fact_type) VALUES (nextval('flow_group_seq'), 'LOAN_APPLICATION', 'COMMON', 1, 'com.example.droolspoc.model.LoanValidationContext');
+INSERT INTO flow_group (id, flow_name, agenda_group, order_no, fact_type) VALUES (nextval('flow_group_seq'), 'LOAN_APPLICATION', 'LOAN', 2, 'com.example.droolspoc.model.LoanValidationContext');
+INSERT INTO flow_group (id, flow_name, agenda_group, order_no, fact_type) VALUES (nextval('flow_group_seq'), 'ACCOUNT_CLOSURE', 'COMMON', 1, 'com.example.droolspoc.model.ClosureValidationContext');
+INSERT INTO flow_group (id, flow_name, agenda_group, order_no, fact_type) VALUES (nextval('flow_group_seq'), 'ACCOUNT_CLOSURE', 'CLOSURE', 2, 'com.example.droolspoc.model.ClosureValidationContext');
 
 -- ---- field catalog (builder palette), scoped by flow ------------------------
 INSERT INTO rule_field_catalog (id, field_key, flow_name, label, data_type, drl_path, allowed_ops, allowed_values) VALUES
@@ -287,7 +287,7 @@ INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_acc
 INSERT INTO re_account (id, account_no, balance, status) VALUES (nextval('re_account_seq'), 'ACC-903', 0, 'FROZEN');
 
 -- closure flow now runs COMMON -> CLOSURE -> COMPLIANCE
-INSERT INTO flow_group (id, flow_name, agenda_group, order_no) VALUES (nextval('flow_group_seq'), 'ACCOUNT_CLOSURE', 'COMPLIANCE', 3);
+INSERT INTO flow_group (id, flow_name, agenda_group, order_no, fact_type) VALUES (nextval('flow_group_seq'), 'ACCOUNT_CLOSURE', 'COMPLIANCE', 3, 'com.example.droolspoc.model.ClosureValidationContext');
 
 -- Closure compliance - dormant review
 INSERT INTO rule_definition (id, rule_name, agenda_group, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at)
