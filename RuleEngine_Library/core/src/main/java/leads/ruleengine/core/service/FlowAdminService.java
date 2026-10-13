@@ -42,7 +42,11 @@ public class FlowAdminService {
     // ---- Flow definitions (flow -> ordered agenda groups) --------------------------------
 
     @Transactional
-    public void upsertFlow(String flowName, List<String> groups) {
+    public void upsertFlow(String flowName, String factType, List<String> groups) {
+        // keep the flow's fact type when the caller omits it (e.g. a UI group edit)
+        String keepFact = (factType != null && !factType.isBlank())
+                ? factType
+                : flowGroupRepository.findFirstByFlowName(flowName).map(FlowGroup::getFactType).orElse(null);
         flowGroupRepository.deleteByFlowName(flowName);
         int order = 1;
         for (String group : groups) {
@@ -50,10 +54,11 @@ public class FlowAdminService {
             fg.setFlowName(flowName);
             fg.setAgendaGroup(group);
             fg.setOrderNo(order++);
+            fg.setFactType(keepFact);
             flowGroupRepository.save(fg);
         }
         flowResolver.reload();
-        log.info("Flow '{}' defined with {} group(s); routing reloaded.", flowName, groups.size());
+        log.info("Flow '{}' defined with {} group(s) (fact {}); routing reloaded.", flowName, groups.size(), keepFact);
     }
 
     @Transactional
@@ -76,39 +81,47 @@ public class FlowAdminService {
                                         .collect(Collectors.toList()))));
     }
 
-    // ---- Mappings (fact/context class -> flow) -------------------------------------------
+    // ---- Mappings (request class -> flow) ------------------------------------------------
 
-    /** Map (or remap) a fact/context class to a flow. */
+    /** Map (or remap) a request class to a flow. */
     @Transactional
-    public RequestFlowMap upsertMapping(String factType, String flowName) {
-        RequestFlowMap mapping = requestFlowMapRepository.findByFactType(factType)
+    public RequestFlowMap upsertMapping(String requestType, String flowName) {
+        RequestFlowMap mapping = requestFlowMapRepository.findByRequestType(requestType)
                 .orElseGet(RequestFlowMap::new);
-        mapping.setFactType(factType);
+        mapping.setRequestType(requestType);
         mapping.setFlowName(flowName);
         RequestFlowMap saved = requestFlowMapRepository.save(mapping);
         flowResolver.reload();
-        log.info("Mapping '{}' -> '{}' saved; routing reloaded.", factType, flowName);
+        log.info("Mapping '{}' -> '{}' saved; routing reloaded.", requestType, flowName);
         return saved;
     }
 
     @Transactional
-    public void deleteMapping(String factType) {
-        requestFlowMapRepository.findByFactType(factType).ifPresent(m -> {
+    public void deleteMapping(String requestType) {
+        requestFlowMapRepository.findByRequestType(requestType).ifPresent(m -> {
             requestFlowMapRepository.delete(m);
             flowResolver.reload();
-            log.info("Mapping '{}' deleted; routing reloaded.", factType);
+            log.info("Mapping '{}' deleted; routing reloaded.", requestType);
         });
     }
 
     public Map<String, String> listMappings() {
         return requestFlowMapRepository.findAll().stream()
-                .collect(Collectors.toMap(RequestFlowMap::getFactType, RequestFlowMap::getFlowName));
+                .collect(Collectors.toMap(RequestFlowMap::getRequestType, RequestFlowMap::getFlowName));
     }
 
     public Map<String, Object> overview() {
         Map<String, Object> view = new LinkedHashMap<>();
         view.put("mappings", listMappings());
         view.put("flows", listFlows());
+        view.put("factTypes", factTypesByFlow());
         return view;
+    }
+
+    /** flow -> fact/context class, read from FLOW_GROUP (for code-gen and the UI). */
+    public Map<String, String> factTypesByFlow() {
+        return flowGroupRepository.findAll().stream()
+                .filter(fg -> fg.getFactType() != null && !fg.getFactType().isBlank())
+                .collect(Collectors.toMap(FlowGroup::getFlowName, FlowGroup::getFactType, (a, b) -> a));
     }
 }

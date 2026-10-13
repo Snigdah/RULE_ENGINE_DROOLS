@@ -3,13 +3,12 @@ package leads.ruleengine.core.dto;
 import jakarta.validation.constraints.NotBlank;
 
 /**
- * JSON body for mapping a fact/context class to a flow. {@code factType} is the fully-qualified
- * context class the service inserts into {@code execute(...)} - both the routing key and the type
- * the rules' DRL matches on.
+ * JSON body for mapping a request class to a flow. {@code requestType} is the fully-qualified
+ * request class the service passes to {@code execute(context, requestType, ...)} - the routing key.
  *
  * @author K M Farhat Snigdah
  */
 public record RequestMappingRequest(
-        @NotBlank String factType,
+        @NotBlank String requestType,
         @NotBlank String flowName) {
 }

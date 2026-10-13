@@ -11,14 +11,14 @@ import java.util.List;
  * The method a consuming service calls to run rules. Two overloads so global reference data is
  * OPTIONAL - a service uses it only if its rules need it.
  *
- * <p>Routing is driven by the inserted fact's OWN class: its name selects the flow
- * ({@code REQUEST_FLOW_MAP.FACT_TYPE}), the flow selects the ordered agenda groups, and the
- * session fires them in that order. The service passes only the context - no separate request
- * class.</p>
+ * <p>Routing is driven by the REQUEST class the caller passes: its name selects the flow
+ * ({@code REQUEST_FLOW_MAP.REQUEST_TYPE}), the flow selects the ordered agenda groups, and the
+ * session fires them in that order. The {@code fact} (context) is what the rules read; the
+ * request class only decides the route.</p>
  *
  * <pre>
- *   ruleExecutionService.execute(context);                 // rules read only the fact
- *   ruleExecutionService.execute(context, globalContext);  // rules also read shared reference data
+ *   ruleExecutionService.execute(context, LoanRequest.class);                 // rules read only the fact
+ *   ruleExecutionService.execute(context, LoanRequest.class, globalContext);  // + shared reference data
  * </pre>
  *
  * <p>A fresh {@link KieSession} is created per call (sessions are not thread-safe) and disposed.</p>
@@ -37,18 +37,18 @@ public class RuleExecutionService {
         this.flowResolver = flowResolver;
     }
 
-    /** Run the flow mapped to {@code fact}'s class, WITHOUT any global reference data. */
-    public void execute(Object fact) {
-        run(fact, null);
+    /** Run the flow mapped to {@code requestType}, WITHOUT any global reference data. */
+    public void execute(Object fact, Class<?> requestType) {
+        run(fact, requestType, null);
     }
 
-    /** Run the flow mapped to {@code fact}'s class, exposing {@code globalContext} to the rules. */
-    public void execute(Object fact, GlobalContext globalContext) {
-        run(fact, globalContext);
+    /** Run the flow mapped to {@code requestType}, exposing {@code globalContext} to the rules. */
+    public void execute(Object fact, Class<?> requestType, GlobalContext globalContext) {
+        run(fact, requestType, globalContext);
     }
 
-    private void run(Object fact, GlobalContext globalContext) {
-        String flow = flowResolver.flowFor(fact.getClass().getName());
+    private void run(Object fact, Class<?> requestType, GlobalContext globalContext) {
+        String flow = flowResolver.flowFor(requestType.getName());
         List<String> groups = flowResolver.groupsFor(flow);
 
         KieSession session = ruleBaseProvider.getContainer().newKieSession();

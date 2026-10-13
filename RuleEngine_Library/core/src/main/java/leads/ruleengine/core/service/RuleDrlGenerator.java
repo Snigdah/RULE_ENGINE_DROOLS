@@ -6,9 +6,9 @@ import leads.ruleengine.core.dto.ConditionGroup;
 import leads.ruleengine.core.dto.ConditionLeaf;
 import leads.ruleengine.core.dto.ConditionNode;
 import leads.ruleengine.core.exception.RuleCompilationException;
-import leads.ruleengine.core.model.RequestFlowMap;
+import leads.ruleengine.core.model.FlowGroup;
 import leads.ruleengine.core.model.RuleFieldCatalog;
-import leads.ruleengine.core.repository.RequestFlowMapRepository;
+import leads.ruleengine.core.repository.FlowGroupRepository;
 import leads.ruleengine.core.repository.RuleFieldCatalogRepository;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +24,7 @@ import java.util.Optional;
  * recursively, wrapping every group in parentheses and joining children with {@code &&}/{@code ||}.</p>
  *
  * <p><b>Fully DB-driven.</b> Each leaf's real path and data type come from {@code RULE_FIELD_CATALOG};
- * the fact/context type the rule matches comes from {@code REQUEST_FLOW_MAP.FACT_TYPE} for the flow.</p>
+ * the fact/context type the rule matches comes from {@code FLOW_GROUP.FACT_TYPE} for the flow.</p>
  *
  * <p><b>IF / ELSE.</b> An optional {@code otherwise} branch emits a second rule whose tree is the
  * De-Morgan negation of the first: every group flips AND&harr;OR and every leaf operator is negated.</p>
@@ -40,13 +40,13 @@ public class RuleDrlGenerator {
     /** Guard against pathological input: the tree may not nest deeper than this. */
     private static final int MAX_DEPTH = 10;
 
-    private final RequestFlowMapRepository requestFlowMapRepository;
+    private final FlowGroupRepository flowGroupRepository;
     private final RuleFieldCatalogRepository catalogRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public RuleDrlGenerator(RequestFlowMapRepository requestFlowMapRepository,
+    public RuleDrlGenerator(FlowGroupRepository flowGroupRepository,
                             RuleFieldCatalogRepository catalogRepository) {
-        this.requestFlowMapRepository = requestFlowMapRepository;
+        this.flowGroupRepository = flowGroupRepository;
         this.catalogRepository = catalogRepository;
     }
 
@@ -86,13 +86,13 @@ public class RuleDrlGenerator {
         if (spec.flow == null || spec.flow.isBlank()) {
             throw new RuleCompilationException("Builder rule '" + spec.ruleName + "' has no flow.");
         }
-        String factFqn = requestFlowMapRepository.findFirstByFlowName(spec.flow)
-                .map(RequestFlowMap::getFactType)
+        String factFqn = flowGroupRepository.findFirstByFlowName(spec.flow)
+                .map(FlowGroup::getFactType)
                 .orElse(null);
         if (factFqn == null || factFqn.isBlank()) {
             throw new RuleCompilationException(
-                    "No fact type for flow '" + spec.flow + "'. Set FACT_TYPE on the REQUEST_FLOW_MAP row "
-                            + "for that flow (or POST /admin/flows/mappings with factType).");
+                    "No fact type for flow '" + spec.flow + "'. Set FACT_TYPE on the flow's FLOW_GROUP rows "
+                            + "(or POST /admin/flows with factType).");
         }
         return factFqn;
     }

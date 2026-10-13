@@ -9,13 +9,13 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 /**
- * Maps a fact/context class to its flow.
+ * Maps an incoming <b>request class</b> to its flow.
  *
- * <p>The service inserts a context (e.g. {@code ValidationContext}) and calls
- * {@code ruleExecutionService.execute(context, ...)}. The engine looks that context's class up
- * here to find the flow, then runs the flow's agenda groups. The SAME value is the type the
- * rules' DRL matches on ({@code $ctx : <factType>(...)}), so one column drives both routing and
- * code generation - no separate request class.</p>
+ * <p>The consuming service builds a context and calls
+ * {@code ruleExecutionService.execute(context, <RequestClass>.class, ...)}. The engine looks the
+ * request class up here to find the flow, then runs the flow's agenda groups. This table is
+ * purely routing - two columns, no fact type. The type the rules' DRL matches on
+ * ({@code $ctx : <factType>(...)}) lives on the flow's {@code FLOW_GROUP} rows instead.</p>
  *
  * @author K M Farhat Snigdah
  */
@@ -28,9 +28,9 @@ public class RequestFlowMap {
     @SequenceGenerator(name = "request_flow_map_seq", sequenceName = "REQUEST_FLOW_MAP_SEQ", allocationSize = 1)
     private Long id;
 
-    /** Fully-qualified fact/context class - the routing key AND the type the DRL matches. Unique. */
-    @Column(name = "FACT_TYPE", nullable = false, unique = true, length = 500)
-    private String factType;
+    /** Fully-qualified request class - the execute() routing key. Unique. */
+    @Column(name = "REQUEST_TYPE", nullable = false, unique = true, length = 500)
+    private String requestType;
 
     @Column(name = "FLOW_NAME", nullable = false, length = 255)
     private String flowName;
@@ -43,12 +43,12 @@ public class RequestFlowMap {
         this.id = id;
     }
 
-    public String getFactType() {
-        return factType;
+    public String getRequestType() {
+        return requestType;
     }
 
-    public void setFactType(String factType) {
-        this.factType = factType;
+    public void setRequestType(String requestType) {
+        this.requestType = requestType;
     }
 
     public String getFlowName() {

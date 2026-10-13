@@ -49,7 +49,7 @@ public class FlowAdminController {
 
     @PostMapping
     public ResponseEntity<Void> upsertFlow(@Valid @RequestBody FlowDefinitionRequest request) {
-        flowAdminService.upsertFlow(request.flowName(), request.groups());
+        flowAdminService.upsertFlow(request.flowName(), request.factType(), request.groups());
         return ResponseEntity.ok().build();
     }
 
@@ -68,13 +68,13 @@ public class FlowAdminController {
 
     @PostMapping("/mappings")
     public ResponseEntity<Void> upsertMapping(@Valid @RequestBody RequestMappingRequest request) {
-        flowAdminService.upsertMapping(request.factType(), request.flowName());
+        flowAdminService.upsertMapping(request.requestType(), request.flowName());
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/mappings")
-    public ResponseEntity<Void> deleteMapping(@RequestParam String factType) {
-        flowAdminService.deleteMapping(factType);
+    public ResponseEntity<Void> deleteMapping(@RequestParam String requestType) {
+        flowAdminService.deleteMapping(requestType);
         return ResponseEntity.noContent().build();
     }
 

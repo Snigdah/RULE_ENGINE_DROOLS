@@ -39,6 +39,14 @@ public class FlowGroup {
     @Column(name = "ORDER_NO", nullable = false)
     private Integer orderNo;
 
+    /**
+     * The fully-qualified fact/context class the rules in THIS flow match on
+     * ({@code $ctx : <factType>(...)}). Same value on every row of a flow; the DRL generator
+     * reads it to build the rule pattern. Set by developers when the flow is defined.
+     */
+    @Column(name = "FACT_TYPE", length = 500)
+    private String factType;
+
     public Long getId() {
         return id;
     }
@@ -69,5 +77,12 @@ public class FlowGroup {
 
     public void setOrderNo(Integer orderNo) {
         this.orderNo = orderNo;
+    }
+    public String getFactType() {
+        return factType;
+    }
+
+    public void setFactType(String factType) {
+        this.factType = factType;
     }
 }
