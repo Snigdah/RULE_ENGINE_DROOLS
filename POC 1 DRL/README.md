@@ -1,66 +1,75 @@
-# Drools Transaction POC
+# Drools Rule-Engine POC — 3 flows
 
-Spring Boot 3.5 + Java 21 + Maven. Compiles the DRL rules under
-`resources/rules/` into a Drools `KieContainer` at startup and validates
-transactions over REST.
+Spring Boot 3.5 + Java 21 + PostgreSQL. This app does **not** embed Drools — it is a
+business consumer of `com.leads:rule-engine` (the sibling `RuleEngine_Library`, **0.0.2**).
 
-## Requirements
-- JDK 21
-- Maven 3.9+
+It demonstrates the full design: **one engine, three flows** (transfer, loan, account-closure),
+with the two **COMMON** rules (blocked-user, KYC) **shared across all three** and each flow
+adding its own rule.
 
-## Build & run
+## How the reuse works
+
+Every flow's context extends a shared base, `RuleContext` (holds `userId`, `user`, and the
+decision result). The COMMON rules are written against `RuleContext`, so they fire for any
+flow; the flow-specific rules match the concrete context.
+
+```
+request class ──▶ flow ──▶ ordered groups ──▶ rules
+TransactionRequest ▶ TRANSFER_TRANSACTION ▶ [COMMON, TRANSFER] ▶ blocked-user, KYC (shared) + over-limit
+LoanRequest        ▶ LOAN_APPLICATION     ▶ [COMMON, LOAN]     ▶ blocked-user, KYC (shared) + credit-score
+AccountCloseRequest▶ ACCOUNT_CLOSURE       ▶ [COMMON, CLOSURE]  ▶ blocked-user, KYC (shared) + outstanding-balance
+```
+
+## Rules (stored in `rule_definition`)
+
+| Rule | Group | Source |
+|------|-------|--------|
+| Block blocked user | COMMON (shared) | DRL (uses `eval` + a global) |
+| Block if KYC not verified | COMMON (shared) | DRL (halts on block) |
+| Over-limit debit-restricted BDT | TRANSFER | BUILDER (JSON → DRL) |
+| Loan below credit score | LOAN | BUILDER |
+| Closure with outstanding balance | CLOSURE | BUILDER |
+
+Builder rules store both `source_json` (editable) and the generated `drl_text` (what runs).
+The engine only ever executes `drl_text`.
+
+## Run
+
 ```bash
+# 1. install the library (once), if not already in your ~/.m2
+mvn -f "../RuleEngine_Library/core/pom.xml" install
+
+# 2. database
+createdb -U postgres ruleengine
+psql -U postgres -d ruleengine -f db/schema.sql   # or let ddl-auto=update create tables
+psql -U postgres -d ruleengine -f db/data.sql     # rules + routing + demo rows
+
+# 3. run
 mvn clean spring-boot:run
 ```
 
 ## Endpoints
-- `POST /api/transactions/validate` - run the rules on a transaction
-- `GET  /actuator/health`           - health / readiness probe
+- `POST /api/transactions/validate` — transfer
+- `POST /api/loans/validate` — loan
+- `POST /api/account-closures/validate` — account closure
+- `GET /admin/rules`, `GET /admin/rules/fields?flow=…`, `POST /admin/rules` — library
+- `GET/POST/DELETE /admin/flows` and `/admin/flows/mappings` — library
+- `POST /admin/global-context/reload` — reload the blocked-user set
 
-## Try it
-DEVIR over 5000 -> permission denied:
-```bash
-curl -X POST http://localhost:8080/api/transactions/validate \
-  -H "Content-Type: application/json" \
-  -d "{\"transferMode\":\"DEVIR\",\"amount\":6000}"
-```
-Response:
-```json
-{"valid":false,"permissionDenied":true,
- "message":"Permission denied: DEVIR transaction amount cannot be greater than 5000"}
-```
+## Test personas (seeded)
 
-Normal transfer over 500 -> flagged but valid:
-```bash
-curl -X POST http://localhost:8080/api/transactions/validate \
-  -H "Content-Type: application/json" \
-  -d "{\"transferMode\":\"NORMAL\",\"amount\":800}"
-```
+| user | kyc | blocked | credit | note |
+|------|-----|---------|--------|------|
+| USER-001 | yes | no | 700 | the "happy" user |
+| USER-002 | yes | **yes** | 700 | blocked — rejected by COMMON in every flow |
+| USER-003 | **no** | no | — | fails KYC |
+| USER-004 | yes | no | **550** | fails the loan credit-score rule |
 
-Invalid input (missing amount) -> 400:
-```json
-{"timestamp":"...","status":400,"error":"Validation failed",
- "fieldErrors":{"amount":"amount is required"}}
-```
+Accounts: `100001` debit-restricted, `200001` not. `ACC-901` has a balance, `ACC-900` is zero.
 
-## Design notes
-- `dto/TransactionRequest.java`  - API input; Bean Validation on required fields
-- `dto/TransactionResponse.java` - API output; the rule outcome only
-- `model/Transaction.java`       - internal Drools fact (mutated by the rules); never exposed at the API
-- `config/DroolsConfig.java`     - builds the KieContainer via the public KieResources API
-- `service/TransactionRuleService.java` - maps request -> fact, fires rules in a fresh KieSession (disposed per call), returns response
-- `controller/TransactionController.java` - `@Valid` request, delegates to the service
-- `controller/GlobalExceptionHandler.java` - clean 400 on validation failure
-- `resources/rules/transaction-rules.drl` - the rules
+See `test-requests.http` for ready-to-run calls (T1–T5 transfer, L1–L3 loan, C1–C3 closure).
 
 ## Tests
 ```bash
 mvn test
 ```
-- `TransactionRuleServiceTest` - rule logic
-- `TransactionControllerTest`  - endpoint happy path + validation 400
-
-## Notes
-- Confirm the exact patch versions resolve (spring-boot 3.5.10, drools 10.2.0);
-  bump to the latest patch if either fails to download.
-- Drools 10 requires Java 17+, satisfied by Java 21.

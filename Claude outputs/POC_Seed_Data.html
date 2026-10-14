@@ -1,0 +1,218 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>POC Seed Data</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a single scroll of table cards grouped Business vs Library, with a persona legend up top. */
+  :root{
+    --bg:#f4f6f9; --surface:#ffffff; --surface-2:#eef1f6; --border:#e0e5ec;
+    --fg:#19212e; --muted:#5d6b7e; --faint:#8a97a8;
+    --accent:#2f5bd0; --accent-weak:#e8eefc; --accent-line:#c9d6fa;
+    --good:#1a7f46; --good-weak:#e5f5ec;
+    --bad:#c0362c; --bad-weak:#fbe9e7;
+    --warn:#9a6a00; --warn-weak:#fbf1d9;
+    --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    --font:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --shadow:0 1px 2px rgba(20,30,50,.05),0 8px 22px rgba(20,30,50,.05);
+  }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --bg:#0d1017; --surface:#151a22; --surface-2:#1b222c; --border:#29313d;
+    --fg:#e7ebf2; --muted:#9aa6b6; --faint:#6b7687;
+    --accent:#7f93ff; --accent-weak:#1b2238; --accent-line:#2c3657;
+    --good:#45cf92; --good-weak:#12271e; --bad:#ff6f78; --bad-weak:#2a1a1d;
+    --warn:#d9ab4e; --warn-weak:#2a2210;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35); color-scheme:dark;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0d1017; --surface:#151a22; --surface-2:#1b222c; --border:#29313d;
+    --fg:#e7ebf2; --muted:#9aa6b6; --faint:#6b7687;
+    --accent:#7f93ff; --accent-weak:#1b2238; --accent-line:#2c3657;
+    --good:#45cf92; --good-weak:#12271e; --bad:#ff6f78; --bad-weak:#2a1a1d;
+    --warn:#d9ab4e; --warn-weak:#2a2210;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35); color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1040px;margin:0 auto;padding-block:26px;padding-inline:18px}
+
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  h1{font-size:23px;font-weight:800;margin:0;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:14px;margin:2px 0 0}
+  .themebtn{margin-left:auto;font:inherit;font-size:13px;font-weight:600;color:var(--fg);background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:7px 12px;cursor:pointer}
+
+  .eyebrow{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin:34px 0 12px;display:flex;align-items:center;gap:10px}
+  .eyebrow::after{content:"";flex:1;height:2px;background:var(--border);border-radius:2px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);margin:14px 0;overflow:hidden}
+  .card-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid var(--border)}
+  .card-h .t{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--fg)}
+  .card-h .d{font-size:12.5px;color:var(--faint)}
+  .card-h .n{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:3px 9px}
+  .scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:0}
+  th,td{padding:9px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+  th{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover td{background:var(--surface-2)}
+  td.mono,.k{font-family:var(--mono);font-size:12.5px}
+  .num{font-variant-numeric:tabular-nums;text-align:right}
+
+  .chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.02em;padding:2px 9px;border-radius:999px;border:1px solid transparent}
+  .c-good{background:var(--good-weak);color:var(--good);border-color:color-mix(in srgb,var(--good) 35%,transparent)}
+  .c-bad{background:var(--bad-weak);color:var(--bad);border-color:color-mix(in srgb,var(--bad) 35%,transparent)}
+  .c-warn{background:var(--warn-weak);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,transparent)}
+  .c-mute{background:var(--surface-2);color:var(--muted);border-color:var(--border)}
+  .c-accent{background:var(--accent-weak);color:var(--accent);border-color:var(--accent-line)}
+
+  /* personas */
+  .personas{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:4px 0 2px}
+  .persona{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 15px;box-shadow:var(--shadow)}
+  .persona .id{font-family:var(--mono);font-weight:600;font-size:13.5px}
+  .persona .nm{color:var(--faint);font-size:12.5px;margin-bottom:9px}
+  .persona .tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+  .persona .verdict{font-size:12.5px;color:var(--muted);border-top:1px dashed var(--border);padding-top:8px}
+  .persona .verdict b{color:var(--fg);font-weight:700}
+
+  .foot{color:var(--faint);font-size:12px;text-align:center;margin-top:28px}
+  code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);padding:1px 6px;border-radius:5px}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Rule Engine POC — Seed Data</h1>
+      <p class="sub">The dummy rows loaded into PostgreSQL, grouped by business tables and the library's field catalog.</p>
+    </div>
+    <button class="themebtn" id="theme">◐ Theme</button>
+  </header>
+
+  <!-- PERSONAS -->
+  <div class="eyebrow">Test personas — who gets blocked, and why</div>
+  <div class="personas">
+    <div class="persona">
+      <div class="id">USER-001</div><div class="nm">Ayesha Rahman</div>
+      <div class="tags"><span class="chip c-good">KYC ✓</span><span class="chip c-good">not blocked</span><span class="chip c-good">credit 700</span></div>
+      <div class="verdict">The clean user. Passes unless a <b>flow rule</b> catches it (e.g. over-limit transfer, outstanding-balance closure).</div>
+    </div>
+    <div class="persona">
+      <div class="id">USER-002</div><div class="nm">Blocked Bob</div>
+      <div class="tags"><span class="chip c-good">KYC ✓</span><span class="chip c-bad">blocked</span></div>
+      <div class="verdict"><b>Rejected in every flow</b> by the shared COMMON blocked-user rule.</div>
+    </div>
+    <div class="persona">
+      <div class="id">USER-003</div><div class="nm">Unverified Uma</div>
+      <div class="tags"><span class="chip c-bad">KYC ✗</span><span class="chip c-good">not blocked</span></div>
+      <div class="verdict"><b>Rejected in every flow</b> by the shared COMMON KYC rule.</div>
+    </div>
+    <div class="persona">
+      <div class="id">USER-004</div><div class="nm">Low-score Lee</div>
+      <div class="tags"><span class="chip c-good">KYC ✓</span><span class="chip c-warn">credit 550</span></div>
+      <div class="verdict">Passes transfer, but the <b>LOAN rule</b> blocks it (score &lt; 600).</div>
+    </div>
+  </div>
+
+  <!-- BUSINESS TABLES -->
+  <div class="eyebrow">Business tables</div>
+
+  <div class="card">
+    <div class="card-h"><span class="t">re_user</span><span class="d">users + KYC flag</span><span class="n">4 rows</span></div>
+    <div class="scroll"><table>
+      <thead><tr><th>user_id</th><th>kyc_verified</th><th>full_name</th></tr></thead>
+      <tbody>
+        <tr><td class="k">USER-001</td><td><span class="chip c-good">true</span></td><td>Ayesha Rahman</td></tr>
+        <tr><td class="k">USER-002</td><td><span class="chip c-good">true</span></td><td>Blocked Bob</td></tr>
+        <tr><td class="k">USER-003</td><td><span class="chip c-bad">false</span></td><td>Unverified Uma</td></tr>
+        <tr><td class="k">USER-004</td><td><span class="chip c-good">true</span></td><td>Low-score Lee</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><span class="t">re_user_block</span><span class="d">blocked-user list (loaded into GlobalContext)</span><span class="n">1 row</span></div>
+    <div class="scroll"><table>
+      <thead><tr><th>user_id</th><th>blocked</th></tr></thead>
+      <tbody><tr><td class="k">USER-002</td><td><span class="chip c-bad">true</span></td></tr></tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><span class="t">re_user_limit</span><span class="d">per-user transaction limit</span><span class="n">4 rows</span></div>
+    <div class="scroll"><table>
+      <thead><tr><th>user_id</th><th>transaction_mode</th><th>dr_cr_type</th><th class="num">limit_amount</th></tr></thead>
+      <tbody>
+        <tr><td class="k">USER-001</td><td>ONLINE</td><td>D</td><td class="num">10,000</td></tr>
+        <tr><td class="k">USER-002</td><td>ONLINE</td><td>D</td><td class="num">10,000</td></tr>
+        <tr><td class="k">USER-003</td><td>ONLINE</td><td>D</td><td class="num">10,000</td></tr>
+        <tr><td class="k">USER-004</td><td>ONLINE</td><td>D</td><td class="num">10,000</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><span class="t">re_product</span><span class="d">account / debit-restricted flag</span><span class="n">2 rows</span></div>
+    <div class="scroll"><table>
+      <thead><tr><th>source_account</th><th>dr_res</th><th>meaning</th></tr></thead>
+      <tbody>
+        <tr><td class="k">100001</td><td><span class="chip c-warn">1</span></td><td>debit-restricted</td></tr>
+        <tr><td class="k">200001</td><td><span class="chip c-mute">0</span></td><td>not restricted</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><span class="t">re_customer</span><span class="d">credit profile (loan flow)</span><span class="n">3 rows</span></div>
+    <div class="scroll"><table>
+      <thead><tr><th>user_id</th><th class="num">credit_score</th><th>full_name</th></tr></thead>
+      <tbody>
+        <tr><td class="k">USER-001</td><td class="num"><span class="chip c-good">700</span></td><td>Ayesha Rahman</td></tr>
+        <tr><td class="k">USER-002</td><td class="num"><span class="chip c-good">700</span></td><td>Blocked Bob</td></tr>
+        <tr><td class="k">USER-004</td><td class="num"><span class="chip c-warn">550</span></td><td>Low-score Lee</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><span class="t">re_account</span><span class="d">account balance (closure flow)</span><span class="n">2 rows</span></div>
+    <div class="scroll"><table>
+      <thead><tr><th>account_no</th><th class="num">balance</th><th>status</th></tr></thead>
+      <tbody>
+        <tr><td class="k">ACC-900</td><td class="num"><span class="chip c-good">0.00</span></td><td>ACTIVE</td></tr>
+        <tr><td class="k">ACC-901</td><td class="num"><span class="chip c-warn">1,500.00</span></td><td>ACTIVE</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <!-- LIBRARY TABLE -->
+  <div class="eyebrow">Library table — builder palette</div>
+
+  <div class="card">
+    <div class="card-h"><span class="t">rule_field_catalog</span><span class="d">fields the Visual Rule Builder offers, scoped by flow</span><span class="n">11 rows</span></div>
+    <div class="scroll"><table>
+      <thead><tr><th>field_key</th><th>flow_name</th><th>label</th><th>data_type</th><th>allowed_ops</th><th>allowed_values</th></tr></thead>
+      <tbody>
+        <tr><td class="k">user.kycVerified</td><td><span class="chip c-accent">COMMON</span></td><td>KYC Verified</td><td>BOOLEAN</td><td class="mono">==</td><td>Yes (true), No (false)</td></tr>
+        <tr><td class="k">transaction.amount</td><td>TRANSFER_TRANSACTION</td><td>Transaction Amount</td><td>NUMBER</td><td class="mono">&gt; &lt; &gt;= &lt;= ==</td><td>—</td></tr>
+        <tr><td class="k">transaction.currency</td><td>TRANSFER_TRANSACTION</td><td>Currency</td><td>ENUM</td><td class="mono">== !=</td><td>BDT, USD, EUR, GBP</td></tr>
+        <tr><td class="k">product.drRes</td><td>TRANSFER_TRANSACTION</td><td>Debit Restricted</td><td>BOOLEAN</td><td class="mono">==</td><td>Yes (1), No (0)</td></tr>
+        <tr><td class="k">userLimit.limit</td><td>TRANSFER_TRANSACTION</td><td>User Limit</td><td>NUMBER</td><td class="mono">&gt; &lt; &gt;= &lt;=</td><td>—</td></tr>
+        <tr><td class="k">loan.amount</td><td>LOAN_APPLICATION</td><td>Loan Amount</td><td>NUMBER</td><td class="mono">&gt; &lt; &gt;= &lt;=</td><td>—</td></tr>
+        <tr><td class="k">customer.creditScore</td><td>LOAN_APPLICATION</td><td>Credit Score</td><td>NUMBER</td><td class="mono">&gt; &lt; &gt;= &lt;=</td><td>—</td></tr>
+        <tr><td class="k">account.balance</td><td>ACCOUNT_CLOSURE</td><td>Account Balance</td><td>NUMBER</td><td class="mono">&gt; &lt; &gt;= &lt;= == !=</td><td>—</td></tr>
+        <tr><td class="k">transaction.channel</td><td>TRANSFER_TRANSACTION</td><td>Channel</td><td>ENUM</td><td class="mono">== !=</td><td>ATM, POS, ONLINE, BRANCH, AGENT</td></tr>
+        <tr><td class="k">transaction.country</td><td>TRANSFER_TRANSACTION</td><td>Destination Country</td><td>ENUM</td><td class="mono">== !=</td><td>BD, US, UK, AE, SG, OTHER</td></tr>
+        <tr><td class="k">transaction.dailyTxnCount</td><td>TRANSFER_TRANSACTION</td><td>Daily Txn Count</td><td>NUMBER</td><td class="mono">&gt; &lt; &gt;= &lt;= ==</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <p class="foot">Matches <code>db/business-data.sql</code>. Rules, flows and request→flow mappings are loaded separately via the admin API.</p>
+</div>
+
+<script>
+  document.getElementById("theme").onclick=function(){
+    var r=document.documentElement;
+    var cur=r.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+    r.setAttribute("data-theme",cur==="dark"?"light":"dark");
+  };
+</script>
+
+</body></html>

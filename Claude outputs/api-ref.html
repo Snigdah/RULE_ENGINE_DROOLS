@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Rule Engine API Reference</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+  * { box-sizing: border-box; }
+  html { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1a2230; font-size: 10.5pt; line-height: 1.5; }
+  body { margin: 0; }
+  code, pre, .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  h1 { font-size: 22pt; margin: 0 0 2px; letter-spacing: -.01em; }
+  h2 { font-size: 14pt; margin: 22px 0 8px; padding-bottom: 5px; border-bottom: 2px solid #e2e7ef; color: #16233a; }
+  h3 { font-size: 11.5pt; margin: 16px 0 6px; color: #243247; }
+  p { margin: 7px 0; }
+  a { color: #2f5bd0; text-decoration: none; }
+  .sub { color: #5d6b7e; margin: 2px 0 0; }
+  .meta { color: #5d6b7e; font-size: 9.5pt; margin-top: 6px; }
+  .tag { display:inline-block; font-size: 8.5pt; font-weight: 700; padding: 1px 7px; border-radius: 999px; background:#eef1f6; color:#44506280; border:1px solid #e0e5ec; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 9.5pt; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #e6eaf0; vertical-align: top; }
+  th { background: #f4f6f9; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .04em; color: #5d6b7e; }
+  td.k, .k { font-family: "SFMono-Regular", Consolas, monospace; font-size: 9pt; }
+  pre { background: #10151f; color: #e7ebf5; border-radius: 8px; padding: 10px 12px; overflow-x: auto; font-size: 8.8pt; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  pre .c { color: #9aa6bd; } pre .s { color: #9fe0a6; } pre .n { color: #ffcf7a; } pre .k2 { color: #8ea2ff; }
+  .ep { border: 1px solid #e2e7ef; border-radius: 10px; padding: 11px 13px; margin: 10px 0; page-break-inside: avoid; }
+  .ep h3 { margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .m { font-family: "SFMono-Regular", Consolas, monospace; font-weight: 700; font-size: 9pt; padding: 2px 8px; border-radius: 6px; color: #fff; }
+  .m.get { background: #1a7f46; } .m.post { background: #2f5bd0; } .m.put { background: #9a6a00; } .m.del { background: #c0362c; }
+  .path { font-family: "SFMono-Regular", Consolas, monospace; font-weight: 600; font-size: 10pt; }
+  .ep p { margin: 5px 0; }
+  .lbl { font-size: 8.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #5d6b7e; margin: 9px 0 3px; }
+  .note { background: #e8eefc; border: 1px solid #c9d6fa; border-left: 4px solid #2f5bd0; border-radius: 8px; padding: 9px 12px; margin: 10px 0; font-size: 9.5pt; }
+  .note b { color: #16233a; }
+  ul { margin: 6px 0; padding-left: 20px; } li { margin: 2px 0; }
+  .brk { page-break-before: always; }
+  .small { font-size: 9pt; color:#5d6b7e; }
+  hr { border: none; border-top: 1px solid #e6eaf0; margin: 16px 0; }
+</style></head>
+<body>
+
+<h1>Rule Engine — API Reference</h1>
+<p class="sub">Runtime rule management &amp; validation. Library <span class="k">com.leads:rule-engine:3.0.0</span> (4-table design).</p>
+<p class="meta">Base URL <span class="k">http://localhost:8080</span> · All bodies <span class="k">application/json</span> · Author K M Farhat Snigdah</p>
+
+<h2>1. Overview</h2>
+<p>The rule engine is a Spring Boot <b>starter library</b>. A consuming service adds the dependency and gets two things: a runtime <b>validation call</b> its code invokes, and an <b>Admin REST API</b> (under <span class="k">/admin</span>) to manage flows, groups and rules while the app runs — no restart, no redeploy.</p>
+<p>Routing is database-driven. An incoming <b>request class</b> maps 1:1 to a <b>flow</b>; a flow runs an ordered list of <b>agenda groups</b> (shared <span class="k">COMMON</span> first, then the flow's own); each group holds <b>rules</b>. A rule is stored as both an editable builder form (<span class="k">source_json</span>) and the executable <span class="k">drl_text</span> the engine compiles.</p>
+
+<h3>Data model (4 tables)</h3>
+<table>
+  <thead><tr><th>Table</th><th>Holds</th><th>Key points</th></tr></thead>
+  <tbody>
+    <tr><td class="k">rule_flow</td><td>flow master + router</td><td><span class="k">request_class</span> (UNIQUE, routing key) and <span class="k">fact_type</span> live here; has <span class="k">active</span></td></tr>
+    <tr><td class="k">rule_group</td><td>a flow's agenda groups</td><td><span class="k">flow_id</span> NULL = shared (COMMON); <span class="k">UNIQUE(flow_id, group_code)</span>; has <span class="k">active</span></td></tr>
+    <tr><td class="k">rule_definition</td><td>the rules</td><td>FK to one group; <span class="k">UNIQUE(group_id, rule_name)</span>; keeps both <span class="k">source_json</span> &amp; <span class="k">drl_text</span>; has <span class="k">active</span></td></tr>
+    <tr><td class="k">rule_field_catalog</td><td>builder field palette</td><td><span class="k">flow_id</span> NULL = shared field</td></tr>
+  </tbody>
+</table>
+
+<h3>Conventions</h3>
+<ul>
+  <li><b>Enablement:</b> the Admin API is exposed only when <span class="k">rule-engine.admin.enabled=true</span> (the default). Secure this path in production (e.g. the AuthZ library).</li>
+  <li><b>Identity:</b> flows are addressed by <span class="k">flowCode</span>; groups and rules by numeric <span class="k">id</span>.</li>
+  <li><b>Immediate effect:</b> every write reloads routing and/or the rule base synchronously.</li>
+</ul>
+
+<h3>Error model</h3>
+<p>Admin errors return a JSON envelope. <span class="k">400</span> — bad input (unknown id, missing <span class="k">sourceJson</span>/<span class="k">drl</span>, DRL compile error, unregistered request class, bean-validation). <span class="k">409</span> — deleting a flow/group that still has children without <span class="k">?force=true</span>.</p>
+<pre><span class="c">// 400 — validation</span>
+{ "timestamp":"2026-10-13T…Z", "status":400, "error":"Bad Request",
+  "message":"Validation failed", "fieldErrors": { "factType":"must not be blank" } }
+
+<span class="c">// 409 — group still has rules</span>
+{ "timestamp":"…", "status":409, "error":"Conflict",
+  "message":"Group 4 ('COMPLIANCE') has 2 rule(s). Delete them first, or call again with ?force=true." }</pre>
+
+<h2 class="brk">2. Active / inactive &amp; delete</h2>
+<p>Every flow, group and rule has two independent operations:</p>
+<ul>
+  <li><b>Activate / deactivate</b> — the UI on/off toggle. Keeps the row; flips <span class="k">active</span>. An inactive <b>rule</b> is not compiled, an inactive <b>group</b> is not focused, and an inactive <b>flow</b> runs nothing at all when its request hits (the request simply passes through — not an error).</li>
+  <li><b>Delete</b> — removes the row permanently. <span class="k">?force=true</span> cascades to children (a flow's groups/fields/rules; a group's rules).</li>
+</ul>
+<div class="note"><b>Deactivate ≠ delete.</b> Deactivating a COMPLIANCE group turns the screen off but keeps its rules; toggle it back on and they fire again. Deleting removes them for good.</div>
+
+<h2>3. Admin API — Flows</h2>
+
+<div class="ep">
+  <h3><span class="m get">GET</span> <span class="path">/admin/flows</span></h3>
+  <p>List every flow with the groups it runs (shared first, then its own, in order). Includes <span class="k">active</span> flags.</p>
+  <div class="lbl">200 Response — FlowView[]</div>
+<pre>[ { "id":1, "flowCode":"TRANSFER_TRANSACTION",
+    "requestClass":"com.example.droolspoc.dto.TransactionRequest",
+    "factType":"com.example.droolspoc.model.ValidationContext",
+    "label":"Transfer Transaction", "active":true,
+    "groups":[
+      { "id":1,"groupCode":"COMMON","orderNo":1,"shared":true,"active":true },
+      { "id":2,"groupCode":"TRANSFER","orderNo":2,"shared":false,"active":true } ] } ]</pre>
+</div>
+
+<div class="ep">
+  <h3><span class="m post">POST</span> <span class="path">/admin/flows</span></h3>
+  <p>Create or update a flow master (matched by <span class="k">flowCode</span>). Any <span class="k">groups</span> listed are ensured to exist for the flow, in order (append-only — never deletes existing groups or rules).</p>
+  <div class="lbl">Request — FlowDefinitionRequest</div>
+<pre>{ "flowCode":"TRANSFER_TRANSACTION",          <span class="c">// required</span>
+  "requestClass":"com.example.droolspoc.dto.TransactionRequest",
+  "factType":"com.example.droolspoc.model.ValidationContext",  <span class="c">// required</span>
+  "label":"Transfer Transaction",
+  "groups":["TRANSFER","VELOCITY","COMPLIANCE"] }</pre>
+  <div class="lbl">200 Response</div><p class="small">The created/updated <span class="k">FlowView</span>.</p>
+</div>
+
+<div class="ep">
+  <h3><span class="m put">PUT</span> <span class="path">/admin/flows/{flowCode}/active</span></h3>
+  <p>Activate or deactivate a flow. An inactive flow runs no rules when its request hits.</p>
+  <div class="lbl">Request — ActiveRequest</div>
+<pre>{ "active": false }</pre>
+  <div class="lbl">200 Response</div><p class="small">The updated <span class="k">FlowView</span>.</p>
+</div>
+
+<div class="ep">
+  <h3><span class="m del">DELETE</span> <span class="path">/admin/flows/{flowCode}</span></h3>
+  <p>Permanently delete a flow. <span class="k">409</span> if it still has groups or fields, unless <span class="k">?force=true</span> (which also deletes its groups, their rules, and its fields).</p>
+  <div class="lbl">Query</div><p class="small"><span class="k">force</span> — boolean, default <span class="k">false</span>.</p>
+  <div class="lbl">Responses</div><p class="small"><span class="k">204</span> deleted · <span class="k">409</span> has children · <span class="k">400</span> no such flow.</p>
+</div>
+
+<h2>4. Admin API — Groups</h2>
+
+<div class="ep">
+  <h3><span class="m get">GET</span> <span class="path">/admin/flows/{flowCode}/groups</span></h3>
+  <p>The groups a flow runs: shared groups first, then the flow's own, in order (active and inactive). Use the returned ids to attach rules.</p>
+  <div class="lbl">200 Response — GroupView[]</div>
+<pre>[ { "id":1,"groupCode":"COMMON","orderNo":1,"shared":true,"active":true },
+  { "id":4,"groupCode":"COMPLIANCE","orderNo":4,"shared":false,"active":true } ]</pre>
+</div>
+
+<div class="ep">
+  <h3><span class="m post">POST</span> <span class="path">/admin/flows/{flowCode}/groups</span></h3>
+  <p>Add a group to a flow. <span class="k">orderNo</span> optional — appended after existing groups when omitted.</p>
+  <div class="lbl">Request — GroupRequest</div>
+<pre>{ "groupCode":"COMPLIANCE", "orderNo": 4 }</pre>
+  <div class="lbl">200 Response</div><p class="small">The created <span class="k">GroupView</span>. <span class="k">400</span> if the flow already has that group code.</p>
+</div>
+
+<div class="ep">
+  <h3><span class="m post">POST</span> <span class="path">/admin/groups/shared</span></h3>
+  <p>Create a <b>shared</b> group (<span class="k">flow_id NULL</span>, e.g. COMMON) that every flow runs first. There is one shared group per code.</p>
+  <div class="lbl">Request — GroupRequest</div>
+<pre>{ "groupCode":"COMMON", "orderNo": 1 }</pre>
+  <div class="lbl">200 Response</div><p class="small">The created <span class="k">GroupView</span> (<span class="k">shared:true</span>). <span class="k">400</span> if that shared code already exists.</p>
+</div>
+
+<div class="ep">
+  <h3><span class="m put">PUT</span> <span class="path">/admin/flows/{flowCode}/groups/order</span></h3>
+  <p>Rewrite the firing order of a flow's own groups from the given id order.</p>
+  <div class="lbl">Request — GroupOrderRequest</div>
+<pre>{ "groupIds": [2, 4, 3] }</pre>
+  <div class="lbl">200 Response</div><p class="small">Empty. <span class="k">400</span> if an id doesn't belong to the flow.</p>
+</div>
+
+<div class="ep">
+  <h3><span class="m put">PUT</span> <span class="path">/admin/groups/{groupId}/active</span></h3>
+  <p>Activate or deactivate a group. An inactive group is skipped; its rules are not evaluated.</p>
+  <div class="lbl">Request — ActiveRequest</div>
+<pre>{ "active": false }</pre>
+  <div class="lbl">200 Response</div><p class="small">The updated <span class="k">GroupView</span>.</p>
+</div>
+
+<div class="ep">
+  <h3><span class="m del">DELETE</span> <span class="path">/admin/groups/{groupId}</span></h3>
+  <p>Permanently delete a group. <span class="k">409</span> if it still has rules, unless <span class="k">?force=true</span> (deletes its rules too).</p>
+  <div class="lbl">Query</div><p class="small"><span class="k">force</span> — boolean, default <span class="k">false</span>.</p>
+  <div class="lbl">Responses</div><p class="small"><span class="k">204</span> deleted · <span class="k">409</span> has rules.</p>
+</div>
+
+<h2 class="brk">5. Admin API — Rules</h2>
+
+<div class="ep">
+  <h3><span class="m get">GET</span> <span class="path">/admin/groups/{groupId}/rules</span></h3>
+  <p>All rules in one exact group — active and inactive, so the UI can show and flip the toggle.</p>
+  <div class="lbl">200 Response — RuleView[]</div>
+<pre>[ { "id":7,"groupId":4,"groupCode":"COMPLIANCE","flowCode":"TRANSFER_TRANSACTION",
+    "ruleName":"Block high-value cross-border non-BDT transfer",
+    "sourceType":"BUILDER","active":true,"version":1,
+    "sourceJson":"{…}","drlText":"package …" } ]</pre>
+</div>
+
+<div class="ep">
+  <h3><span class="m post">POST</span> <span class="path">/admin/groups/{groupId}/rules</span></h3>
+  <p>Create or replace a rule in a group (matched by <span class="k">ruleName</span> within the group). <b>BUILDER</b> rules send <span class="k">sourceJson</span> and the engine generates the DRL (only in a flow group — needs a fact type); <b>DRL</b> rules send <span class="k">drl</span> stored as-is (the only option for the shared COMMON group). The candidate is compiled with the live set first — a rule that doesn't compile is rejected (<span class="k">400</span>) and the running engine is untouched.</p>
+  <div class="lbl">Request — RuleDefinitionRequest</div>
+<pre>{ "ruleName":"Block …",            <span class="c">// required</span>
+  "sourceType":"BUILDER",          <span class="c">// BUILDER | DRL (required)</span>
+  "sourceJson":"{…tree…}",         <span class="c">// required for BUILDER (a JSON string)</span>
+  "drl":"package …; rule …end",    <span class="c">// required for DRL</span>
+  "createdBy":"farhat" }</pre>
+  <div class="lbl">200 Response</div><p class="small">The saved <span class="k">RuleView</span>.</p>
+</div>
+
+<div class="ep">
+  <h3><span class="m get">GET</span> <span class="path">/admin/rules/{id}</span></h3>
+  <p>One rule by id. <span class="k">400</span> if not found.</p>
+  <div class="lbl">200 Response</div><p class="small">A <span class="k">RuleView</span> (includes <span class="k">sourceJson</span> and <span class="k">drlText</span>).</p>
+</div>
+
+<div class="ep">
+  <h3><span class="m put">PUT</span> <span class="path">/admin/rules/{id}</span></h3>
+  <p>Update a rule by id. The rule's group does not change; renaming must stay unique within the group. Same body as create.</p>
+  <div class="lbl">200 Response</div><p class="small">The updated <span class="k">RuleView</span>.</p>
+</div>
+
+<div class="ep">
+  <h3><span class="m put">PUT</span> <span class="path">/admin/rules/{id}/active</span></h3>
+  <p>Activate or deactivate a rule without deleting it (the on/off radio). Inactive rules are not compiled into the rule base.</p>
+  <div class="lbl">Request — ActiveRequest</div>
+<pre>{ "active": false }</pre>
+  <div class="lbl">200 Response</div><p class="small">The updated <span class="k">RuleView</span>.</p>
+</div>
+
+<div class="ep">
+  <h3><span class="m del">DELETE</span> <span class="path">/admin/rules/{id}</span></h3>
+  <p><b>Permanently</b> deletes the rule (row removed) and reloads the rule base. To merely disable it, use the active toggle above.</p>
+  <div class="lbl">Responses</div><p class="small"><span class="k">204</span> deleted.</p>
+</div>
+
+<div class="ep">
+  <h3><span class="m post">POST</span> <span class="path">/admin/rules/preview</span></h3>
+  <p>Generate the DRL for a builder spec and compile-check it — <b>nothing is saved</b>, the live engine is untouched. Use it to show the generated DRL and whether it is valid before saving.</p>
+  <div class="lbl">Request — BuilderRuleSpec</div>
+<pre>{ "ruleName":"Block …", "flow":"TRANSFER_TRANSACTION", "agendaGroup":"COMPLIANCE",
+  "salience":20, "conditionTree": { …see Appendix… },
+  "then": { "decision":"block", "message":"…" },
+  "otherwise": { "decision":"allow" }   <span class="c">// optional (emits a De-Morgan-negated 2nd rule)</span> }</pre>
+  <div class="lbl">200 Response — RulePreviewResponse</div>
+<pre>{ "drl":"package …", "valid":true, "error":null }</pre>
+</div>
+
+<h2>6. Admin API — Fields &amp; reload</h2>
+
+<div class="ep">
+  <h3><span class="m get">GET</span> <span class="path">/admin/flows/{flowCode}/fields</span></h3>
+  <p>The builder field palette for a flow: the flow's own fields plus the shared ones (<span class="k">flow_id NULL</span>), ordered by label. Read-only (the catalog is seeded in SQL).</p>
+  <div class="lbl">200 Response — RuleFieldCatalog[]</div>
+<pre>[ { "id":2, "fieldKey":"transaction.amount", "label":"Transaction Amount",
+    "dataType":"NUMBER", "drlPath":"transaction.amount",
+    "allowedOps":"> < >= <= ==", "allowedValues":null } ]</pre>
+</div>
+
+<div class="ep">
+  <h3><span class="m post">POST</span> <span class="path">/admin/fields</span></h3>
+  <p>Add a builder field to the catalog. Omit (or blank) <span class="k">flowCode</span> for a <b>shared</b> field shown in every flow; set it to scope the field to one flow.</p>
+  <div class="lbl">Request — FieldRequest</div>
+<pre>{ "flowCode":"TRANSFER_TRANSACTION",   <span class="c">// optional — blank = shared</span>
+  "fieldKey":"transaction.amount",     <span class="c">// what the builder tree stores</span>
+  "label":"Transaction Amount",
+  "dataType":"NUMBER",                 <span class="c">// NUMBER | ENUM | BOOLEAN | STRING</span>
+  "drlPath":"transaction.amount",      <span class="c">// real path in generated DRL</span>
+  "allowedOps":"> < >= <= ==",
+  "allowedValues":null }               <span class="c">// for ENUM/BOOLEAN</span></pre>
+  <div class="lbl">200 Response</div><p class="small">The created field (<span class="k">RuleFieldCatalog</span>).</p>
+</div>
+
+<div class="ep">
+  <h3><span class="m del">DELETE</span> <span class="path">/admin/fields/{id}</span></h3>
+  <p>Permanently delete a catalog field.</p>
+  <div class="lbl">Responses</div><p class="small"><span class="k">204</span> deleted.</p>
+</div>
+
+<div class="ep">
+  <h3><span class="m post">POST</span> <span class="path">/admin/flows/reload</span></h3>
+  <p>Force a routing-cache refresh from the DB. Rarely needed (every write reloads) — use it after editing the DB directly.</p>
+  <div class="lbl">200 Response</div><p class="small">Empty.</p>
+</div>
+
+<h2 class="brk">7. Consumer integration (validation)</h2>
+<p>A consuming service does not call <span class="k">/admin</span> to validate. It builds its context (a fact extending the flow's <span class="k">fact_type</span>) and calls the engine, passing the <b>request class</b> as the routing key:</p>
+<pre><span class="k2">import</span> leads.ruleengine.core.service.RuleExecutionService;
+
+ruleExecutionService.execute(context, TransactionRequest.class, globalContext);
+<span class="c">// rules write the outcome onto the context: isValid(), isPermissionDenied(), getValidationMessage()</span></pre>
+<p>The POC wraps this behind three HTTP endpoints, shown here as a template for your own services. Response: <span class="k">{ valid, permissionDenied, message }</span>.</p>
+
+<div class="ep">
+  <h3><span class="m post">POST</span> <span class="path">/api/transactions/validate</span></h3>
+<pre>{ "userId":"USER-001", "sourceAccount":"100001", "currency":"BDT", "amount":15000,
+  "channel":"ONLINE", "country":"BD", "dailyTxnCount":1 }
+<span class="c">// -></span> { "valid":false, "permissionDenied":true, "message":"Blocked: amount exceeds limit …" }</pre>
+</div>
+<div class="ep">
+  <h3><span class="m post">POST</span> <span class="path">/api/loans/validate</span></h3>
+<pre>{ "userId":"USER-004", "amount":50000, "tenureMonths":12, "purpose":"Personal" }</pre>
+</div>
+<div class="ep">
+  <h3><span class="m post">POST</span> <span class="path">/api/account-closures/validate</span></h3>
+<pre>{ "userId":"USER-001", "accountNo":"ACC-901", "reason":"Customer request" }</pre>
+</div>
+
+<h2>8. Appendix — builder JSON shape</h2>
+<p>The <span class="k">conditionTree</span> is a recursive AST. A <b>GROUP</b> joins children with its <span class="k">operator</span> (<span class="k">AND</span>/<span class="k">OR</span>), nesting to any depth; a <b>CONDITION</b> is one comparison. <span class="k">value</span> is a literal; <span class="k">valueField</span> compares against another field instead.</p>
+<pre>"conditionTree": {
+  "type":"GROUP", "operator":"OR",
+  "children":[
+    { "type":"GROUP","operator":"AND","children":[
+        { "type":"CONDITION","field":"transaction.channel","operator":"==","value":"AGENT" },
+        { "type":"CONDITION","field":"transaction.amount","operator":">","value":50000 } ] },
+    { "type":"CONDITION","field":"transaction.amount","operator":">","valueField":"userLimit.limit" }
+  ]
+}</pre>
+<p class="small"><span class="k">field</span>/<span class="k">valueField</span> are catalog <span class="k">field_key</span>s; the generator resolves them to real <span class="k">drl_path</span>s and types. The compiled Drools rule name is qualified <span class="k">FLOW.GROUP::ruleName</span> so the same display name may exist in two groups.</p>
+
+<hr>
+<p class="small">Rule Engine API Reference · library 3.0.0 · generated for the RULE_ENGINE POC.</p>
+
+</body></html>

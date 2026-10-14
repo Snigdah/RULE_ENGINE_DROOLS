@@ -1,74 +1,174 @@
-### 1. DEVIR over 5000 -> permission denied
+### Rule-engine POC - 3 flows (transfer, loan, account-closure)
+### Rules + routing are seeded by db/data.sql. No /admin uploads needed.
+### Base: http://localhost:8080
+
+################## TRANSFER  (POST /api/transactions/validate) ##################
+
+### T1 blocked user  -> blocked (COMMON: user is blocked)
 POST http://localhost:8080/api/transactions/validate
 Content-Type: application/json
 
-{
-  "sourceAccount": "100001",
-  "sourceBranch": "DHAKA-001",
-  "destinationAccount": "200001",
-  "amount": 6000,
-  "debitCredit": "DEBIT",
-  "currency": "BDT",
-  "exchangeRate": 1,
-  "remarks": "Test transfer",
-  "userId": "USER-001",
-  "transferMode": "DEVIR"
-}
+{ "userId": "USER-002", "transactionMode": "ONLINE", "debitCredit": "D",
+  "sourceAccount": "100001", "currency": "BDT", "amount": 500 }
 
-### 2. DEVIR at/under 5000 -> allowed, flagged as > 500
+### T2 KYC not verified -> blocked (COMMON: KYC not verified)
 POST http://localhost:8080/api/transactions/validate
 Content-Type: application/json
 
-{
-  "amount": 4000,
-  "currency": "BDT",
-  "transferMode": "DEVIR"
-}
+{ "userId": "USER-003", "transactionMode": "ONLINE", "debitCredit": "D",
+  "sourceAccount": "100001", "currency": "BDT", "amount": 500 }
 
-### 3. NORMAL over 500 -> flagged but valid
+### T3 over limit on debit-restricted BDT -> blocked (TRANSFER)
 POST http://localhost:8080/api/transactions/validate
 Content-Type: application/json
 
-{
-  "amount": 800,
-  "currency": "BDT",
-  "transferMode": "NORMAL"
-}
+{ "userId": "USER-001", "transactionMode": "ONLINE", "debitCredit": "D",
+  "sourceAccount": "100001", "currency": "BDT", "amount": 15000 }
 
-### 4. Small amount (<= 500) -> no rule fires
+### T4 within limit -> valid
 POST http://localhost:8080/api/transactions/validate
 Content-Type: application/json
 
-{
-  "amount": 100,
-  "currency": "BDT",
-  "transferMode": "NORMAL"
-}
+{ "userId": "USER-001", "transactionMode": "ONLINE", "debitCredit": "D",
+  "sourceAccount": "100001", "currency": "BDT", "amount": 5000 }
 
-### 5. Missing amount -> 400 validation error
+### T5 not debit-restricted -> valid
 POST http://localhost:8080/api/transactions/validate
 Content-Type: application/json
 
-{
-  "transferMode": "NORMAL"
-}
+{ "userId": "USER-001", "transactionMode": "ONLINE", "debitCredit": "D",
+  "sourceAccount": "200001", "currency": "BDT", "amount": 15000 }
 
-### 6. Missing transferMode -> 400 validation error
-POST http://localhost:8080/api/transactions/validate
+################## LOAN  (POST /api/loans/validate) ##################
+
+### L1 credit score below 600 -> blocked (LOAN)
+POST http://localhost:8080/api/loans/validate
 Content-Type: application/json
 
-{
-  "amount": 800
-}
+{ "userId": "USER-004", "amount": 50000, "tenureMonths": 12, "purpose": "Personal" }
 
-### 7. Zero / negative amount -> 400 (@Positive)
-POST http://localhost:8080/api/transactions/validate
+### L2 good score -> valid
+POST http://localhost:8080/api/loans/validate
 Content-Type: application/json
 
-{
-  "amount": 0,
-  "transferMode": "NORMAL"
-}
+{ "userId": "USER-001", "amount": 50000, "tenureMonths": 12, "purpose": "Personal" }
 
-### 8. Health check
-GET http://localhost:8080/actuator/health
+### L3 blocked user -> blocked (COMMON, shared rule reused in the loan flow)
+POST http://localhost:8080/api/loans/validate
+Content-Type: application/json
+
+{ "userId": "USER-002", "amount": 50000, "tenureMonths": 12, "purpose": "Personal" }
+
+################## ACCOUNT CLOSURE  (POST /api/account-closures/validate) ##################
+
+### C1 outstanding balance -> blocked (CLOSURE)
+POST http://localhost:8080/api/account-closures/validate
+Content-Type: application/json
+
+{ "userId": "USER-001", "accountNo": "ACC-901", "reason": "Customer request" }
+
+### C2 zero balance -> valid
+POST http://localhost:8080/api/account-closures/validate
+Content-Type: application/json
+
+{ "userId": "USER-001", "accountNo": "ACC-900", "reason": "Customer request" }
+
+### C3 blocked user -> blocked (COMMON, shared rule reused in the closure flow)
+POST http://localhost:8080/api/account-closures/validate
+Content-Type: application/json
+
+{ "userId": "USER-002", "accountNo": "ACC-900", "reason": "Customer request" }
+
+################## Library admin (optional) ##################
+
+### list stored rules
+GET http://localhost:8080/admin/rules
+
+### builder palette for the transfer flow
+GET http://localhost:8080/admin/rules/fields?flow=TRANSFER_TRANSACTION
+
+################## LIBRARY SETUP via admin API (run once, in order) ##################
+### Prereq: business-data.sql already loaded (it also seeds rule_field_catalog).
+
+### 1a. define flow: transfer
+POST http://localhost:8080/admin/flows
+Content-Type: application/json
+
+{ "flowName": "TRANSFER_TRANSACTION", "groups": ["COMMON", "TRANSFER"] }
+
+### 1b. define flow: loan
+POST http://localhost:8080/admin/flows
+Content-Type: application/json
+
+{ "flowName": "LOAN_APPLICATION", "groups": ["COMMON", "LOAN"] }
+
+### 1c. define flow: closure
+POST http://localhost:8080/admin/flows
+Content-Type: application/json
+
+{ "flowName": "ACCOUNT_CLOSURE", "groups": ["COMMON", "CLOSURE"] }
+
+### 2a. map request -> flow (+ factType for the builder generator)
+POST http://localhost:8080/admin/flows/mappings
+Content-Type: application/json
+
+{ "factType": "com.example.droolspoc.model.ValidationContext", "flowName": "TRANSFER_TRANSACTION" }
+
+### 2b.
+POST http://localhost:8080/admin/flows/mappings
+Content-Type: application/json
+
+{ "factType": "com.example.droolspoc.model.LoanValidationContext", "flowName": "LOAN_APPLICATION" }
+
+### 2c.
+POST http://localhost:8080/admin/flows/mappings
+Content-Type: application/json
+
+{ "factType": "com.example.droolspoc.model.ClosureValidationContext", "flowName": "ACCOUNT_CLOSURE" }
+
+### 3a. COMMON rule - blocked user (DRL)
+POST http://localhost:8080/admin/rules
+Content-Type: application/json
+
+{ "ruleName": "Block transaction for a blocked user", "agendaGroup": "COMMON", "sourceType": "DRL",
+  "drl": "package com.example.droolspoc.rules;\n\nimport com.example.droolspoc.model.RuleContext;\nimport com.example.droolspoc.context.data.BlockedUsers;\n\nglobal leads.ruleengine.core.context.GlobalContext globalContext;\n\nrule \"Block transaction for a blocked user\"\n    agenda-group \"COMMON\"\n    salience 100\n    when\n        $ctx : RuleContext()\n        eval(globalContext.get(BlockedUsers.class).isBlocked($ctx.getUserId()))\n    then\n        $ctx.setValid(false);\n        $ctx.setPermissionDenied(true);\n        $ctx.setValidationMessage(\"Blocked: user is blocked\");\n        drools.halt();\nend" }
+
+### 3b. COMMON rule - KYC not verified (DRL)
+POST http://localhost:8080/admin/rules
+Content-Type: application/json
+
+{ "ruleName": "Block if KYC not verified", "agendaGroup": "COMMON", "sourceType": "DRL",
+  "drl": "package com.example.droolspoc.rules;\n\nimport com.example.droolspoc.model.RuleContext;\n\nrule \"Block if KYC not verified\"\n    agenda-group \"COMMON\"\n    salience 90\n    when\n        $ctx : RuleContext(user != null, user.kycVerified == false)\n    then\n        $ctx.setValid(false);\n        $ctx.setPermissionDenied(true);\n        $ctx.setValidationMessage(\"Blocked: KYC not verified\");\n        drools.halt();\nend" }
+
+### 3c. TRANSFER rule - over-limit (BUILDER: JSON -> DRL)
+POST http://localhost:8080/admin/rules
+Content-Type: application/json
+
+{ "ruleName": "Block over-limit debit-restricted BDT transaction", "agendaGroup": "TRANSFER", "sourceType": "BUILDER",
+  "sourceJson": "{\"ruleName\":\"Block over-limit debit-restricted BDT transaction\",\"flow\":\"TRANSFER_TRANSACTION\",\"agendaGroup\":\"TRANSFER\",\"salience\":10,\"match\":\"all\",\"conditions\":[{\"field\":\"transaction.currency\",\"operator\":\"==\",\"value\":\"BDT\"},{\"field\":\"product.drRes\",\"operator\":\"==\",\"value\":1},{\"field\":\"transaction.amount\",\"operator\":\">\",\"valueField\":\"userLimit.limit\"}],\"then\":{\"decision\":\"block\",\"message\":\"Blocked: amount exceeds limit on a debit-restricted BDT account\"}}" }
+
+### 3d. LOAN rule - credit score (BUILDER)
+POST http://localhost:8080/admin/rules
+Content-Type: application/json
+
+{ "ruleName": "Block loan below credit-score threshold", "agendaGroup": "LOAN", "sourceType": "BUILDER",
+  "sourceJson": "{\"ruleName\":\"Block loan below credit-score threshold\",\"flow\":\"LOAN_APPLICATION\",\"agendaGroup\":\"LOAN\",\"salience\":10,\"match\":\"all\",\"conditions\":[{\"field\":\"customer.creditScore\",\"operator\":\"<\",\"value\":600}],\"then\":{\"decision\":\"block\",\"message\":\"Blocked: credit score below 600\"}}" }
+
+### 3e. CLOSURE rule - outstanding balance (BUILDER)
+POST http://localhost:8080/admin/rules
+Content-Type: application/json
+
+{ "ruleName": "Block closure with outstanding balance", "agendaGroup": "CLOSURE", "sourceType": "BUILDER",
+  "sourceJson": "{\"ruleName\":\"Block closure with outstanding balance\",\"flow\":\"ACCOUNT_CLOSURE\",\"agendaGroup\":\"CLOSURE\",\"salience\":10,\"match\":\"all\",\"conditions\":[{\"field\":\"account.balance\",\"operator\":\">\",\"value\":0}],\"then\":{\"decision\":\"block\",\"message\":\"Blocked: account has an outstanding balance\"}}" }
+
+### 4. reload blocked-user set (needed if you inserted re_user_block after startup)
+POST http://localhost:8080/admin/global-context/reload
+
+### 5. verify
+GET http://localhost:8080/admin/rules
+
+###
+GET http://localhost:8080/admin/flows/overview
+
+###
+GET http://localhost:8080/admin/rules/fields?flow=TRANSFER_TRANSACTION
