@@ -6,12 +6,11 @@ import com.example.droolspoc.model.Product;
 import com.example.droolspoc.model.User;
 import com.example.droolspoc.model.UserLimit;
 import com.example.droolspoc.model.ValidationContext;
-import com.example.droolspoc.repository.ProductRepository;
-import com.example.droolspoc.repository.UserLimitRepository;
-import com.example.droolspoc.repository.UserRepository;
+import com.example.droolspoc.lookup.TransferLookupService;
 import com.example.droolspoc.service.TransactionRuleService;
 import leads.ruleengine.core.context.GlobalContext;
 import leads.ruleengine.core.service.RuleExecutionService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -19,7 +18,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -34,31 +34,34 @@ import static org.mockito.Mockito.when;
 
 class TransactionRuleServiceTest {
 
-    private UserLimitRepository userLimitRepository;
-    private ProductRepository productRepository;
-    private UserRepository userRepository;
+    private TransferLookupService lookup;
+    private ExecutorService lookupExecutor;
     private RuleExecutionService ruleEngine;
     private GlobalContext globalContext;
     private TransactionRuleService service;
 
     @BeforeEach
     void setUp() {
-        userLimitRepository = mock(UserLimitRepository.class);
-        productRepository = mock(ProductRepository.class);
-        userRepository = mock(UserRepository.class);
+        lookup = mock(TransferLookupService.class);
+        lookupExecutor = Executors.newVirtualThreadPerTaskExecutor();
         ruleEngine = mock(RuleExecutionService.class);
         globalContext = new GlobalContext();
         service = new TransactionRuleService(
-                ruleEngine, globalContext, userLimitRepository, productRepository, userRepository);
+                ruleEngine, globalContext, lookupExecutor, lookup);
+    }
+
+    @AfterEach
+    void tearDown() {
+        lookupExecutor.shutdown();
     }
 
     @Test
     void validateBuildsContextAndExecutesTheMappedFlow() {
         UserLimit limit = limit("USER-001", new BigDecimal("10000"));
         Product product = product("100001", 1);
-        when(userLimitRepository.findFirstByUserId("USER-001")).thenReturn(Optional.of(limit));
-        when(productRepository.findBySourceAccount("100001")).thenReturn(Optional.of(product));
-        when(userRepository.findFirstByUserId("USER-001")).thenReturn(Optional.of(user("USER-001", true)));
+        when(lookup.userLimit("USER-001")).thenReturn(limit);
+        when(lookup.product("100001")).thenReturn(product);
+        when(lookup.user("USER-001")).thenReturn(user("USER-001", true));
         doAnswer(invocation -> {
             ValidationContext ctx = invocation.getArgument(0);
             ctx.setValid(false);
@@ -82,7 +85,9 @@ class TransactionRuleServiceTest {
 
     @Test
     void missingUserLimitReturns422() {
-        when(userLimitRepository.findFirstByUserId(any())).thenReturn(Optional.empty());
+        when(lookup.userLimit(any())).thenThrow(new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "No user limit"));
+        when(lookup.product(any())).thenReturn(product("100001", 1));
+        when(lookup.user(any())).thenReturn(user("UNKNOWN", true));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> service.validate(request("UNKNOWN", "100001", new BigDecimal("10"))));
@@ -92,9 +97,9 @@ class TransactionRuleServiceTest {
 
     @Test
     void missingProductReturns422() {
-        when(userLimitRepository.findFirstByUserId(any()))
-                .thenReturn(Optional.of(limit("USER-001", new BigDecimal("10000"))));
-        when(productRepository.findBySourceAccount(any())).thenReturn(Optional.empty());
+        when(lookup.userLimit(any())).thenReturn(limit("USER-001", new BigDecimal("10000")));
+        when(lookup.product(any())).thenThrow(new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "No product"));
+        when(lookup.user(any())).thenReturn(user("USER-001", true));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> service.validate(request("USER-001", "999999", new BigDecimal("10"))));

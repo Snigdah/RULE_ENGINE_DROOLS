@@ -10,7 +10,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/ruleengine
     username: postgres
-    password: 12345
+    password: 1234
     hikari:
       auto-commit: false   # PostgreSQL large objects (CLOB/oid) must be read in a
                            # transaction; the engine loads rule CLOBs at startup.
