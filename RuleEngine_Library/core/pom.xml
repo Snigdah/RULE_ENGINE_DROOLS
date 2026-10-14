@@ -52,6 +52,19 @@
 		<drools.version>10.2.0</drools.version>
 	</properties>
 
+	<!-- changeboard brings OpenFeign; keep Spring Cloud on the Boot 3.5 line (same BOM as changeboard). -->
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>2025.0.0</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
 	<dependencies>
 		<!-- Core Spring (no web/app packaging by itself) -->
 		<dependency>
@@ -97,6 +110,17 @@
 			<groupId>org.kie</groupId>
 			<artifactId>kie-api</artifactId>
 			<version>${drools.version}</version>
+		</dependency>
+
+		<!--
+		  Maker-checker approval (changeboard, Hibernate path). RuleGroup and RuleDefinition
+		  extend its ApprovalBaseEntity, so it is a compile dependency. The approval flow itself
+		  only switches on with rule-engine.approval.enabled=true.
+		-->
+		<dependency>
+			<groupId>com.leads</groupId>
+			<artifactId>changeboard</artifactId>
+			<version>1.0.33-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>

@@ -1,0 +1,52 @@
+# =============================================================================
+#  Profile "sentinel": run against the Sentinel Oracle DB with maker-checker approval.
+#    mvn spring-boot:run -Dspring-boot.run.profiles=sentinel
+#  Dummy tables: db/sentinel-oracle/ (01_create.sql, 02_seed.sql, 99_drop.sql).
+# =============================================================================
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:oracle:thin:@//192.168.20.77:1521/microcubepdb}
+    username: ${DB_USERNAME:sentinel}
+    password: ${DB_PASSWORD:sentinel}
+    driver-class-name: oracle.jdbc.OracleDriver
+  jpa:
+    hibernate:
+      # NEVER update here: the schema is shared with Sentinel, and changeboard's entities map the
+      # TREG_* approval tables. Tables come only from db/sentinel-oracle/01_create.sql.
+      ddl-auto: none
+    show-sql: false
+
+rule-engine:
+  approval:
+    enabled: ${RULE_ENGINE_APPROVAL:true}   # set RULE_ENGINE_APPROVAL=false once to seed via seed.ps1
+    app-id: 1                               # Sentinel's app id (X-App-Id overrides)
+    function-id: 101022                     # Centrino workflow 40 "ruleEngine" (approver role rule-engine)
+
+changeboard:
+  # Centrino through the API gateway (9999) - the same base the Sentinel UI uses. 9080 is Keycloak:
+  # a lookup there returns 404, and changeboard then AUTO-APPROVES every change.
+  eligible:
+    user:
+      server:
+        url: ${CHANGEBOARD_SERVER_URL:http://192.168.10.56:9999/Centrino}
+    eligibleApprovers:
+      endpoints: ${CHANGEBOARD_ENDPOINT:/v1/Approval/Workflow/RetrieveEligibleApprovers}
+  notification:
+    service:
+      url: ${NOTIFICATION_SERVER_URL:http://192.168.10.56:9999/}
+    endpoints: ${NOTIFICATION_ENDPOINTS:Notify/Send}
+  post-approval:
+    # Off: the rule engine reloads itself after approval (RuleApprovalProcessor). Its workers must
+    # also stay off - they would claim Sentinel's inbox/outbox messages from the shared tables.
+    enabled: false
+    inbox-enabled: false
+    outbox-enabled: false
+    kafka-enabled: false
+    agents-enabled: false
+    source-app-id: 1
+    source-module-id: rule-engine
+
+logging:
+  level:
+    com.leads.changeboard: INFO
+    leads.ruleengine.core.approval: INFO

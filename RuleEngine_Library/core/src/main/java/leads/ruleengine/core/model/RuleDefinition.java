@@ -1,5 +1,7 @@
 package leads.ruleengine.core.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.leads.model.ApprovalBaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -39,12 +41,15 @@ import java.time.LocalDateTime;
  * optimistic-locking {@code @Version}. Salience is not a column - it lives inside the DRL (and
  * the builder JSON), so it is versioned with the rule itself.</p>
  *
+ * <p><b>Approval:</b> extends changeboard's {@link ApprovalBaseEntity} so a rule change can go
+ * through maker-checker approval before it reaches this table.</p>
+ *
  * @author K M Farhat Snigdah
  */
 @Entity
 @Table(name = "RULE_DEFINITION",
         uniqueConstraints = @UniqueConstraint(name = "UK_RULE_DEFINITION_NAME", columnNames = {"GROUP_ID", "RULE_NAME"}))
-public class RuleDefinition {
+public class RuleDefinition extends ApprovalBaseEntity {
 
     /** Rule was hand-written in DRL by a developer. {@code sourceJson} is null. */
     public static final String SOURCE_DRL = "DRL";
@@ -56,9 +61,14 @@ public class RuleDefinition {
     @SequenceGenerator(name = "rule_definition_seq", sequenceName = "RULE_DEFINITION_SEQ", allocationSize = 1)
     private Long id;
 
-    /** The single group this rule belongs to. LAZY - the rule base reads only drlText + id. */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    /**
+     * The single group this rule belongs to. EAGER (groups are a tiny table) because the approval
+     * library serializes the rule's DB state to JSON - a lazy proxy here cannot be serialized.
+     * The group is written without its {@code rules} list so the JSON has no cycle.
+     */
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "GROUP_ID", nullable = false)
+    @JsonIgnoreProperties("rules")
     private RuleGroup group;
 
     /** Human-readable rule name. Unique within its group only (not globally). */

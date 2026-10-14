@@ -1,5 +1,7 @@
 package leads.ruleengine.core.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.leads.model.ApprovalBaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -8,9 +10,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * One agenda group that belongs to a flow (or is shared across all flows), with its firing order.
@@ -26,12 +32,16 @@ import jakarta.persistence.UniqueConstraint;
  *
  * <p>Firing order: shared groups first, then the flow's own groups by {@code orderNo}.</p>
  *
+ * <p><b>Approval:</b> extends changeboard's {@link ApprovalBaseEntity} so a group change can go
+ * through maker-checker approval. {@link #rules} makes the group and its rules one approval
+ * aggregate: a rename re-submits its builder rules, a force-delete removes them with it.</p>
+ *
  * @author K M Farhat Snigdah
  */
 @Entity
 @Table(name = "RULE_GROUP",
         uniqueConstraints = @UniqueConstraint(name = "UK_RULE_GROUP", columnNames = {"FLOW_ID", "GROUP_CODE"}))
-public class RuleGroup {
+public class RuleGroup extends ApprovalBaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "rule_group_seq")
@@ -54,6 +64,14 @@ public class RuleGroup {
     /** When false the group is skipped at runtime - none of its rules are focused/evaluated. */
     @Column(name = "ACTIVE", nullable = false)
     private boolean active = true;
+
+    /**
+     * The group's rules. Only used to submit a group and its rules as ONE approval aggregate -
+     * LAZY, never read by the engine. A rule serializes its group without this list (see
+     * {@link RuleDefinition#getGroup()}), which keeps the approval JSON free of cycles.
+     */
+    @OneToMany(mappedBy = "group", fetch = FetchType.LAZY)
+    private List<RuleDefinition> rules = new ArrayList<>();
 
     public Long getId() {
         return id;
@@ -95,7 +113,16 @@ public class RuleGroup {
         this.active = active;
     }
 
-    /** True when this group is shared across every flow (no owning flow). */
+    public List<RuleDefinition> getRules() {
+        return rules;
+    }
+
+    public void setRules(List<RuleDefinition> rules) {
+        this.rules = rules;
+    }
+
+    /** True when this group is shared across every flow (no owning flow). Derived - not serialized. */
+    @JsonIgnore
     public boolean isShared() {
         return flow == null;
     }

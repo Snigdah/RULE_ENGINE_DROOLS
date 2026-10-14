@@ -1,11 +1,16 @@
 package leads.ruleengine.core.service;
 
+import com.leads.model.ActionType;
+import com.leads.model.ApprovalStatus;
 import jakarta.transaction.Transactional;
+import leads.ruleengine.core.approval.ApprovalSubmission;
+import leads.ruleengine.core.approval.ChangeApprovalSubmitter;
 import leads.ruleengine.core.dto.FlowDefinitionRequest;
 import leads.ruleengine.core.dto.FlowView;
 import leads.ruleengine.core.dto.GroupView;
 import leads.ruleengine.core.exception.FlowNotConfiguredException;
 import leads.ruleengine.core.exception.GroupInUseException;
+import leads.ruleengine.core.model.RuleDefinition;
 import leads.ruleengine.core.model.RuleFlow;
 import leads.ruleengine.core.model.RuleGroup;
 import leads.ruleengine.core.repository.RuleDefinitionRepository;
@@ -14,10 +19,15 @@ import leads.ruleengine.core.repository.RuleFlowRepository;
 import leads.ruleengine.core.repository.RuleGroupRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * CRUD for routing: the flow master ({@code RULE_FLOW}) and its agenda groups ({@code RULE_GROUP}).
@@ -32,6 +42,10 @@ import java.util.List;
  * Every write reloads {@link DecisionFlowResolver} (and the rule base when rules are removed) so
  * changes take effect immediately - no restart.</p>
  *
+ * <p><b>Approval:</b> when {@code rule-engine.approval.enabled=true} group create, rename,
+ * activate/deactivate and delete go through the {@code submit*} methods (maker-checker via
+ * changeboard). Flows and group reorder are never gated.</p>
+ *
  * @author K M Farhat Snigdah
  */
 @Service
@@ -45,19 +59,30 @@ public class FlowAdminService {
     private final RuleFieldCatalogRepository catalogRepository;
     private final DecisionFlowResolver flowResolver;
     private final RuleBaseProvider ruleBaseProvider;
+    private final RuleDrlGenerator drlGenerator;
+    private final ObjectProvider<ChangeApprovalSubmitter> approvals;
 
     public FlowAdminService(RuleFlowRepository flowRepository,
                             RuleGroupRepository groupRepository,
                             RuleDefinitionRepository ruleRepository,
                             RuleFieldCatalogRepository catalogRepository,
                             DecisionFlowResolver flowResolver,
-                            RuleBaseProvider ruleBaseProvider) {
+                            RuleBaseProvider ruleBaseProvider,
+                            RuleDrlGenerator drlGenerator,
+                            ObjectProvider<ChangeApprovalSubmitter> approvals) {
         this.flowRepository = flowRepository;
         this.groupRepository = groupRepository;
         this.ruleRepository = ruleRepository;
         this.catalogRepository = catalogRepository;
         this.flowResolver = flowResolver;
         this.ruleBaseProvider = ruleBaseProvider;
+        this.drlGenerator = drlGenerator;
+        this.approvals = approvals;
+    }
+
+    /** True when group writes go through maker-checker approval ({@code rule-engine.approval.enabled}). */
+    public boolean approvalEnabled() {
+        return approvals.getIfAvailable() != null;
     }
 
     // ---- Flows ---------------------------------------------------------------------------
@@ -250,7 +275,196 @@ public class FlowAdminService {
                 groupId, g.getGroupCode(), force, rules);
     }
 
+    /**
+     * Rename a group (its {@code groupCode} = the Drools agenda-group). The group's BUILDER rules are
+     * regenerated under the new name; hand-written DRL rules are left exactly as they are (their
+     * DRL still names the old agenda-group - edit them separately if they should follow).
+     */
+    @Transactional
+    public GroupView renameGroup(Long groupId, String newCode) {
+        RuleGroup g = requireGroup(groupId);
+        List<RuleDefinition> regenerated = prepareRename(g, newCode);
+        g.setGroupCode(newCode.trim());
+        RuleGroup saved = groupRepository.save(g);
+        for (RuleDefinition candidate : regenerated) {
+            RuleDefinition rule = ruleRepository.findById(candidate.getId()).orElseThrow();
+            rule.setDrlText(candidate.getDrlText());
+            rule.setVersion(candidate.getVersion());
+            rule.setUpdatedAt(candidate.getUpdatedAt());
+            ruleRepository.save(rule);
+        }
+        flowResolver.reload();
+        ruleBaseProvider.reload();
+        log.info("Group {} renamed to '{}' ({} builder rule(s) regenerated); reloaded.",
+                groupId, saved.getGroupCode(), regenerated.size());
+        return toView(saved);
+    }
+
+    // ---- approval (rule-engine.approval.enabled=true) ------------------------------------
+
+    /** Approval version of {@link #addGroup}. */
+    @Transactional
+    public ApprovalSubmission submitAddGroup(String flowCode, String groupCode, Integer orderNo) {
+        ChangeApprovalSubmitter submitter = submitter();
+        RuleFlow flow = requireFlow(flowCode);
+        if (groupRepository.findByFlow_IdAndGroupCode(flow.getId(), groupCode).isPresent()) {
+            throw new IllegalArgumentException("Flow '" + flowCode + "' already has a group '" + groupCode + "'.");
+        }
+        RuleGroup g = new RuleGroup();
+        g.setFlow(flow);
+        g.setGroupCode(groupCode);
+        g.setOrderNo(orderNo != null ? orderNo : nextOrder(flow.getId()));
+        g.setActive(true);
+        return submitter.submit(g, ActionType.CREATE, "GROUP", null,
+                "Create group '" + groupCode + "' in flow " + flowCode);
+    }
+
+    /** Approval version of {@link #addSharedGroup}. */
+    @Transactional
+    public ApprovalSubmission submitAddSharedGroup(String groupCode, Integer orderNo) {
+        ChangeApprovalSubmitter submitter = submitter();
+        if (groupRepository.findByFlowIsNullAndGroupCode(groupCode).isPresent()) {
+            throw new IllegalArgumentException("A shared group '" + groupCode + "' already exists.");
+        }
+        RuleGroup g = new RuleGroup();
+        g.setFlow(null);
+        g.setGroupCode(groupCode);
+        g.setOrderNo(orderNo != null ? orderNo : 1);
+        g.setActive(true);
+        return submitter.submit(g, ActionType.CREATE, "GROUP", null, "Create shared group '" + groupCode + "'");
+    }
+
+    /**
+     * Approval version of {@link #renameGroup}: the group and its regenerated builder rules are
+     * submitted as ONE approval set, so the rename and the new DRL are approved (or not) together.
+     */
+    @Transactional
+    public ApprovalSubmission submitRenameGroup(Long groupId, String newCode) {
+        ChangeApprovalSubmitter submitter = submitter();
+        RuleGroup g = requireGroup(groupId);
+        assertGroupNotPending(submitter, g);
+        List<RuleDefinition> regenerated = prepareRename(g, newCode);
+
+        RuleGroup candidate = copyOf(g);
+        candidate.setGroupCode(newCode.trim());
+        for (RuleDefinition child : regenerated) {
+            child.setGroup(candidate);
+            child.setActionType(ActionType.UPDATE);
+            child.setApproveFlag(ApprovalStatus.PENDING);
+            child.setRecordUserId(submitter.currentUser());
+            child.setRecordDt(LocalDateTime.now());
+        }
+        candidate.setRules(new ArrayList<>(regenerated));
+        return submitter.submit(candidate, ActionType.UPDATE, "GROUP", groupId,
+                "Rename group '" + g.getGroupCode() + "' to '" + candidate.getGroupCode() + "' ("
+                        + regenerated.size() + " builder rule(s) regenerated)");
+    }
+
+    /** Approval version of {@link #setGroupActive}. */
+    @Transactional
+    public ApprovalSubmission submitSetGroupActive(Long groupId, boolean active) {
+        ChangeApprovalSubmitter submitter = submitter();
+        RuleGroup g = requireGroup(groupId);
+        if (g.isActive() == active) {
+            throw new IllegalArgumentException("Group " + groupId + " is already " + (active ? "active" : "inactive") + ".");
+        }
+        assertGroupNotPending(submitter, g);
+        RuleGroup candidate = copyOf(g);
+        candidate.setActive(active);
+        return submitter.submit(candidate, ActionType.UPDATE, "GROUP", groupId,
+                (active ? "Activate" : "Deactivate") + " group '" + g.getGroupCode() + "'");
+    }
+
+    /** Approval version of {@link #deleteGroup}. With {@code force} the group's rules are deleted with it. */
+    @Transactional
+    public ApprovalSubmission submitDeleteGroup(Long groupId, boolean force) {
+        ChangeApprovalSubmitter submitter = submitter();
+        RuleGroup g = requireGroup(groupId);
+        long rules = ruleRepository.countByGroup_Id(groupId);
+        if (rules > 0 && !force) {
+            throw new GroupInUseException("Group " + groupId + " ('" + g.getGroupCode() + "') has " + rules
+                    + " rule(s). Delete them first, or call again with ?force=true.");
+        }
+        assertGroupNotPending(submitter, g);
+        // changeboard loads the group's rules from the DB and deletes them with it on approval
+        return submitter.submit(copyOf(g), ActionType.DELETE, "GROUP", groupId,
+                "Delete group '" + g.getGroupCode() + "'" + (rules > 0 ? " and its " + rules + " rule(s)" : ""));
+    }
+
     // ---- helpers -------------------------------------------------------------------------
+
+    private RuleGroup requireGroup(Long groupId) {
+        return groupRepository.findById(groupId)
+                .orElseThrow(() -> new IllegalArgumentException("No group with id " + groupId + "."));
+    }
+
+    private ChangeApprovalSubmitter submitter() {
+        ChangeApprovalSubmitter submitter = approvals.getIfAvailable();
+        if (submitter == null) {
+            throw new IllegalStateException("Approval is not enabled (rule-engine.approval.enabled=false).");
+        }
+        return submitter;
+    }
+
+    /** A group change waits while the group or any of its rules already has a change pending. */
+    private void assertGroupNotPending(ChangeApprovalSubmitter submitter, RuleGroup g) {
+        submitter.assertNotPending(ChangeApprovalSubmitter.GROUP_TABLE, List.of(g.getId()));
+        submitter.assertNotPending(ChangeApprovalSubmitter.RULE_TABLE,
+                ruleRepository.findByGroup_IdOrderByRuleNameAsc(g.getId()).stream().map(RuleDefinition::getId).toList());
+    }
+
+    /**
+     * Validate a rename and return detached copies of the group's BUILDER rules with DRL regenerated
+     * for the new agenda-group. The whole active set is compile-checked with those copies in place.
+     */
+    private List<RuleDefinition> prepareRename(RuleGroup g, String newCode) {
+        if (newCode == null || newCode.isBlank()) {
+            throw new IllegalArgumentException("The new group code must not be blank.");
+        }
+        String code = newCode.trim();
+        if (code.equals(g.getGroupCode())) {
+            throw new IllegalArgumentException("Group " + g.getId() + " is already named '" + code + "'.");
+        }
+        boolean taken = g.isShared()
+                ? groupRepository.findByFlowIsNullAndGroupCode(code).isPresent()
+                : groupRepository.findByFlow_IdAndGroupCode(g.getFlow().getId(), code).isPresent();
+        if (taken) {
+            throw new IllegalArgumentException("A group named '" + code + "' already exists"
+                    + (g.isShared() ? " among the shared groups." : " in flow '" + g.getFlow().getFlowCode() + "'."));
+        }
+
+        List<RuleDefinition> regenerated = new ArrayList<>();
+        for (RuleDefinition rule : ruleRepository.findByGroup_IdOrderByRuleNameAsc(g.getId())) {
+            if (!RuleDefinition.SOURCE_BUILDER.equals(rule.getSourceType()) || g.getFlow() == null) {
+                continue;   // hand-written DRL is left untouched
+            }
+            RuleDefinition copy = RuleAdminService.copyOf(rule);
+            copy.setDrlText(drlGenerator.fromJson(rule.getSourceJson(), g.getFlow().getFactType(), code,
+                    g.getFlow().getFlowCode() + "." + code));
+            copy.setVersion(rule.getVersion() == null ? 1 : rule.getVersion() + 1);
+            copy.setUpdatedAt(LocalDateTime.now());
+            regenerated.add(copy);
+        }
+
+        Map<Long, RuleDefinition> byId = regenerated.stream()
+                .collect(Collectors.toMap(RuleDefinition::getId, Function.identity()));
+        List<RuleDefinition> candidateSet = ruleRepository.findByActiveTrue().stream()
+                .map(r -> byId.getOrDefault(r.getId(), r)).toList();
+        ruleBaseProvider.validate(candidateSet);
+        return regenerated;
+    }
+
+    /** A detached copy of a group (same id, flow, code, order, flag; no rules). Never dirties the managed row. */
+    private static RuleGroup copyOf(RuleGroup g) {
+        RuleGroup c = new RuleGroup();
+        c.setId(g.getId());
+        c.setFlow(g.getFlow());
+        c.setGroupCode(g.getGroupCode());
+        c.setOrderNo(g.getOrderNo());
+        c.setActive(g.isActive());
+        c.setRules(new ArrayList<>());
+        return c;
+    }
 
     private RuleFlow requireFlow(String flowCode) {
         return flowRepository.findByFlowCode(flowCode)

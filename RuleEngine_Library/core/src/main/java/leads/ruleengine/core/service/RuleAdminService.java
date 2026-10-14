@@ -1,6 +1,9 @@
 package leads.ruleengine.core.service;
 
+import com.leads.model.ActionType;
 import jakarta.transaction.Transactional;
+import leads.ruleengine.core.approval.ApprovalSubmission;
+import leads.ruleengine.core.approval.ChangeApprovalSubmitter;
 import leads.ruleengine.core.dto.BuilderRuleSpec;
 import leads.ruleengine.core.dto.FieldRequest;
 import leads.ruleengine.core.dto.RuleDefinitionRequest;
@@ -17,11 +20,13 @@ import leads.ruleengine.core.repository.RuleFlowRepository;
 import leads.ruleengine.core.repository.RuleGroupRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Manages stored rules ({@code RULE_DEFINITION}): save/replace into a group, update by id,
@@ -34,6 +39,11 @@ import java.util.List;
  *
  * <p><b>Validate-before-swap:</b> on save the candidate rule is compiled together with the other
  * active rules FIRST. Only if the whole set compiles is the row saved and the rule base reloaded.</p>
+ *
+ * <p><b>Approval:</b> when {@code rule-engine.approval.enabled=true} the controller calls the
+ * {@code submit*} methods instead. They run the same checks, build a detached copy of the rule
+ * with the change applied and hand it to changeboard - the managed row is never modified, so the
+ * rule table and the live rule base only change after final approval.</p>
  *
  * @author K M Farhat Snigdah
  */
@@ -48,19 +58,27 @@ public class RuleAdminService {
     private final RuleFieldCatalogRepository catalogRepository;
     private final RuleBaseProvider ruleBaseProvider;
     private final RuleDrlGenerator drlGenerator;
+    private final ObjectProvider<ChangeApprovalSubmitter> approvals;
 
     public RuleAdminService(RuleDefinitionRepository ruleRepository,
                             RuleGroupRepository groupRepository,
                             RuleFlowRepository flowRepository,
                             RuleFieldCatalogRepository catalogRepository,
                             RuleBaseProvider ruleBaseProvider,
-                            RuleDrlGenerator drlGenerator) {
+                            RuleDrlGenerator drlGenerator,
+                            ObjectProvider<ChangeApprovalSubmitter> approvals) {
         this.ruleRepository = ruleRepository;
         this.groupRepository = groupRepository;
         this.flowRepository = flowRepository;
         this.catalogRepository = catalogRepository;
         this.ruleBaseProvider = ruleBaseProvider;
         this.drlGenerator = drlGenerator;
+        this.approvals = approvals;
+    }
+
+    /** True when rule writes go through maker-checker approval ({@code rule-engine.approval.enabled}). */
+    public boolean approvalEnabled() {
+        return approvals.getIfAvailable() != null;
     }
 
     /** Create or replace a rule by (group, name). */
@@ -112,6 +130,120 @@ public class RuleAdminService {
         ruleBaseProvider.reload();
         log.info("Rule {} ('{}') set active={}; rule base reloaded.", id, saved.getRuleName(), active);
         return toView(saved);
+    }
+
+    /** Recompile the live rule base from the table (e.g. after a change was auto-approved). */
+    public void reloadRuleBase() {
+        ruleBaseProvider.reload();
+    }
+
+    // ---- approval (rule-engine.approval.enabled=true) ------------------------------------
+
+    /** Approval version of {@link #saveInGroup}: create (new name) or new version (existing name). */
+    @Transactional
+    public ApprovalSubmission submitSaveInGroup(Long groupId, RuleDefinitionRequest request) {
+        ChangeApprovalSubmitter submitter = submitter();
+        RuleGroup group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new IllegalArgumentException("No group with id " + groupId + "."));
+        submitter.assertNotPending(ChangeApprovalSubmitter.GROUP_TABLE, List.of(groupId));
+        Optional<RuleDefinition> existing = ruleRepository.findByGroup_IdAndRuleName(groupId, request.ruleName());
+        existing.ifPresent(r -> submitter.assertNotPending(ChangeApprovalSubmitter.RULE_TABLE, List.of(r.getId())));
+
+        RuleDefinition candidate = existing.map(RuleAdminService::copyOf).orElseGet(RuleDefinition::new);
+        return submitCandidate(submitter, candidate, group, request, existing.isPresent());
+    }
+
+    /** Approval version of {@link #update}: a new version of an existing rule. */
+    @Transactional
+    public ApprovalSubmission submitUpdate(Long id, RuleDefinitionRequest request) {
+        ChangeApprovalSubmitter submitter = submitter();
+        RuleDefinition current = ruleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("No rule with id " + id + "."));
+        RuleGroup group = current.getGroup();
+        ruleRepository.findByGroup_IdAndRuleName(group.getId(), request.ruleName()).ifPresent(other -> {
+            if (!other.getId().equals(current.getId())) {
+                throw new IllegalArgumentException("Group already has a rule named '" + request.ruleName() + "'.");
+            }
+        });
+        submitter.assertNotPending(ChangeApprovalSubmitter.RULE_TABLE, List.of(id));
+        submitter.assertNotPending(ChangeApprovalSubmitter.GROUP_TABLE, List.of(group.getId()));
+        return submitCandidate(submitter, copyOf(current), group, request, true);
+    }
+
+    /** Approval version of {@link #delete}. */
+    @Transactional
+    public ApprovalSubmission submitDelete(Long id) {
+        ChangeApprovalSubmitter submitter = submitter();
+        RuleDefinition current = ruleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("No rule with id " + id + "."));
+        submitter.assertNotPending(ChangeApprovalSubmitter.RULE_TABLE, List.of(id));
+        submitter.assertNotPending(ChangeApprovalSubmitter.GROUP_TABLE, List.of(current.getGroup().getId()));
+        return submitter.submit(copyOf(current), ActionType.DELETE, "RULE", id,
+                "Delete rule '" + current.getRuleName() + "' from group " + current.getGroup().getGroupCode());
+    }
+
+    /** Approval version of {@link #setActive}. Activation is compile-checked like a save. */
+    @Transactional
+    public ApprovalSubmission submitSetActive(Long id, boolean active) {
+        ChangeApprovalSubmitter submitter = submitter();
+        RuleDefinition current = ruleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("No rule with id " + id + "."));
+        submitter.assertNotPending(ChangeApprovalSubmitter.RULE_TABLE, List.of(id));
+        submitter.assertNotPending(ChangeApprovalSubmitter.GROUP_TABLE, List.of(current.getGroup().getId()));
+        if (current.isActive() == active) {
+            throw new IllegalArgumentException("Rule " + id + " is already " + (active ? "active" : "inactive") + ".");
+        }
+        RuleDefinition candidate = copyOf(current);
+        candidate.setActive(active);
+        candidate.setStatus(active ? "ACTIVE" : "INACTIVE");
+        candidate.setUpdatedAt(LocalDateTime.now());
+        if (active) {
+            ruleBaseProvider.validate(candidateActiveSet(candidate));
+        }
+        return submitter.submit(candidate, ActionType.UPDATE, "RULE", id,
+                (active ? "Activate" : "Deactivate") + " rule '" + current.getRuleName() + "'");
+    }
+
+    /** Apply the request to the detached candidate, compile-check it, and submit it. */
+    private ApprovalSubmission submitCandidate(ChangeApprovalSubmitter submitter, RuleDefinition candidate,
+                                               RuleGroup group, RuleDefinitionRequest request, boolean exists) {
+        apply(candidate, group, request);
+        candidate.setCreatedBy(submitter.currentUser());
+        ruleBaseProvider.validate(candidateActiveSet(candidate));
+        ActionType action = exists ? ActionType.UPDATE : ActionType.CREATE;
+        String summary = exists
+                ? "Update rule '" + candidate.getRuleName() + "' to version " + candidate.getVersion()
+                : "Create rule '" + candidate.getRuleName() + "'";
+        return submitter.submit(candidate, action, "RULE", candidate.getId(),
+                summary + " in group " + group.getGroupCode());
+    }
+
+    private ChangeApprovalSubmitter submitter() {
+        ChangeApprovalSubmitter submitter = approvals.getIfAvailable();
+        if (submitter == null) {
+            throw new IllegalStateException("Approval is not enabled (rule-engine.approval.enabled=false).");
+        }
+        return submitter;
+    }
+
+    /**
+     * A detached copy of a rule (every column, same id and group). Changes are made on the copy so
+     * the managed row is never dirtied - Hibernate would otherwise save it at commit and skip approval.
+     */
+    public static RuleDefinition copyOf(RuleDefinition r) {
+        RuleDefinition c = new RuleDefinition();
+        c.setId(r.getId());
+        c.setGroup(r.getGroup());
+        c.setRuleName(r.getRuleName());
+        c.setSourceType(r.getSourceType());
+        c.setSourceJson(r.getSourceJson());
+        c.setDrlText(r.getDrlText());
+        c.setVersion(r.getVersion());
+        c.setStatus(r.getStatus());
+        c.setActive(r.isActive());
+        c.setCreatedBy(r.getCreatedBy());
+        c.setUpdatedAt(r.getUpdatedAt());
+        return c;
     }
 
     /** All rules in one exact group (active and inactive, so the UI can show/flip the toggle). */

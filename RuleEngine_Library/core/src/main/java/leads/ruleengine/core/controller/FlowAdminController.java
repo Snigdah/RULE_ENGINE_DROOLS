@@ -5,6 +5,7 @@ import leads.ruleengine.core.dto.ActiveRequest;
 import leads.ruleengine.core.dto.FlowDefinitionRequest;
 import leads.ruleengine.core.dto.FlowView;
 import leads.ruleengine.core.dto.GroupOrderRequest;
+import leads.ruleengine.core.dto.GroupRenameRequest;
 import leads.ruleengine.core.dto.GroupRequest;
 import leads.ruleengine.core.dto.GroupView;
 import leads.ruleengine.core.service.DecisionFlowResolver;
@@ -25,7 +26,9 @@ import java.util.List;
 
 /**
  * Runtime routing management: flows (the master rows) and the agenda groups inside them.
- * Every change takes effect immediately.
+ * Every change takes effect immediately - except, with {@code rule-engine.approval.enabled=true},
+ * group create / rename / activate-deactivate / delete, which answer 202 with an
+ * {@code ApprovalSubmission} and are applied only after final approval.
  *
  * <p>Exposed only when {@code rule-engine.admin.enabled} is true (the default).</p>
  *
@@ -74,8 +77,12 @@ public class FlowAdminController {
 
     /** Create a SHARED group (flow_id NULL, e.g. COMMON) that every flow runs first. */
     @PostMapping("/groups/shared")
-    public GroupView addSharedGroup(@Valid @RequestBody GroupRequest request) {
-        return flowAdminService.addSharedGroup(request.groupCode(), request.orderNo());
+    public ResponseEntity<?> addSharedGroup(@Valid @RequestBody GroupRequest request) {
+        if (flowAdminService.approvalEnabled()) {
+            return ResponseEntity.accepted().body(
+                    flowAdminService.submitAddSharedGroup(request.groupCode(), request.orderNo()));
+        }
+        return ResponseEntity.ok(flowAdminService.addSharedGroup(request.groupCode(), request.orderNo()));
     }
 
     @GetMapping("/flows/{flowCode}/groups")
@@ -84,8 +91,21 @@ public class FlowAdminController {
     }
 
     @PostMapping("/flows/{flowCode}/groups")
-    public GroupView addGroup(@PathVariable String flowCode, @Valid @RequestBody GroupRequest request) {
-        return flowAdminService.addGroup(flowCode, request.groupCode(), request.orderNo());
+    public ResponseEntity<?> addGroup(@PathVariable String flowCode, @Valid @RequestBody GroupRequest request) {
+        if (flowAdminService.approvalEnabled()) {
+            return ResponseEntity.accepted().body(
+                    flowAdminService.submitAddGroup(flowCode, request.groupCode(), request.orderNo()));
+        }
+        return ResponseEntity.ok(flowAdminService.addGroup(flowCode, request.groupCode(), request.orderNo()));
+    }
+
+    /** Rename a group (its agenda-group code). Builder rules in it are regenerated; DRL rules are left as-is. */
+    @PutMapping("/groups/{groupId}/code")
+    public ResponseEntity<?> renameGroup(@PathVariable Long groupId, @Valid @RequestBody GroupRenameRequest request) {
+        if (flowAdminService.approvalEnabled()) {
+            return ResponseEntity.accepted().body(flowAdminService.submitRenameGroup(groupId, request.groupCode()));
+        }
+        return ResponseEntity.ok(flowAdminService.renameGroup(groupId, request.groupCode()));
     }
 
     @PutMapping("/flows/{flowCode}/groups/order")
@@ -96,14 +116,20 @@ public class FlowAdminController {
 
     /** Activate / deactivate a group (the UI on/off radio). An inactive group is skipped at runtime. */
     @PutMapping("/groups/{groupId}/active")
-    public GroupView setGroupActive(@PathVariable Long groupId, @Valid @RequestBody ActiveRequest request) {
-        return flowAdminService.setGroupActive(groupId, request.active());
+    public ResponseEntity<?> setGroupActive(@PathVariable Long groupId, @Valid @RequestBody ActiveRequest request) {
+        if (flowAdminService.approvalEnabled()) {
+            return ResponseEntity.accepted().body(flowAdminService.submitSetGroupActive(groupId, request.active()));
+        }
+        return ResponseEntity.ok(flowAdminService.setGroupActive(groupId, request.active()));
     }
 
     /** Permanently delete a group. 409 unless {@code force}, which deletes its rules too. */
     @DeleteMapping("/groups/{groupId}")
-    public ResponseEntity<Void> deleteGroup(@PathVariable Long groupId,
-                                            @RequestParam(defaultValue = "false") boolean force) {
+    public ResponseEntity<?> deleteGroup(@PathVariable Long groupId,
+                                         @RequestParam(defaultValue = "false") boolean force) {
+        if (flowAdminService.approvalEnabled()) {
+            return ResponseEntity.accepted().body(flowAdminService.submitDeleteGroup(groupId, force));
+        }
         flowAdminService.deleteGroup(groupId, force);
         return ResponseEntity.noContent().build();
     }

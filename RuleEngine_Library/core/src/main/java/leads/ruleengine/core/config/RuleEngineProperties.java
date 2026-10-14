@@ -10,6 +10,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * rule-engine:
  *   admin:
  *     enabled: true          # expose /admin/rules and /admin/flows (default true)
+ *   approval:
+ *     enabled: true          # rule/group changes go through changeboard maker-checker (default false)
+ *     app-id: 1              # used when the request has no X-App-Id header
+ *     function-id: 101022    # changeboard / Centrino function the approval workflow is mapped to
  * </pre>
  *
  * <p>The builder's flow-to-fact-type mapping is NOT configured here - it lives in the database
@@ -22,8 +26,14 @@ public class RuleEngineProperties {
 
     private final Admin admin = new Admin();
 
+    private final Approval approval = new Approval();
+
     public Admin getAdmin() {
         return admin;
+    }
+
+    public Approval getApproval() {
+        return approval;
     }
 
     /**
@@ -39,6 +49,42 @@ public class RuleEngineProperties {
 
         public void setEnabled(boolean enabled) {
             this.enabled = enabled;
+        }
+    }
+
+    /**
+     * Maker-checker approval for rule and group changes. Off by default: every admin write is
+     * applied immediately, exactly as before. When on, rule create/update/delete/toggle and group
+     * create/rename/delete/toggle are submitted to changeboard and only reach the rule tables
+     * after final approval. Flows, group reorder and the field catalog are never gated.
+     */
+    public static class Approval {
+        private boolean enabled = false;
+        private Long appId;
+        private Long functionId;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public Long getAppId() {
+            return appId;
+        }
+
+        public void setAppId(Long appId) {
+            this.appId = appId;
+        }
+
+        public Long getFunctionId() {
+            return functionId;
+        }
+
+        public void setFunctionId(Long functionId) {
+            this.functionId = functionId;
         }
     }
 }

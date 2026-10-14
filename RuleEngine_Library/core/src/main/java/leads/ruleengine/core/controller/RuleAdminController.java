@@ -32,6 +32,7 @@ import java.util.List;
  *   <li>{@code GET/PUT/DELETE /admin/rules/{id}} - read / update / permanently delete one rule.</li>
  *   <li>{@code PUT /admin/rules/{id}/active} - activate/deactivate a rule (the on/off toggle).</li>
  *   <li>{@code POST /admin/rules/preview} - generate + compile-check DRL without saving.</li>
+ *   <li>{@code POST /admin/rules/reload} - recompile the live rule base from the table.</li>
  *   <li>{@code GET  /admin/flows/{flowCode}/fields} - builder field palette (flow + shared).</li>
  * </ul>
  *
@@ -55,9 +56,13 @@ public class RuleAdminController {
         return ruleAdminService.listByGroup(groupId);
     }
 
+    /** Save a rule into a group. With approval on: 202 + {@code ApprovalSubmission}, nothing saved yet. */
     @PostMapping("/groups/{groupId}/rules")
-    public ResponseEntity<RuleView> save(@PathVariable Long groupId,
-                                         @Valid @RequestBody RuleDefinitionRequest request) {
+    public ResponseEntity<?> save(@PathVariable Long groupId,
+                                  @Valid @RequestBody RuleDefinitionRequest request) {
+        if (ruleAdminService.approvalEnabled()) {
+            return ResponseEntity.accepted().body(ruleAdminService.submitSaveInGroup(groupId, request));
+        }
         return ResponseEntity.ok(ruleAdminService.saveInGroup(groupId, request));
     }
 
@@ -66,23 +71,40 @@ public class RuleAdminController {
         return ruleAdminService.get(id);
     }
 
+    /** New version of a rule. With approval on: 202 + {@code ApprovalSubmission}, nothing saved yet. */
     @PutMapping("/rules/{id}")
-    public ResponseEntity<RuleView> update(@PathVariable Long id,
-                                           @Valid @RequestBody RuleDefinitionRequest request) {
+    public ResponseEntity<?> update(@PathVariable Long id,
+                                    @Valid @RequestBody RuleDefinitionRequest request) {
+        if (ruleAdminService.approvalEnabled()) {
+            return ResponseEntity.accepted().body(ruleAdminService.submitUpdate(id, request));
+        }
         return ResponseEntity.ok(ruleAdminService.update(id, request));
     }
 
     /** Permanently delete a rule (the row is removed). Use the active toggle to merely disable it. */
     @DeleteMapping("/rules/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        if (ruleAdminService.approvalEnabled()) {
+            return ResponseEntity.accepted().body(ruleAdminService.submitDelete(id));
+        }
         ruleAdminService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     /** Activate / deactivate a rule without deleting it (the UI on/off radio). */
     @PutMapping("/rules/{id}/active")
-    public RuleView setActive(@PathVariable Long id, @Valid @RequestBody ActiveRequest request) {
-        return ruleAdminService.setActive(id, request.active());
+    public ResponseEntity<?> setActive(@PathVariable Long id, @Valid @RequestBody ActiveRequest request) {
+        if (ruleAdminService.approvalEnabled()) {
+            return ResponseEntity.accepted().body(ruleAdminService.submitSetActive(id, request.active()));
+        }
+        return ResponseEntity.ok(ruleAdminService.setActive(id, request.active()));
+    }
+
+    /** Recompile the live rule base from the table (e.g. after changeboard auto-approved a change). */
+    @PostMapping("/rules/reload")
+    public ResponseEntity<Void> reload() {
+        ruleAdminService.reloadRuleBase();
+        return ResponseEntity.ok().build();
     }
 
     /** Preview the generated DRL for a builder spec, without saving it. */

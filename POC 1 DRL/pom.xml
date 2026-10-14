@@ -45,6 +45,12 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- Oracle driver for the "sentinel" profile (approval testing against the Sentinel DB) -->
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc11</artifactId>
+            <scope>runtime</scope>
+        </dependency>
 
         <!-- Health / readiness probes -->
         <dependency>

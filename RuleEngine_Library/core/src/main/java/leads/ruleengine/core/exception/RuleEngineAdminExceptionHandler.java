@@ -1,5 +1,8 @@
 package leads.ruleengine.core.exception;
 
+import com.leads.exceptionHandler.ResourceNotFoundException;
+import leads.ruleengine.core.approval.PendingApprovalException;
+import leads.ruleengine.core.approval.RuleApprovalController;
 import leads.ruleengine.core.controller.FlowAdminController;
 import leads.ruleengine.core.controller.RuleAdminController;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -24,7 +27,8 @@ import java.util.Map;
  *
  * @author K M Farhat Snigdah
  */
-@RestControllerAdvice(assignableTypes = {RuleAdminController.class, FlowAdminController.class})
+@RestControllerAdvice(assignableTypes = {RuleAdminController.class, FlowAdminController.class,
+        RuleApprovalController.class})
 @ConditionalOnProperty(prefix = "rule-engine.admin", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class RuleEngineAdminExceptionHandler {
 
@@ -44,6 +48,18 @@ public class RuleEngineAdminExceptionHandler {
     @ExceptionHandler(GroupInUseException.class)
     public ResponseEntity<Map<String, Object>> handleGroupInUse(GroupInUseException ex) {
         return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    /** The rule/group already has a change waiting for approval -> 409. */
+    @ExceptionHandler(PendingApprovalException.class)
+    public ResponseEntity<Map<String, Object>> handlePendingApproval(PendingApprovalException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    /** changeboard rejected the submission or decision (e.g. bad approval payload) -> 400. */
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleChangeboard(ResourceNotFoundException ex) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     /** Bad admin input (unknown id, missing sourceJson/drl, duplicate name, ...) -> 400. */
