@@ -126,9 +126,9 @@ A rule whose DRL does not compile is **rejected with 400** and the running engin
 
 ---
 
-## 5. Optional: load only the data the active rules need (3.0.1)
+## 5. Optional: load only the data the active rules need (3.0.2)
 
-Every lookup in `buildContext()` costs a DB/service call per request. From 3.0.1 a service can ask
+Every lookup in `buildContext()` costs a DB/service call per request. From 3.0.2 a service can ask
 which data the flow's **active** rules read (flow on/off, group on/off, rule on/off, and every leaf
 field of every builder rule) and skip the rest. The answer is computed when rules reload and held in
 memory, so asking costs nothing.
@@ -155,6 +155,22 @@ if (need.needs("userLimit")) {                                            // roo
 - **Builder rules** are analysed automatically. A hand-written **DRL** rule can declare what it reads in
   a comment line — `// @requires: user` or `// @requires: none`; without it the whole flow loads everything.
 - Inspect: `GET /admin/flows/{flowCode}/required-data`.
+
+## 6. The decision is returned by the library
+
+`execute(..)` returns a `RuleResult` (`isValid()`, `isPermissionDenied()`, `getMessage()`).
+Your context only carries the data the rules read; it needs no decision fields.
+
+```java
+RuleResult result = ruleEngine.execute(context, TransactionRequest.class);
+return new TransactionResponse(result.isValid(), result.isPermissionDenied(), result.getMessage());
+```
+
+- Builder rules write `result.block("message")` / `result.allow(...)` through the global
+  `leads.ruleengine.core.context.RuleResult result`. Hand-written DRL can use the same global.
+- Builder rules saved by an older version (`$ctx.setValid(...)`) are regenerated automatically at startup.
+- A context that still has `setValid / setPermissionDenied / setValidationMessage` also receives the
+  decision, so older services that read `context.isValid()` keep working.
 
 ## Module layout
 

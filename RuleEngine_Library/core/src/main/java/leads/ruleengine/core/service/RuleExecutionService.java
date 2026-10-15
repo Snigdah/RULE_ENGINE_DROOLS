@@ -2,6 +2,7 @@ package leads.ruleengine.core.service;
 
 import leads.ruleengine.core.config.RuleEngineProperties;
 import leads.ruleengine.core.context.GlobalContext;
+import leads.ruleengine.core.context.RuleResult;
 import leads.ruleengine.core.dto.RequiredData;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.rule.AgendaGroup;
@@ -9,7 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The method a consuming service calls to run rules. Two overloads so global reference data is
@@ -21,9 +25,15 @@ import java.util.List;
  * only decides the route.</p>
  *
  * <pre>
- *   ruleExecutionService.execute(context, LoanRequest.class);                 // rules read only the fact
- *   ruleExecutionService.execute(context, LoanRequest.class, globalContext);  // + shared reference data
+ *   RuleResult r = ruleExecutionService.execute(context, LoanRequest.class);                // rules read only the fact
+ *   RuleResult r = ruleExecutionService.execute(context, LoanRequest.class, globalContext); // + shared reference data
+ *   if (!r.isValid()) { ... r.getMessage() ... }
  * </pre>
+ *
+ * <p><b>The decision is library-owned.</b> Each call returns a fresh {@link RuleResult}
+ * (valid / permissionDenied / message). The context object only carries the data the rules read;
+ * it needs no decision fields. For compatibility, if the context still has
+ * {@code setValid / setPermissionDenied / setValidationMessage}, the result is also copied onto it.</p>
  *
  * <p><b>Optional - demand-driven loading</b> ({@link #requiredData(Class)}): ask which data the
  * flow's active rules read, and skip the lookups nobody needs. A service that never calls it keeps
@@ -80,16 +90,17 @@ public class RuleExecutionService {
     }
 
     /** Run the flow mapped to {@code requestType}, WITHOUT any global reference data. */
-    public void execute(Object fact, Class<?> requestType) {
-        run(fact, requestType, null);
+    public RuleResult execute(Object fact, Class<?> requestType) {
+        return run(fact, requestType, null);
     }
 
     /** Run the flow mapped to {@code requestType}, exposing {@code globalContext} to the rules. */
-    public void execute(Object fact, Class<?> requestType, GlobalContext globalContext) {
-        run(fact, requestType, globalContext);
+    public RuleResult execute(Object fact, Class<?> requestType, GlobalContext globalContext) {
+        return run(fact, requestType, globalContext);
     }
 
-    private void run(Object fact, Class<?> requestType, GlobalContext globalContext) {
+    private RuleResult run(Object fact, Class<?> requestType, GlobalContext globalContext) {
+        RuleResult result = new RuleResult();
         Long flowId = flowResolver.flowFor(requestType.getName());
         List<String> groups = flowResolver.groupsFor(flowId);
 
@@ -101,6 +112,12 @@ public class RuleExecutionService {
                 } catch (RuntimeException ignored) {
                     // DRL did not declare the global - nothing to inject.
                 }
+            }
+
+            try {
+                session.setGlobal("result", result);
+            } catch (RuntimeException ignored) {
+                // no compiled rule declares the result global (e.g. empty rule base) - nothing to inject
             }
 
             session.insert(fact);
@@ -115,6 +132,49 @@ public class RuleExecutionService {
             session.fireAllRules();
         } finally {
             session.dispose();
+        }
+        copyToLegacyContext(result, fact);
+        return result;
+    }
+
+    // ---- compatibility: contexts that still carry the old decision fields ------------------
+
+    private static final Map<Class<?>, Method[]> LEGACY_SETTERS = new ConcurrentHashMap<>();
+    private static final Method[] NONE = new Method[0];
+
+    /**
+     * Older services read the decision from their own context ({@code context.isValid()}). If the
+     * context still has the three setters, mirror the result onto it so those services keep working.
+     */
+    private static void copyToLegacyContext(RuleResult result, Object fact) {
+        // only mirror a real decision: a legacy hand-written rule may have set the context itself
+        if (fact == null || !result.isDecided()) {
+            return;
+        }
+        Method[] setters = LEGACY_SETTERS.computeIfAbsent(fact.getClass(), RuleExecutionService::findLegacySetters);
+        if (setters.length == 0) {
+            return;
+        }
+        try {
+            setters[0].invoke(fact, result.isValid());
+            setters[1].invoke(fact, result.isPermissionDenied());
+            if (result.getMessage() != null) {
+                setters[2].invoke(fact, result.getMessage());
+            }
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            // best effort only - the returned RuleResult is the source of truth
+        }
+    }
+
+    private static Method[] findLegacySetters(Class<?> type) {
+        try {
+            return new Method[] {
+                    type.getMethod("setValid", boolean.class),
+                    type.getMethod("setPermissionDenied", boolean.class),
+                    type.getMethod("setValidationMessage", String.class)
+            };
+        } catch (NoSuchMethodException e) {
+            return NONE;
         }
     }
 }

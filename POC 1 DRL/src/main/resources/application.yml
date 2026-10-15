@@ -23,7 +23,7 @@ spring:
         format_sql: true
 
 
-# Rule-engine library (com.leads:rule-engine 3.0.1)
+# Rule-engine library (com.leads:rule-engine 3.0.2)
 rule-engine:
   required-data:
     enabled: true          # demand-driven loading: needs("root") may answer false (default false)

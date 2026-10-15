@@ -70,15 +70,9 @@ function genNode(node: ConditionNode, fields: FieldCatalogRow[], negate: boolean
 }
 
 function thenBlock(decision: string, message?: string): string {
-  const lines: string[] = []
-  if (decision === 'block') {
-    lines.push('        $ctx.setValid(false);')
-    lines.push('        $ctx.setPermissionDenied(true);')
-  } else {
-    lines.push('        $ctx.setValid(true);')
-  }
-  if (message) lines.push(`        $ctx.setValidationMessage("${message.replace(/"/g, '\\"')}");`)
-  return lines.join('\n')
+  // the decision goes to the library-owned RuleResult global, not to the context
+  const msg = message ? `"${message.replace(/"/g, '\\"')}"` : 'null'
+  return `        result.${decision === 'block' ? 'block' : 'allow'}(${msg});`
 }
 
 function renderRule(name: string, group: string, salience: number, fact: string,
@@ -101,7 +95,7 @@ export function generateDrl(spec: BuilderRuleSpec, flow: FlowMeta, fields: Field
   const name = spec.ruleName?.trim() || 'Untitled rule'
   const salience = spec.salience ?? 0
   const pkg = (flow.factType && packageOf(flow.factType)) || 'com.example.droolspoc.model'
-  const header = `package ${pkg};\n\n`
+  const header = `package ${pkg};\n\nglobal leads.ruleengine.core.context.RuleResult result;\n\n`
 
   const rules = [
     renderRule(name, spec.agendaGroup, salience, flow.factType || flow.factSimpleName,

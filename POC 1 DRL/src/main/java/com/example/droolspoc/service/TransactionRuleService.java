@@ -9,6 +9,7 @@ import com.example.droolspoc.model.UserLimit;
 import com.example.droolspoc.model.ValidationContext;
 import com.example.droolspoc.lookup.TransferLookupService;
 import leads.ruleengine.core.dto.RequiredData;
+import leads.ruleengine.core.context.RuleResult;
 import leads.ruleengine.core.service.RuleExecutionService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,7 @@ import static java.util.concurrent.CompletableFuture.supplyAsync;
  * rule-engine library. The three independent lookups (user limit, product, user) run in PARALLEL
  * on virtual threads via {@link TransferLookupService} — each in its own read-only transaction.
  *
- * <p><b>Demand-driven (library 3.0.1):</b> before the lookups it asks the library which data the
+ * <p><b>Demand-driven (library 3.0.2):</b> before the lookups it asks the library which data the
  * flow's ACTIVE rules read ({@code ruleEngine.requiredData(..)}, in memory, no DB) and runs only the
  * lookups an active rule needs. The name in {@code needs("...")} is the first part of the catalog
  * drl_path ({@code userLimit!.limit} -> {@code "userLimit"}). Loan and Closure services keep the
@@ -49,12 +50,13 @@ public class TransactionRuleService {
 
     public TransactionResponse validate(TransactionRequest request) {
         ValidationContext context = buildContext(request);
-        ruleEngine.execute(context, TransactionRequest.class);   // builder rules only - no global context needed
+        RuleResult result = ruleEngine.execute(context, TransactionRequest.class);
+        // decision is returned by the library
 
         return new TransactionResponse(
-                context.isValid(),
-                context.isPermissionDenied(),
-                context.getValidationMessage());
+                result.isValid(),
+                result.isPermissionDenied(),
+                result.getMessage());
     }
 
     private ValidationContext buildContext(TransactionRequest request) {

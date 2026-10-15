@@ -5,6 +5,7 @@ import com.example.droolspoc.dto.LoanResponse;
 import com.example.droolspoc.model.Loan;
 import com.example.droolspoc.model.LoanValidationContext;
 import com.example.droolspoc.lookup.LoanLookupService;
+import leads.ruleengine.core.context.RuleResult;
 import leads.ruleengine.core.service.RuleExecutionService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -36,12 +37,12 @@ public class LoanRuleService {
 
     public LoanResponse validate(LoanRequest request) {
         LoanValidationContext context = buildContext(request);
-        ruleEngine.execute(context, LoanRequest.class);   // builder rules only - no global context needed
+        RuleResult result = ruleEngine.execute(context, LoanRequest.class);   // decision is returned by the library
 
         return new LoanResponse(
-                context.isValid(),
-                context.isPermissionDenied(),
-                context.getValidationMessage());
+                result.isValid(),
+                result.isPermissionDenied(),
+                result.getMessage());
     }
 
     private LoanValidationContext buildContext(LoanRequest request) {

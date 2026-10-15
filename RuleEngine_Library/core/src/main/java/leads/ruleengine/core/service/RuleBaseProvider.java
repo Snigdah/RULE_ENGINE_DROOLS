@@ -43,6 +43,7 @@ public class RuleBaseProvider {
 
     private final RuleDefinitionRepository ruleDefinitionRepository;
     private final RequiredDataResolver requiredDataResolver;
+    private final BuilderDrlUpgrader builderDrlUpgrader;
     private final KieServices kieServices = KieServices.Factory.get();
 
     /** Unique release id per build so containers never collide in the KIE repository. */
@@ -51,13 +52,17 @@ public class RuleBaseProvider {
     private volatile KieContainer container;
 
     public RuleBaseProvider(RuleDefinitionRepository ruleDefinitionRepository,
-                            RequiredDataResolver requiredDataResolver) {
+                            RequiredDataResolver requiredDataResolver,
+                            BuilderDrlUpgrader builderDrlUpgrader) {
         this.ruleDefinitionRepository = ruleDefinitionRepository;
         this.requiredDataResolver = requiredDataResolver;
+        this.builderDrlUpgrader = builderDrlUpgrader;
     }
 
     @PostConstruct
     public void init() {
+        // builder rules saved by an older library version are regenerated to the RuleResult form first
+        builderDrlUpgrader.upgradeLegacyBuilderRules();
         reload();
     }
 
