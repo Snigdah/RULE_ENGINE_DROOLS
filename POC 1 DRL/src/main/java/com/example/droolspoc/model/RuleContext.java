@@ -6,26 +6,20 @@ import lombok.Setter;
 /**
  * Shared base for every flow's context (transfer, loan, closure).
  *
- * <p>It carries the two things the cross-cutting COMMON rules need - the {@code userId}
- * (blocked-user check) and the {@code user} (KYC check) - plus the decision result the rules
- * write back. Because all three concrete contexts extend this, a COMMON rule written against
- * {@code RuleContext} fires for ALL of them: that is how one rule is reused across flows.</p>
+ * <p>It carries the data every flow shares - the {@code userId} and the {@code user}. A rule
+ * written against {@code RuleContext} (for example in the shared COMMON group) fires for all
+ * three concrete contexts.</p>
  *
- * <p>The library's generated DRL sets the outcome on the inserted fact ({@code $ctx.setValid(...)}),
- * so keeping the result here means hand-written and builder-generated rules use the same calls.</p>
+ * <p>It holds <b>no decision fields</b>: the library returns the decision as a
+ * {@code leads.ruleengine.core.context.RuleResult} from {@code ruleEngine.execute(..)}.</p>
  */
 @Getter
 @Setter
 public abstract class RuleContext {
 
-    /** The acting user id - read by the COMMON blocked-user rule. */
+    /** The acting user id. */
     private String userId;
 
-    /** The acting user - the COMMON KYC rule reads {@code user.kycVerified}. */
+    /** The acting user (e.g. {@code user.kycVerified}). */
     private User user;
-
-    // ---- decision result (the rules write these) ----
-    private boolean valid = true;
-    private boolean permissionDenied = false;
-    private String validationMessage;
 }

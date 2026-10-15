@@ -39,46 +39,6 @@ INSERT INTO rule_field_catalog (id, flow_id, field_key, label, data_type, drl_pa
 INSERT INTO rule_field_catalog (id, flow_id, field_key, label, data_type, drl_path, allowed_ops, allowed_values) VALUES (nextval('rule_field_catalog_seq'), (SELECT id FROM rule_flow WHERE flow_code='ACCOUNT_CLOSURE'), 'account.status', 'Account Status', 'ENUM', 'account.status', '== !=', 'ACTIVE, DORMANT, FROZEN, CLOSED');
 
 -- ============================ RULES =========================================
--- #1  Block transaction for a blocked user  (group: COMMON, DRL)
-INSERT INTO rule_definition (id, group_id, rule_name, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at) VALUES
-(nextval('rule_definition_seq'), (SELECT id FROM rule_group WHERE group_code='COMMON' AND flow_id IS NULL), 'Block transaction for a blocked user', 'DRL', NULL, 'package com.example.droolspoc.rules;
-
-import com.example.droolspoc.model.RuleContext;
-import com.example.droolspoc.context.data.BlockedUsers;
-
-global leads.ruleengine.core.context.GlobalContext globalContext;
-
-rule "Block transaction for a blocked user"
-    agenda-group "COMMON"
-    salience 100
-    when
-        $ctx : RuleContext()
-        eval(globalContext.get(BlockedUsers.class).isBlocked($ctx.getUserId()))
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: user is blocked");
-        drools.halt();
-end', 1, 'ACTIVE', TRUE, 'farhat', now());
-
--- #2  Block if KYC not verified  (group: COMMON, DRL)
-INSERT INTO rule_definition (id, group_id, rule_name, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at) VALUES
-(nextval('rule_definition_seq'), (SELECT id FROM rule_group WHERE group_code='COMMON' AND flow_id IS NULL), 'Block if KYC not verified', 'DRL', NULL, 'package com.example.droolspoc.rules;
-
-import com.example.droolspoc.model.RuleContext;
-
-rule "Block if KYC not verified"
-    agenda-group "COMMON"
-    salience 90
-    when
-        $ctx : RuleContext(user != null, user.kycVerified == false)
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: KYC not verified");
-        drools.halt();
-end', 1, 'ACTIVE', TRUE, 'farhat', now());
-
 -- #3  Block over-limit debit-restricted BDT transaction  (group: TRANSFER / TRANSFER_TRANSACTION, BUILDER)
 INSERT INTO rule_definition (id, group_id, rule_name, source_type, source_json, drl_text, version_no, status, active, created_by, updated_at) VALUES
 (nextval('rule_definition_seq'), (SELECT id FROM rule_group WHERE group_code='TRANSFER' AND flow_id=(SELECT id FROM rule_flow WHERE flow_code='TRANSFER_TRANSACTION')), 'Block over-limit debit-restricted BDT transaction', 'BUILDER', '{"ruleName": "Block over-limit debit-restricted BDT transaction", "flow": "TRANSFER_TRANSACTION", "agendaGroup": "TRANSFER", "salience": 10, "conditionTree": {"type": "GROUP", "operator": "AND", "children": [{"type": "CONDITION", "field": "transaction.currency", "operator": "==", "value": "BDT"}, {"type": "CONDITION", "field": "product.drRes", "operator": "==", "value": 1}, {"type": "CONDITION", "field": "transaction.amount", "operator": ">", "valueField": "userLimit.limit"}]}, "then": {"decision": "block", "message": "Blocked: amount exceeds limit on a debit-restricted BDT account"}}', 'package com.example.droolspoc.model;

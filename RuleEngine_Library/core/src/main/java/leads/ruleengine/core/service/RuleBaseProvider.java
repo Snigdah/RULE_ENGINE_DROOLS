@@ -42,6 +42,8 @@ public class RuleBaseProvider {
     private static final String RULES_PATH = "src/main/resources/rules/";
 
     private final RuleDefinitionRepository ruleDefinitionRepository;
+    private final RequiredDataResolver requiredDataResolver;
+    private final BuilderDrlUpgrader builderDrlUpgrader;
     private final KieServices kieServices = KieServices.Factory.get();
 
     /** Unique release id per build so containers never collide in the KIE repository. */
@@ -49,12 +51,18 @@ public class RuleBaseProvider {
 
     private volatile KieContainer container;
 
-    public RuleBaseProvider(RuleDefinitionRepository ruleDefinitionRepository) {
+    public RuleBaseProvider(RuleDefinitionRepository ruleDefinitionRepository,
+                            RequiredDataResolver requiredDataResolver,
+                            BuilderDrlUpgrader builderDrlUpgrader) {
         this.ruleDefinitionRepository = ruleDefinitionRepository;
+        this.requiredDataResolver = requiredDataResolver;
+        this.builderDrlUpgrader = builderDrlUpgrader;
     }
 
     @PostConstruct
     public void init() {
+        // builder rules saved by an older library version are regenerated to the RuleResult form first
+        builderDrlUpgrader.upgradeLegacyBuilderRules();
         reload();
     }
 
@@ -73,6 +81,10 @@ public class RuleBaseProvider {
             log.warn("No active rules - rule base is empty. Rules will fire nothing until one is saved.");
         }
         KieContainer fresh = build(active);
+
+        // data first, rules second: the new "what to load" goes live before the new rules do
+        requiredDataResolver.reload();
+
         KieContainer old = this.container;
         this.container = fresh;
         if (old != null) {

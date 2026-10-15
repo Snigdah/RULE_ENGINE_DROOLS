@@ -23,6 +23,13 @@ spring:
         format_sql: true
 
 
+# Rule-engine library (com.leads:rule-engine 3.0.2)
+rule-engine:
+  required-data:
+    enabled: true          # demand-driven loading: needs("root") may answer false (default false)
+    shadow: false          # true = only log what would be skipped, still load everything
+    trust-drl-hints: true  # read "// @requires:" in hand-written DRL rules
+
 management:
   endpoints:
     web:

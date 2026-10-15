@@ -56,46 +56,6 @@ closure=$(echo "$CG" | jq -r '.[] | select(.groupCode=="CLOSURE") | .id')
 complianceC=$(echo "$CG" | jq -r '.[] | select(.groupCode=="COMPLIANCE") | .id')
 
 echo "5/5 Rules..."
-read -r -d '' DRL1 <<'DRLEOF' || true
-package com.example.droolspoc.rules;
-
-import com.example.droolspoc.model.RuleContext;
-import com.example.droolspoc.context.data.BlockedUsers;
-
-global leads.ruleengine.core.context.GlobalContext globalContext;
-
-rule "Block transaction for a blocked user"
-    agenda-group "COMMON"
-    salience 100
-    when
-        $ctx : RuleContext()
-        eval(globalContext.get(BlockedUsers.class).isBlocked($ctx.getUserId()))
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: user is blocked");
-        drools.halt();
-end
-DRLEOF
-post "/admin/groups/$common/rules" "$(jq -n --arg n "Block transaction for a blocked user" --arg d "$DRL1" '{ruleName:$n,sourceType:"DRL",createdBy:"farhat",drl:$d}')"
-read -r -d '' DRL2 <<'DRLEOF' || true
-package com.example.droolspoc.rules;
-
-import com.example.droolspoc.model.RuleContext;
-
-rule "Block if KYC not verified"
-    agenda-group "COMMON"
-    salience 90
-    when
-        $ctx : RuleContext(user != null, user.kycVerified == false)
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: KYC not verified");
-        drools.halt();
-end
-DRLEOF
-post "/admin/groups/$common/rules" "$(jq -n --arg n "Block if KYC not verified" --arg d "$DRL2" '{ruleName:$n,sourceType:"DRL",createdBy:"farhat",drl:$d}')"
 post "/admin/groups/$transfer/rules" "$(jq -n --arg n "Block over-limit debit-restricted BDT transaction" --arg j "{\"ruleName\":\"Block over-limit debit-restricted BDT transaction\",\"flow\":\"TRANSFER_TRANSACTION\",\"agendaGroup\":\"TRANSFER\",\"salience\":10,\"conditionTree\":{\"type\":\"GROUP\",\"operator\":\"AND\",\"children\":[{\"type\":\"CONDITION\",\"field\":\"transaction.currency\",\"operator\":\"==\",\"value\":\"BDT\"},{\"type\":\"CONDITION\",\"field\":\"product.drRes\",\"operator\":\"==\",\"value\":1},{\"type\":\"CONDITION\",\"field\":\"transaction.amount\",\"operator\":\">\",\"valueField\":\"userLimit.limit\"}]},\"then\":{\"decision\":\"block\",\"message\":\"Blocked: amount exceeds limit on a debit-restricted BDT account\"}}" '{ruleName:$n,sourceType:"BUILDER",createdBy:"farhat",sourceJson:$j}')"
 post "/admin/groups/$transfer/rules" "$(jq -n --arg n "High-value or cross-border transfer" --arg j "{\"ruleName\":\"High-value or cross-border transfer\",\"flow\":\"TRANSFER_TRANSACTION\",\"agendaGroup\":\"TRANSFER\",\"salience\":20,\"conditionTree\":{\"type\":\"GROUP\",\"operator\":\"OR\",\"children\":[{\"type\":\"GROUP\",\"operator\":\"AND\",\"children\":[{\"type\":\"CONDITION\",\"field\":\"transaction.channel\",\"operator\":\"==\",\"value\":\"AGENT\"},{\"type\":\"CONDITION\",\"field\":\"transaction.amount\",\"operator\":\">\",\"value\":50000}]},{\"type\":\"GROUP\",\"operator\":\"AND\",\"children\":[{\"type\":\"CONDITION\",\"field\":\"transaction.country\",\"operator\":\"==\",\"value\":\"OTHER\"},{\"type\":\"CONDITION\",\"field\":\"transaction.currency\",\"operator\":\"!=\",\"value\":\"BDT\"}]}]},\"then\":{\"decision\":\"block\",\"message\":\"Blocked: high-value agent transfer, or cross-border non-BDT transfer\"}}" '{ruleName:$n,sourceType:"BUILDER",createdBy:"farhat",sourceJson:$j}')"
 post "/admin/groups/$velocity/rules" "$(jq -n --arg n "Block rapid high-value agent transfers" --arg j "{\"ruleName\":\"Block rapid high-value agent transfers\",\"flow\":\"TRANSFER_TRANSACTION\",\"agendaGroup\":\"VELOCITY\",\"salience\":20,\"conditionTree\":{\"type\":\"GROUP\",\"operator\":\"AND\",\"children\":[{\"type\":\"CONDITION\",\"field\":\"transaction.channel\",\"operator\":\"==\",\"value\":\"AGENT\"},{\"type\":\"CONDITION\",\"field\":\"transaction.amount\",\"operator\":\">\",\"value\":50000},{\"type\":\"CONDITION\",\"field\":\"transaction.dailyTxnCount\",\"operator\":\">=\",\"value\":5}]},\"then\":{\"decision\":\"block\",\"message\":\"Blocked: too many high-value agent transfers today\"}}" '{ruleName:$n,sourceType:"BUILDER",createdBy:"farhat",sourceJson:$j}')"
@@ -113,7 +73,6 @@ if [ "${TEST:-0}" = "1" ]; then
   echo; echo "Running scenarios..."
   v(){ r=$(curl -sS -X POST "$BASE$2" -H "Content-Type: application/json" -d "$3"); \
        printf '  %-42s %s  %s\n' "$1" "$(echo "$r"|jq -r 'if .valid then "VALID  " else "BLOCKED" end')" "$(echo "$r"|jq -r '.message')"; }
-  v "T1 blocked user"          /api/transactions/validate '{"userId":"USER-002","transactionMode":"ONLINE","debitCredit":"D","sourceAccount":"100001","currency":"BDT","amount":500}'
   v "T3 over limit (dr-rest.)" /api/transactions/validate '{"userId":"USER-001","transactionMode":"ONLINE","debitCredit":"D","sourceAccount":"100001","currency":"BDT","amount":15000}'
   v "T4 within limit"          /api/transactions/validate '{"userId":"USER-001","transactionMode":"ONLINE","debitCredit":"D","sourceAccount":"100001","currency":"BDT","amount":5000}'
   v "T5 cross-border high-val" /api/transactions/validate '{"userId":"USER-001","transactionMode":"ONLINE","debitCredit":"D","sourceAccount":"200001","currency":"USD","amount":150000,"country":"OTHER"}'

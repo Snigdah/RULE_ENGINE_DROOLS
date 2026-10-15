@@ -8,8 +8,10 @@ import leads.ruleengine.core.dto.GroupOrderRequest;
 import leads.ruleengine.core.dto.GroupRenameRequest;
 import leads.ruleengine.core.dto.GroupRequest;
 import leads.ruleengine.core.dto.GroupView;
+import leads.ruleengine.core.dto.RequiredData;
 import leads.ruleengine.core.service.DecisionFlowResolver;
 import leads.ruleengine.core.service.FlowAdminService;
+import leads.ruleengine.core.service.RequiredDataResolver;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -41,10 +43,23 @@ public class FlowAdminController {
 
     private final FlowAdminService flowAdminService;
     private final DecisionFlowResolver flowResolver;
+    private final RequiredDataResolver requiredDataResolver;
 
-    public FlowAdminController(FlowAdminService flowAdminService, DecisionFlowResolver flowResolver) {
+    public FlowAdminController(FlowAdminService flowAdminService, DecisionFlowResolver flowResolver,
+                               RequiredDataResolver requiredDataResolver) {
         this.flowAdminService = flowAdminService;
         this.flowResolver = flowResolver;
+        this.requiredDataResolver = requiredDataResolver;
+    }
+
+    /**
+     * What a flow's active rules read right now - roots, field keys, known roots and whether usage
+     * was proven ({@code complete}). Shows the real analysis even when the feature is switched off.
+     */
+    @GetMapping("/flows/{flowCode}/required-data")
+    public RequiredData requiredData(@PathVariable String flowCode) {
+        return requiredDataResolver.forFlowCode(flowCode)
+                .orElseThrow(() -> new IllegalArgumentException("No flow with code '" + flowCode + "'."));
     }
 
     // ---- Flows ---------------------------------------------------------------------------

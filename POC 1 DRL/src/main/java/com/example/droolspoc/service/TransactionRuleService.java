@@ -2,10 +2,14 @@ package com.example.droolspoc.service;
 
 import com.example.droolspoc.dto.TransactionRequest;
 import com.example.droolspoc.dto.TransactionResponse;
+import com.example.droolspoc.model.Product;
 import com.example.droolspoc.model.Transaction;
+import com.example.droolspoc.model.User;
+import com.example.droolspoc.model.UserLimit;
 import com.example.droolspoc.model.ValidationContext;
 import com.example.droolspoc.lookup.TransferLookupService;
-import leads.ruleengine.core.context.GlobalContext;
+import leads.ruleengine.core.dto.RequiredData;
+import leads.ruleengine.core.context.RuleResult;
 import leads.ruleengine.core.service.RuleExecutionService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -15,43 +19,61 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.concurrent.CompletableFuture.supplyAsync;
+
 /**
  * Transfer flow. Builds a {@link ValidationContext} from this POC's tables and hands it to the
  * rule-engine library. The three independent lookups (user limit, product, user) run in PARALLEL
  * on virtual threads via {@link TransferLookupService} — each in its own read-only transaction.
+ *
+ * <p><b>Demand-driven (library 3.0.2):</b> before the lookups it asks the library which data the
+ * flow's ACTIVE rules read ({@code ruleEngine.requiredData(..)}, in memory, no DB) and runs only the
+ * lookups an active rule needs. The name in {@code needs("...")} is the first part of the catalog
+ * drl_path ({@code userLimit!.limit} -> {@code "userLimit"}). Loan and Closure services keep the
+ * classic style (always load everything) - both styles work side by side.</p>
  */
 @Service
 public class TransactionRuleService {
 
     private final RuleExecutionService ruleEngine;
-    private final GlobalContext globalContext;
     private final ExecutorService lookupExecutor;
     private final TransferLookupService lookup;
 
     public TransactionRuleService(RuleExecutionService ruleEngine,
-                                  GlobalContext globalContext,
                                   @Qualifier("lookupExecutor") ExecutorService lookupExecutor,
                                   TransferLookupService lookup) {
         this.ruleEngine = ruleEngine;
-        this.globalContext = globalContext;
         this.lookupExecutor = lookupExecutor;
         this.lookup = lookup;
     }
 
     public TransactionResponse validate(TransactionRequest request) {
         ValidationContext context = buildContext(request);
-        ruleEngine.execute(context, TransactionRequest.class, globalContext);
+        RuleResult result = ruleEngine.execute(context, TransactionRequest.class);
+        // decision is returned by the library
 
         return new TransactionResponse(
-                context.isValid(),
-                context.isPermissionDenied(),
-                context.getValidationMessage());
+                result.isValid(),
+                result.isPermissionDenied(),
+                result.getMessage());
     }
 
     private ValidationContext buildContext(TransactionRequest request) {
-        var limitF   = CompletableFuture.supplyAsync(() -> lookup.userLimit(request.getUserId()), lookupExecutor);
-        var productF = CompletableFuture.supplyAsync(() -> lookup.product(request.getSourceAccount()), lookupExecutor);
-        var userF    = CompletableFuture.supplyAsync(() -> lookup.user(request.getUserId()), lookupExecutor);
+        RequiredData need = ruleEngine.requiredData(TransactionRequest.class);   // memory, no DB
+
+        // same parallel code as today - each lookup now has a needs() check in front
+        CompletableFuture<UserLimit> limitF = need.needs("userLimit")
+                ? supplyAsync(() -> lookup.userLimit(request.getUserId()), lookupExecutor)
+                : completedFuture(null);
+
+        CompletableFuture<Product> productF = need.needs("product")
+                ? supplyAsync(() -> lookup.product(request.getSourceAccount()), lookupExecutor)
+                : completedFuture(null);
+
+        CompletableFuture<User> userF = need.needs("user")
+                ? supplyAsync(() -> lookup.user(request.getUserId()), lookupExecutor)
+                : completedFuture(null);
 
         try {
             CompletableFuture.allOf(limitF, productF, userF).join();   // run in parallel, await all
@@ -61,9 +83,9 @@ public class TransactionRuleService {
         }
 
         ValidationContext context = new ValidationContext();
-        context.setUserId(request.getUserId());   // for the COMMON blocked-user rule
-        context.setUser(userF.join());             // for the COMMON KYC rule
-        context.setTransaction(toFact(request));
+        context.setUserId(request.getUserId());   // from the request
+        context.setTransaction(toFact(request));  // from the request - always set
+        context.setUser(userF.join());            // null when no active rule reads it
         context.setUserLimit(limitF.join());
         context.setProduct(productF.join());
         return context;

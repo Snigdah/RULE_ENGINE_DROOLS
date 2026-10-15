@@ -4,7 +4,7 @@ import com.example.droolspoc.dto.AccountCloseRequest;
 import com.example.droolspoc.dto.AccountCloseResponse;
 import com.example.droolspoc.model.ClosureValidationContext;
 import com.example.droolspoc.lookup.ClosureLookupService;
-import leads.ruleengine.core.context.GlobalContext;
+import leads.ruleengine.core.context.RuleResult;
 import leads.ruleengine.core.service.RuleExecutionService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -22,28 +22,25 @@ import java.util.concurrent.ExecutorService;
 public class ClosureRuleService {
 
     private final RuleExecutionService ruleEngine;
-    private final GlobalContext globalContext;
     private final ExecutorService lookupExecutor;
     private final ClosureLookupService lookup;
 
     public ClosureRuleService(RuleExecutionService ruleEngine,
-                              GlobalContext globalContext,
                               @Qualifier("lookupExecutor") ExecutorService lookupExecutor,
                               ClosureLookupService lookup) {
         this.ruleEngine = ruleEngine;
-        this.globalContext = globalContext;
         this.lookupExecutor = lookupExecutor;
         this.lookup = lookup;
     }
 
     public AccountCloseResponse validate(AccountCloseRequest request) {
         ClosureValidationContext context = buildContext(request);
-        ruleEngine.execute(context, AccountCloseRequest.class, globalContext);
+        RuleResult result = ruleEngine.execute(context, AccountCloseRequest.class);   // decision is returned by the library
 
         return new AccountCloseResponse(
-                context.isValid(),
-                context.isPermissionDenied(),
-                context.getValidationMessage());
+                result.isValid(),
+                result.isPermissionDenied(),
+                result.getMessage());
     }
 
     private ClosureValidationContext buildContext(AccountCloseRequest request) {

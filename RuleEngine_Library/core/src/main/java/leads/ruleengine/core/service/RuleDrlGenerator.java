@@ -39,6 +39,9 @@ import java.util.Optional;
 @Component
 public class RuleDrlGenerator {
 
+    /** Every generated rule writes its decision to this library-owned global (see {@code RuleResult}). */
+    public static final String RESULT_GLOBAL_DECL = "global leads.ruleengine.core.context.RuleResult result;";
+
     /** Guard against pathological input: the tree may not nest deeper than this. */
     private static final int MAX_DEPTH = 10;
 
@@ -80,6 +83,7 @@ public class RuleDrlGenerator {
 
         StringBuilder sb = new StringBuilder();
         sb.append("package ").append(pkg).append(";\n\n");
+        sb.append(RESULT_GLOBAL_DECL).append("\n\n");
         sb.append(ruleBlock(prefix + spec.ruleName, spec, factFqn, agendaGroup,
                 generateNode(spec.conditionTree, false, 0), spec.then));
         if (spec.otherwise != null && spec.otherwise.decision != null) {
@@ -184,15 +188,12 @@ public class RuleDrlGenerator {
     private String thenBody(BuilderRuleSpec.Outcome outcome) {
         String decision = (outcome == null || outcome.decision == null) ? "block" : outcome.decision.toLowerCase();
         StringBuilder b = new StringBuilder();
-        if ("allow".equals(decision)) {
-            b.append("        $ctx.setValid(true);");
-        } else {
-            b.append("        $ctx.setValid(false);\n");
-            b.append("        $ctx.setPermissionDenied(true);");
-        }
-        if (outcome != null && outcome.message != null && !outcome.message.isBlank()) {
-            b.append("\n        $ctx.setValidationMessage(\"").append(escape(outcome.message)).append("\");");
-        }
+        String message = (outcome == null || outcome.message == null || outcome.message.isBlank())
+                ? "null"
+                : "\"" + escape(outcome.message) + "\"";
+        // the decision goes to the library-owned RuleResult, not to the caller's context
+        b.append("        result.").append("allow".equals(decision) ? "allow" : "block")
+                .append("(").append(message).append(");");
         return b.toString();
     }
 

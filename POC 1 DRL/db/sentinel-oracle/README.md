@@ -10,6 +10,7 @@ Nothing here alters an existing Sentinel or `TREG_*` table - only new objects an
 |---|---|
 | `01_create.sql` | Creates the tables and sequences below. Aborts if any name already exists. |
 | `02_seed.sql` | Business rows for the `RE_*` tables + one `META_FUNCTION_SELECTOR_MAP` row (101022). |
+| `03_remove_legacy_common_rules.sql` | After the v2_extend merge (library 3.0.2): deletes the two old hand-written COMMON rules, which no longer compile. Already applied 2026-10-15; only needed on a DB seeded with the old `seed.ps1`. |
 | `99_drop.sql` | Removes everything below, plus the approval records testing created (function 101022 only). |
 
 ## Objects created (all removed by `99_drop.sql`)
