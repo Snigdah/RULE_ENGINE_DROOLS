@@ -35,6 +35,7 @@ public class DecisionFlowResolver {
 
     private final RuleFlowRepository flowRepository;
     private final RuleGroupRepository groupRepository;
+    private final RequiredDataResolver requiredDataResolver;
 
     /** request class -> flow id (every flow, so an inactive flow is "known" and passes through) */
     private volatile Map<String, Long> requestToFlow = Map.of();
@@ -42,9 +43,11 @@ public class DecisionFlowResolver {
     private volatile Map<Long, List<String>> flowToGroups = Map.of();
 
     public DecisionFlowResolver(RuleFlowRepository flowRepository,
-                                RuleGroupRepository groupRepository) {
+                                RuleGroupRepository groupRepository,
+                                RequiredDataResolver requiredDataResolver) {
         this.flowRepository = flowRepository;
         this.groupRepository = groupRepository;
+        this.requiredDataResolver = requiredDataResolver;
     }
 
     @PostConstruct
@@ -88,6 +91,9 @@ public class DecisionFlowResolver {
                     .forEach(g -> ordered.add(g.getGroupCode()));
             freshFlowToGroups.put(f.getId(), ordered);
         }
+
+        // data first, routing second (activating a group/flow can add rules to a flow)
+        requiredDataResolver.reload();
 
         this.requestToFlow = freshRequestToFlow;
         this.flowToGroups = freshFlowToGroups;

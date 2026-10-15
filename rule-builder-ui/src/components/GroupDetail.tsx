@@ -41,7 +41,7 @@ export default function GroupDetail({
             <div className="grp-hero-sub">{grp.length} rule{grp.length === 1 ? '' : 's'} · in {flow.label}</div>
           </div>
           {group.shared
-            ? <span className="hint" style={{ maxWidth: 260, textAlign: 'right' }}>COMMON holds hand-written DRL rules — seeded via the API, read-only here.</span>
+            ? <span className="hint" style={{ maxWidth: 260, textAlign: 'right' }}>Shared group — runs for every flow. It is empty now; builder rules belong to a flow’s own group.</span>
             : <button className="btn btn-primary" onClick={onAddRule}><IconPlus width={15} height={15} /> Add rule</button>}
         </div>
 

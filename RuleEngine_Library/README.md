@@ -126,6 +126,36 @@ A rule whose DRL does not compile is **rejected with 400** and the running engin
 
 ---
 
+## 5. Optional: load only the data the active rules need (3.0.1)
+
+Every lookup in `buildContext()` costs a DB/service call per request. From 3.0.1 a service can ask
+which data the flow's **active** rules read (flow on/off, group on/off, rule on/off, and every leaf
+field of every builder rule) and skip the rest. The answer is computed when rules reload and held in
+memory, so asking costs nothing.
+
+```yaml
+rule-engine:
+  required-data:
+    enabled: true        # default false = needs() always true (classic behaviour)
+    shadow: false        # true = log what would be skipped, still load everything
+    trust-drl-hints: true
+```
+
+```java
+RequiredData need = ruleEngine.requiredData(TransactionRequest.class);   // memory, no DB
+
+if (need.needs("userLimit")) {                                            // root = first part of drl_path
+    context.setUserLimit(userLimitRepository.findByUserId(userId));       // repository / service call
+}
+```
+
+- **Both styles work.** A service that never calls `requiredData(..)` keeps loading everything, unchanged.
+- **Safe by default.** `needs()` answers `false` only when it is proven no active rule reads that root.
+  A typo (`needs("userLimt")`) logs an ERROR and answers `true`.
+- **Builder rules** are analysed automatically. A hand-written **DRL** rule can declare what it reads in
+  a comment line — `// @requires: user` or `// @requires: none`; without it the whole flow loads everything.
+- Inspect: `GET /admin/flows/{flowCode}/required-data`.
+
 ## Module layout
 
 ```

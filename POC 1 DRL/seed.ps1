@@ -69,46 +69,6 @@ $closure=($cg|Where-Object{$_.groupCode -eq "CLOSURE"}).id
 $complianceC=($cg|Where-Object{$_.groupCode -eq "COMPLIANCE"}).id
 
 Write-Host "5/5 Rules..." -ForegroundColor Cyan
-$drl1=@'
-package com.example.droolspoc.rules;
-
-import com.example.droolspoc.model.RuleContext;
-import com.example.droolspoc.context.data.BlockedUsers;
-
-global leads.ruleengine.core.context.GlobalContext globalContext;
-
-rule "Block transaction for a blocked user"
-    agenda-group "COMMON"
-    salience 100
-    when
-        $ctx : RuleContext()
-        eval(globalContext.get(BlockedUsers.class).isBlocked($ctx.getUserId()))
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: user is blocked");
-        drools.halt();
-end
-'@
-PostJ "/admin/groups/$common/rules" @{ ruleName="Block transaction for a blocked user"; sourceType="DRL"; createdBy="farhat"; drl=$drl1 } | Out-Null
-$drl2=@'
-package com.example.droolspoc.rules;
-
-import com.example.droolspoc.model.RuleContext;
-
-rule "Block if KYC not verified"
-    agenda-group "COMMON"
-    salience 90
-    when
-        $ctx : RuleContext(user != null, user.kycVerified == false)
-    then
-        $ctx.setValid(false);
-        $ctx.setPermissionDenied(true);
-        $ctx.setValidationMessage("Blocked: KYC not verified");
-        drools.halt();
-end
-'@
-PostJ "/admin/groups/$common/rules" @{ ruleName="Block if KYC not verified"; sourceType="DRL"; createdBy="farhat"; drl=$drl2 } | Out-Null
 PostJ "/admin/groups/$transfer/rules" @{ ruleName="Block over-limit debit-restricted BDT transaction"; sourceType="BUILDER"; createdBy="farhat"; sourceJson='{"ruleName":"Block over-limit debit-restricted BDT transaction","flow":"TRANSFER_TRANSACTION","agendaGroup":"TRANSFER","salience":10,"conditionTree":{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"transaction.currency","operator":"==","value":"BDT"},{"type":"CONDITION","field":"product.drRes","operator":"==","value":1},{"type":"CONDITION","field":"transaction.amount","operator":">","valueField":"userLimit.limit"}]},"then":{"decision":"block","message":"Blocked: amount exceeds limit on a debit-restricted BDT account"}}' } | Out-Null
 PostJ "/admin/groups/$transfer/rules" @{ ruleName="High-value or cross-border transfer"; sourceType="BUILDER"; createdBy="farhat"; sourceJson='{"ruleName":"High-value or cross-border transfer","flow":"TRANSFER_TRANSACTION","agendaGroup":"TRANSFER","salience":20,"conditionTree":{"type":"GROUP","operator":"OR","children":[{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"transaction.channel","operator":"==","value":"AGENT"},{"type":"CONDITION","field":"transaction.amount","operator":">","value":50000}]},{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"transaction.country","operator":"==","value":"OTHER"},{"type":"CONDITION","field":"transaction.currency","operator":"!=","value":"BDT"}]}]},"then":{"decision":"block","message":"Blocked: high-value agent transfer, or cross-border non-BDT transfer"}}' } | Out-Null
 PostJ "/admin/groups/$velocity/rules" @{ ruleName="Block rapid high-value agent transfers"; sourceType="BUILDER"; createdBy="farhat"; sourceJson='{"ruleName":"Block rapid high-value agent transfers","flow":"TRANSFER_TRANSACTION","agendaGroup":"VELOCITY","salience":20,"conditionTree":{"type":"GROUP","operator":"AND","children":[{"type":"CONDITION","field":"transaction.channel","operator":"==","value":"AGENT"},{"type":"CONDITION","field":"transaction.amount","operator":">","value":50000},{"type":"CONDITION","field":"transaction.dailyTxnCount","operator":">=","value":5}]},"then":{"decision":"block","message":"Blocked: too many high-value agent transfers today"}}' } | Out-Null
@@ -129,8 +89,6 @@ if($Test){
     $tag= if($r.valid){"VALID  "}else{"BLOCKED"}
     Write-Host ("  {0,-42} {1}  {2}" -f $label,$tag,$r.message)
   }
-  V "T1 blocked user"          "/api/transactions/validate" '{"userId":"USER-002","transactionMode":"ONLINE","debitCredit":"D","sourceAccount":"100001","currency":"BDT","amount":500}'
-  V "T2 KYC not verified"      "/api/transactions/validate" '{"userId":"USER-003","transactionMode":"ONLINE","debitCredit":"D","sourceAccount":"100001","currency":"BDT","amount":500}'
   V "T3 over limit (dr-rest.)" "/api/transactions/validate" '{"userId":"USER-001","transactionMode":"ONLINE","debitCredit":"D","sourceAccount":"100001","currency":"BDT","amount":15000}'
   V "T4 within limit"          "/api/transactions/validate" '{"userId":"USER-001","transactionMode":"ONLINE","debitCredit":"D","sourceAccount":"100001","currency":"BDT","amount":5000}'
   V "T5 cross-border high-val" "/api/transactions/validate" '{"userId":"USER-001","transactionMode":"ONLINE","debitCredit":"D","sourceAccount":"200001","currency":"USD","amount":150000,"country":"OTHER"}'

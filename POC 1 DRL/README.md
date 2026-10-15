@@ -4,28 +4,27 @@ Spring Boot 3.5 + Java 21 + PostgreSQL. This app does **not** embed Drools — i
 business consumer of `com.leads:rule-engine` (the sibling `RuleEngine_Library`, **0.0.2**).
 
 It demonstrates the full design: **one engine, three flows** (transfer, loan, account-closure),
-with the two **COMMON** rules (blocked-user, KYC) **shared across all three** and each flow
-adding its own rule.
+each flow with its own **builder** rules. The shared **COMMON** group still exists but is empty
+(the blocked-user and KYC DRL rules were removed), so services call
+`ruleEngine.execute(context, XRequest.class)` without a global context.
 
 ## How the reuse works
 
 Every flow's context extends a shared base, `RuleContext` (holds `userId`, `user`, and the
-decision result). The COMMON rules are written against `RuleContext`, so they fire for any
-flow; the flow-specific rules match the concrete context.
+decision result). A rule placed in the shared COMMON group would be written against `RuleContext`
+and fire for any flow; the flow-specific rules match the concrete context.
 
 ```
 request class ──▶ flow ──▶ ordered groups ──▶ rules
-TransactionRequest ▶ TRANSFER_TRANSACTION ▶ [COMMON, TRANSFER] ▶ blocked-user, KYC (shared) + over-limit
-LoanRequest        ▶ LOAN_APPLICATION     ▶ [COMMON, LOAN]     ▶ blocked-user, KYC (shared) + credit-score
-AccountCloseRequest▶ ACCOUNT_CLOSURE       ▶ [COMMON, CLOSURE]  ▶ blocked-user, KYC (shared) + outstanding-balance
+TransactionRequest ▶ TRANSFER_TRANSACTION ▶ [COMMON, TRANSFER] ▶ over-limit, high-value, velocity, compliance
+LoanRequest        ▶ LOAN_APPLICATION     ▶ [COMMON, LOAN]     ▶ credit-score
+AccountCloseRequest▶ ACCOUNT_CLOSURE       ▶ [COMMON, CLOSURE]  ▶ outstanding-balance
 ```
 
 ## Rules (stored in `rule_definition`)
 
 | Rule | Group | Source |
 |------|-------|--------|
-| Block blocked user | COMMON (shared) | DRL (uses `eval` + a global) |
-| Block if KYC not verified | COMMON (shared) | DRL (halts on block) |
 | Over-limit debit-restricted BDT | TRANSFER | BUILDER (JSON → DRL) |
 | Loan below credit score | LOAN | BUILDER |
 | Closure with outstanding balance | CLOSURE | BUILDER |
@@ -54,15 +53,14 @@ mvn clean spring-boot:run
 - `POST /api/account-closures/validate` — account closure
 - `GET /admin/rules`, `GET /admin/rules/fields?flow=…`, `POST /admin/rules` — library
 - `GET/POST/DELETE /admin/flows` and `/admin/flows/mappings` — library
-- `POST /admin/global-context/reload` — reload the blocked-user set
 
 ## Test personas (seeded)
 
 | user | kyc | blocked | credit | note |
 |------|-----|---------|--------|------|
 | USER-001 | yes | no | 700 | the "happy" user |
-| USER-002 | yes | **yes** | 700 | blocked — rejected by COMMON in every flow |
-| USER-003 | **no** | no | — | fails KYC |
+| USER-002 | yes | **yes** | 700 | blocked flag in data only (no rule uses it now) |
+| USER-003 | **no** | no | — | KYC flag in data only (no rule uses it now) |
 | USER-004 | yes | no | **550** | fails the loan credit-score rule |
 
 Accounts: `100001` debit-restricted, `200001` not. `ACC-901` has a balance, `ACC-900` is zero.

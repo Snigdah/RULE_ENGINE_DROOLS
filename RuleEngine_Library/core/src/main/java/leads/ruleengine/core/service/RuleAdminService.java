@@ -48,19 +48,22 @@ public class RuleAdminService {
     private final RuleFieldCatalogRepository catalogRepository;
     private final RuleBaseProvider ruleBaseProvider;
     private final RuleDrlGenerator drlGenerator;
+    private final RequiredDataResolver requiredDataResolver;
 
     public RuleAdminService(RuleDefinitionRepository ruleRepository,
                             RuleGroupRepository groupRepository,
                             RuleFlowRepository flowRepository,
                             RuleFieldCatalogRepository catalogRepository,
                             RuleBaseProvider ruleBaseProvider,
-                            RuleDrlGenerator drlGenerator) {
+                            RuleDrlGenerator drlGenerator,
+                            RequiredDataResolver requiredDataResolver) {
         this.ruleRepository = ruleRepository;
         this.groupRepository = groupRepository;
         this.flowRepository = flowRepository;
         this.catalogRepository = catalogRepository;
         this.ruleBaseProvider = ruleBaseProvider;
         this.drlGenerator = drlGenerator;
+        this.requiredDataResolver = requiredDataResolver;
     }
 
     /** Create or replace a rule by (group, name). */
@@ -151,6 +154,7 @@ public class RuleAdminService {
         c.setAllowedOps(req.allowedOps());
         c.setAllowedValues(req.allowedValues());
         RuleFieldCatalog saved = catalogRepository.save(c);
+        requiredDataResolver.reload();   // known roots may have changed
         log.info("Catalog field '{}' added (flow={}).", saved.getFieldKey(),
                 saved.getFlow() == null ? "shared" : saved.getFlow().getFlowCode());
         return saved;
@@ -160,6 +164,7 @@ public class RuleAdminService {
     @Transactional
     public void deleteField(Long id) {
         catalogRepository.deleteById(id);
+        requiredDataResolver.reload();   // known roots may have changed
         log.info("Catalog field {} deleted.", id);
     }
 

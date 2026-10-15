@@ -5,7 +5,6 @@ import com.example.droolspoc.dto.LoanResponse;
 import com.example.droolspoc.model.Loan;
 import com.example.droolspoc.model.LoanValidationContext;
 import com.example.droolspoc.lookup.LoanLookupService;
-import leads.ruleengine.core.context.GlobalContext;
 import leads.ruleengine.core.service.RuleExecutionService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -24,23 +23,20 @@ import java.util.concurrent.ExecutorService;
 public class LoanRuleService {
 
     private final RuleExecutionService ruleEngine;
-    private final GlobalContext globalContext;
     private final ExecutorService lookupExecutor;
     private final LoanLookupService lookup;
 
     public LoanRuleService(RuleExecutionService ruleEngine,
-                           GlobalContext globalContext,
                            @Qualifier("lookupExecutor") ExecutorService lookupExecutor,
                            LoanLookupService lookup) {
         this.ruleEngine = ruleEngine;
-        this.globalContext = globalContext;
         this.lookupExecutor = lookupExecutor;
         this.lookup = lookup;
     }
 
     public LoanResponse validate(LoanRequest request) {
         LoanValidationContext context = buildContext(request);
-        ruleEngine.execute(context, LoanRequest.class, globalContext);
+        ruleEngine.execute(context, LoanRequest.class);   // builder rules only - no global context needed
 
         return new LoanResponse(
                 context.isValid(),

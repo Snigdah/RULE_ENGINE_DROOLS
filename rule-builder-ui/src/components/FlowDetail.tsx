@@ -143,7 +143,7 @@ export default function FlowDetail({
               )
             })}
           </div>
-          <p className="grp-note">COMMON is shared across all flows — deactivating or deleting it affects every flow, so it can't be deleted from here.</p>
+          <p className="grp-note">COMMON is shared across all flows (currently empty — no common rules). It can't be deleted from here because it affects every flow.</p>
         </div>
       </div>
     </>
