@@ -66,6 +66,15 @@ code,pre{font-family:var(--font-mono)}
 .pill{font-size:12px;border:1px solid rgba(163,173,184,.35);color:var(--bar-dim);border-radius:3px;padding:2px 8px;white-space:nowrap}
 .pill b{color:var(--bar-fg);font-weight:500}
 
+.docnav{display:flex;gap:4px;margin-left:18px}
+.docnav a{color:var(--bar-dim);text-decoration:none;font-size:13.5px;padding:4px 10px;border-radius:3px}
+.docnav a:hover{color:var(--bar-fg);background:rgba(255,255,255,.06)}
+.docnav a.cur{color:var(--bar-fg);background:rgba(255,255,255,.1)}
+.refcard{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--accent);background:var(--accent-soft);border-radius:6px;padding:16px 18px;margin:8px 0 22px}
+.refcard .rt{font-weight:600;font-size:16px}
+.refcard p{margin:2px 0 0;color:var(--fg-2);font-size:14.5px}
+@media (max-width: 980px){ .docnav{margin-left:0} }
+
 /* title block */
 .titleblock{border-bottom:1px solid var(--line);background:
   radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0) 0 0/22px 22px,
@@ -116,11 +125,21 @@ code,pre{font-family:var(--font-mono)}
 .qs-meta dt{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
 .qs-meta dd{margin:2px 0 0}
 
-.byline{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;margin-top:30px;padding-block:14px;border-top:1px solid var(--line);font-size:14.5px}
-.by-lbl{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
-.person{display:inline-flex;align-items:center;gap:9px;font-weight:500}
+.byline{margin-top:30px;padding-block:22px 26px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;align-items:center;gap:14px 36px}
+.by-lbl{flex-basis:100%;display:flex;align-items:center;gap:10px;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.by-rule{width:28px;height:3px;border-radius:2px;background:var(--accent)}
+.devs{display:flex;flex-wrap:wrap;gap:14px;flex:1 1 340px;min-width:0}
+.dev{display:flex;align-items:center;gap:14px;background:var(--bg);border:1px solid var(--line-strong);border-left:4px solid var(--accent);border-radius:6px;padding:12px 20px 12px 14px;box-shadow:0 8px 24px -18px rgba(10,30,50,.45);min-width:0;flex:1 1 300px;max-width:none;transition:transform .15s,box-shadow .15s}
+.dev:hover{transform:translateY(-1px);box-shadow:0 12px 28px -16px rgba(10,30,50,.5)}
+.dev .av{width:48px;height:48px;font-size:16px;flex:none}
+.dn{font-size:18px;font-weight:600;line-height:1.25;color:var(--fg);overflow-wrap:anywhere}
+.dev > div{min-width:0}
+.dr{font-size:13.5px;color:var(--fg-3);margin-top:2px}
 .av{width:30px;height:30px;border-radius:50%;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-size:12px;font-weight:600;letter-spacing:.03em}
 .av2{background:var(--fg-2);color:var(--bg)}
+.dev .av2{background:var(--fg-2)}
+.av3,.dev .av3{background:var(--tip);color:var(--bg)}
+@media (prefers-reduced-motion: reduce){ .dev{transition:none} .dev:hover{transform:none} }
 
 /* shell */
 .shell{display:grid;grid-template-columns:280px minmax(0,1fr);gap:56px;padding-block:36px 72px}
@@ -229,9 +248,9 @@ td code{white-space:nowrap}
 .kv dt{font-weight:600}
 .kv dd{margin:0;color:var(--fg-2)}
 
-.authors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:10px 0 18px}
+.authors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:10px 0 18px}
 .author{border:1px solid var(--line);border-radius:4px;padding:12px 16px}
-.author .nm{font-weight:600}
+.author .nm{font-weight:600;font-size:17px}
 .author .rl{font-size:13.5px;color:var(--fg-3)}
 
 .legal{font-size:13.5px;color:var(--fg-3)}
@@ -254,23 +273,70 @@ td code{white-space:nowrap}
   .bar-right{margin-left:0}
   .bar-sep{display:none}
   .authors{grid-template-columns:minmax(0,1fr)}
+  .dev{flex-basis:100%;max-width:none}
   :not(pre) > code{white-space:normal;overflow-wrap:anywhere}
 }
+</style>
+<style>
+/* api reference additions */
+[hidden]{display:none!important}
+.docnav{display:flex;gap:4px;margin-left:18px}
+.docnav a{color:var(--bar-dim);text-decoration:none;font-size:13.5px;padding:4px 10px;border-radius:3px}
+.docnav a:hover{color:var(--bar-fg);background:rgba(255,255,255,.06)}
+.docnav a.cur{color:var(--bar-fg);background:rgba(255,255,255,.1)}
+.m{display:inline-block;min-width:58px;text-align:center;font:600 11.5px var(--font-mono);letter-spacing:.04em;border-radius:3px;padding:3px 6px;color:#fff}
+.m-GET{background:#1f7a4d}.m-POST{background:#2b6cb0}.m-PUT{background:#9a5b00}.m-DELETE{background:#b42318}
+.rail .m{min-width:44px;font-size:10px;padding:1px 4px;margin-right:8px;vertical-align:1px}
+.rail .grp{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-3);font-weight:600;margin:16px 0 6px}
+.rail .ep a{font-size:13px;padding-left:10px}
+.filter{width:100%;font:400 14px var(--font-body);color:var(--fg);background:var(--bg);border:1px solid var(--line-strong);border-radius:4px;padding:7px 10px;margin-bottom:6px}
+.filter:focus{outline:2px solid var(--accent);outline-offset:1px}
+.nomatch{font-size:13px;color:var(--fg-3);padding:6px 2px}
+.ep-card{border:1px solid var(--line);border-radius:6px;margin:22px 0 30px;overflow:hidden;background:var(--bg)}
+.ep-head{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-soft);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.ep-path{font:500 15px var(--font-mono);color:var(--fg);word-break:break-all;min-width:0;flex:1}
+.ep-path .pv{color:var(--accent)}
+.ep-body{padding:4px 18px 16px}
+.ep-body h3{margin-top:14px}
+.ep-body .hd{margin-top:16px}
+.st{display:inline-block;font:600 12px var(--font-mono);border-radius:3px;padding:1px 7px;border:1px solid}
+.st2{color:var(--tip);border-color:var(--tip);background:var(--tip-bg)}
+.st4{color:var(--warn);border-color:var(--warn);background:var(--warn-bg)}
+.req{font-size:11px;font-weight:600;color:var(--warn);text-transform:uppercase;letter-spacing:.06em}
+.opt{font-size:11px;color:var(--fg-3);text-transform:uppercase;letter-spacing:.06em}
+.tabs{display:flex;border-bottom:1px solid var(--line);gap:2px;margin-top:16px}
+.tab{font:500 13.5px var(--font-body);color:var(--fg-2);background:none;border:0;border-bottom:2px solid transparent;padding:8px 12px;cursor:pointer}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.tabs + .code{margin-top:0;border-top-left-radius:0;border-top-right-radius:0;border-top:0}
+.schema h3 code{font-size:.9em;border:0;background:none;padding:0}
+.ty{font-family:var(--font-mono);font-size:13px;color:var(--fg-2);white-space:nowrap}
+.hero-api{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr)}
+.facts{border:1px solid var(--line-strong);border-radius:6px;background:var(--bg);padding:6px 0;min-width:0}
+.facts div{display:grid;grid-template-columns:130px minmax(0,1fr);gap:12px;padding:9px 16px;border-bottom:1px solid var(--line);font-size:14px}
+.facts div:last-child{border-bottom:0}
+.facts dt{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-3);font-weight:600;padding-top:2px}
+.facts dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.counts{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+@media (max-width: 980px){ .docnav{margin-left:0} }
+@media (max-width: 560px){ .facts div{grid-template-columns:minmax(0,1fr);gap:2px} }
 </style>
 <style>body{margin:0}</style>
 </head>
 <body>
-
 <header class="bar"><div class="wrap bar-in gutter">
   <div class="org"><span class="org-mark" aria-hidden="true">L</span>Leads Corporation Limited</div>
   <span class="bar-sep" aria-hidden="true"></span>
   <span class="bar-dim">Product Documentation</span>
+  <nav class="docnav" aria-label="Documents">
+    <a href="#guide" data-view="guide" class="cur" aria-current="page">Developer Guide</a>
+    <a href="#api" data-view="api">Admin API Reference</a>
+  </nav>
   <div class="bar-right">
     <span class="pill">Version <b>3.0.2</b></span>
     <span class="pill">Format <b>Single-page HTML</b></span>
   </div>
 </div></header>
-
+<div class="view" id="view-guide">
 <div class="titleblock"><div class="wrap titleblock-in gutter">
   <nav class="crumbs" aria-label="Breadcrumb">
     <a href="#about">Documentation</a><span class="sl">/</span>
@@ -290,7 +356,7 @@ td code{white-space:nowrap}
       <div class="cta">
         <a class="btn btn-pri" href="#install">Get started</a>
         <a class="btn btn-sec" href="#demand">Load only what you need</a>
-        <a class="btn btn-ghost" href="#ref-api">API reference</a>
+        <a class="btn btn-ghost" href="#api">Admin API Reference</a>
       </div>
       <div class="chips" aria-label="Supported platform">
         <span class="chip">Spring Boot 3.5.x</span><span class="chip">Java 21</span><span class="chip">PostgreSQL</span><span class="chip">Oracle</span><span class="chip">Drools</span>
@@ -330,11 +396,14 @@ RuleResult result =
     </aside>
   </div>
 
-  <div class="byline">
-    <span class="by-lbl">Developed by</span>
-    <span class="person"><span class="av" aria-hidden="true">KS</span>K M Farhat Snigdah</span>
-    <span class="person"><span class="av av2" aria-hidden="true">AA</span>Asrar Al Mohaimen Ahmed</span>
-  </div>
+  <section class="byline" aria-label="Developed by">
+    <div class="by-lbl"><span class="by-rule" aria-hidden="true"></span>Developed by</div>
+    <div class="devs">
+      <div class="dev"><span class="av" aria-hidden="true">KS</span><div><div class="dn">K M Farhat Snigdah</div><div class="dr">Developer · Leads Corporation Limited</div></div></div>
+      <div class="dev"><span class="av av2" aria-hidden="true">AA</span><div><div class="dn">Asrar Al Mohaimen Ahmed</div><div class="dr">Developer · Leads Corporation Limited</div></div></div>
+      <div class="dev"><span class="av av3" aria-hidden="true">SD</span><div><div class="dn">Saikat Datta</div><div class="dr">Developer · Leads Corporation Limited</div></div></div>
+    </div>
+  </section>
 </div></div>
 
 <div class="wrap shell gutter">
@@ -353,8 +422,8 @@ RuleResult result =
 <li class="chap" data-sec="onboard"><div class="tocrow"><a href="#onboard">Chapter 3. Onboarding a request type</a><button class="tg" type="button" aria-expanded="false" aria-label="Show sections of Chapter 3. Onboarding a request type"></button></div>
 <ol><li><a href="#s3-1">3.1. Write the request and context classes</a></li><li><a href="#s3-2">3.2. Register the flow</a></li><li><a href="#s3-3">3.3. What rule authors do next</a></li></ol>
 </li>
-<li class="chap" data-sec="execute"><div class="tocrow"><a href="#execute">Chapter 4. Running the rules</a><button class="tg" type="button" aria-expanded="false" aria-label="Show sections of Chapter 4. Running the rules"></button></div>
-<ol><li><a href="#s4-1">4.1. The two forms of execute</a></li><li><a href="#s4-2">4.2. Reading the decision</a></li></ol>
+<li class="chap" data-sec="execute"><div class="tocrow"><a href="#execute">Chapter 4. Running the rules and reading the result</a><button class="tg" type="button" aria-expanded="false" aria-label="Show sections of Chapter 4. Running the rules and reading the result"></button></div>
+<ol><li><a href="#s4-1">4.1. The two forms of execute</a></li><li><a href="#s4-2">4.2. Reading the decision</a></li><li><a href="#s4-3">4.3. How several rules combine</a></li><li><a href="#s4-4">4.4. Using the result in your service</a></li><li><a href="#s4-5">4.5. Writing the result from hand-written DRL</a></li><li><a href="#s4-6">4.6. Migrating from context decision fields</a></li></ol>
 </li>
 <li class="chap" data-sec="demand"><div class="tocrow"><a href="#demand">Chapter 5. Loading only the data you need</a><button class="tg" type="button" aria-expanded="false" aria-label="Show sections of Chapter 5. Loading only the data you need"></button></div>
 <ol><li><a href="#s5-1">5.1. Ask, then check before each lookup</a></li><li><a href="#s5-2">5.2. Which name to pass</a></li><li><a href="#s5-3">5.3. How the library works out the roots</a></li><li><a href="#s5-4">5.4. Safety rules</a></li></ol>
@@ -372,6 +441,9 @@ RuleResult result =
 <li data-sec="ref-config"><a href="#ref-config">Appendix B. Configuration reference</a>
 </li>
 <li data-sec="glossary"><a href="#glossary">Appendix C. Glossary</a>
+</li>
+<li class="chap" data-sec="release"><div class="tocrow"><a href="#release">Appendix D. Release notes</a><button class="tg" type="button" aria-expanded="false" aria-label="Show sections of Appendix D. Release notes"></button></div>
+<ol><li><a href="#sD-1">D.1. Version 3.0.2</a></li><li><a href="#sD-2">D.2. Version 3.0.1</a></li><li><a href="#sD-3">D.3. Version 3.0.0</a></li></ol>
 </li>
 <li data-sec="legal"><a href="#legal">Legal notice</a>
 </li>
@@ -391,6 +463,7 @@ RuleResult result =
   <div class="authors">
     <div class="author"><div class="nm">K M Farhat Snigdah</div><div class="rl">Leads Corporation Limited</div></div>
     <div class="author"><div class="nm">Asrar Al Mohaimen Ahmed</div><div class="rl">Leads Corporation Limited</div></div>
+    <div class="author"><div class="nm">Saikat Datta</div><div class="rl">Leads Corporation Limited</div></div>
   </div>
 
   <h3>Document conventions</h3>
@@ -679,7 +752,7 @@ VALUES
 
 <!-- ============ 4 EXECUTE ============ -->
 <section id="execute">
-  <h2><span class="chap">Chapter 4.</span> Running the rules</h2>
+  <h2><span class="chap">Chapter 4.</span> Running the rules and reading the result</h2>
   <p class="intro">Inject <code>RuleExecutionService</code>, fill a context, and call <code>execute</code> with your request class. The request class picks the flow, the context is what the rules read, and the returned <code>RuleResult</code> is the decision.</p>
 <div class="code"><div class="code-head"><span class="lang">java</span><span class="file">TransactionRuleService.java</span><button class="copy" type="button">Copy</button></div><pre>@Service
 <span class="k">public class</span> TransactionRuleService {
@@ -738,6 +811,81 @@ VALUES
     </tbody>
   </table></div>
   <div class="adm tip"><span class="ic" aria-hidden="true">✓</span><div><div class="t">Tip</div><p>A flow that is switched off runs no rules, so every request passes. This is intentional and is not an error.</p></div></div>
+
+  <h3 id="s4-3"><span class="sn">4.3.</span> How several rules combine</h3>
+  <p>Every rule that matches writes to the same <code>RuleResult</code>. Rules run group by group in the flow's order; inside a group, a higher <code>salience</code> runs first.</p>
+  <ul>
+    <li><code>result.block(msg)</code> sets <code>valid = false</code> and <code>permissionDenied = true</code>.</li>
+    <li><code>result.allow(msg)</code> sets <code>valid = true</code>. It does not clear <code>permissionDenied</code>.</li>
+    <li>A non-blank message replaces the previous one, so the <strong>last rule that set a message</strong> provides it.</li>
+    <li>If no rule matches, the result stays <code>valid = true</code>, <code>permissionDenied = false</code>, message <code>null</code>, and <code>isDecided()</code> is <code>false</code>.</li>
+  </ul>
+  <p class="tcap">Table 4.3. Worked example: transfer of USD 150,000 to country OTHER</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Order</th><th>Group</th><th>Rule</th><th>Matches</th><th>Result after the rule</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>TRANSFER</td><td>High-value or cross-border transfer</td><td class="yes">yes</td><td>valid = false · "Blocked: high-value agent transfer, or cross-border non-BDT transfer"</td></tr>
+      <tr><td>2</td><td>VELOCITY</td><td>Block rapid high-value agent transfers</td><td class="no">no</td><td>unchanged</td></tr>
+      <tr><td>3</td><td>COMPLIANCE</td><td>Block high-value cross-border non-BDT transfer</td><td class="yes">yes</td><td>valid = false · "Blocked: cross-border high-value transfer needs manual review"</td></tr>
+    </tbody>
+  </table></div>
+  <p>The service receives <code>valid = false</code> with the COMPLIANCE message, because that rule wrote last.</p>
+  <div class="adm tip"><span class="ic" aria-hidden="true">✓</span><div><div class="t">Tip</div><p>Put the group whose message the customer should see last in the flow's order, or give its rules a lower salience within the same group.</p></div></div>
+
+  <h3 id="s4-4"><span class="sn">4.4.</span> Using the result in your service</h3>
+  <p>Return it to the caller, turn a block into an error, or log it. These are the common patterns.</p>
+<div class="code"><div class="code-head"><span class="lang">java</span><span class="file">map to the API response</span><button class="copy" type="button">Copy</button></div><pre>RuleResult result = ruleEngine.execute(context, TransactionRequest.<span class="k">class</span>);
+<span class="k">return new</span> TransactionResponse(result.isValid(), result.isPermissionDenied(), result.getMessage());</pre></div>
+<div class="code"><div class="code-head"><span class="lang">java</span><span class="file">stop the business operation on a block</span><button class="copy" type="button">Copy</button></div><pre>RuleResult result = ruleEngine.execute(context, TransactionRequest.<span class="k">class</span>);
+<span class="k">if</span> (!result.isValid()) {
+    <span class="k">throw new</span> ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, result.getMessage());
+}
+transferService.post(request);   <span class="c">// only reached when no rule blocked</span></pre></div>
+<div class="code"><div class="code-head"><span class="lang">java</span><span class="file">audit log</span><button class="copy" type="button">Copy</button></div><pre>log.info(<span class="s">"rules {} user={} -&gt; {}"</span>, <span class="s">"TRANSFER_TRANSACTION"</span>, request.getUserId(), result);
+<span class="c">// rules TRANSFER_TRANSACTION user=USER-001 -&gt; RuleResult{valid=false, permissionDenied=true, message='...'}</span></pre></div>
+  <div class="adm note"><span class="ic" aria-hidden="true">i</span><div><div class="t">Note</div><p>Each call to <code>execute</code> returns a new <code>RuleResult</code>. It is safe to keep, log or pass on; it is never shared between requests.</p></div></div>
+
+  <h3 id="s4-5"><span class="sn">4.5.</span> Writing the result from hand-written DRL</h3>
+  <p>Builder rules use <code>RuleResult</code> automatically. A hand-written DRL rule declares the global once and calls the same methods.</p>
+<div class="code"><div class="code-head"><span class="lang">drl</span><span class="file">hand-written rule</span><button class="copy" type="button">Copy</button></div><pre><span class="k">package</span> com.leads.transfer.rules;
+
+<span class="k">import</span> com.leads.transfer.model.ValidationContext;
+
+<span class="k">global</span> leads.ruleengine.core.context.RuleResult result;
+
+<span class="k">rule</span> <span class="s">"Block weekend agent transfers over 1,00,000"</span>
+    <span class="k">agenda-group</span> <span class="s">"TRANSFER"</span>
+    <span class="k">when</span>
+        $ctx : ValidationContext( transaction.channel == <span class="s">"AGENT"</span>, transaction.amount &gt; 100000 )
+    <span class="k">then</span>
+        result.block(<span class="s">"Blocked: agent limit exceeded"</span>);
+<span class="k">end</span></pre></div>
+
+  <h3 id="s4-6"><span class="sn">4.6.</span> Migrating from context decision fields</h3>
+  <p>Before 3.0.2, every context carried <code>valid</code>, <code>permissionDenied</code> and <code>validationMessage</code>, and the service read them after <code>execute</code>. Move to the returned result as follows.</p>
+  <p class="tcap">Table 4.4. Before and after</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Before (3.0.1 and earlier)</th><th>From 3.0.2</th></tr></thead>
+    <tbody>
+      <tr><td><code>ruleEngine.execute(context, X.class);</code></td><td><code>RuleResult result = ruleEngine.execute(context, X.class);</code></td></tr>
+      <tr><td><code>context.isValid()</code></td><td><code>result.isValid()</code></td></tr>
+      <tr><td><code>context.isPermissionDenied()</code></td><td><code>result.isPermissionDenied()</code></td></tr>
+      <tr><td><code>context.getValidationMessage()</code></td><td><code>result.getMessage()</code></td></tr>
+      <tr><td>Three decision fields on every context</td><td>Remove them</td></tr>
+      <tr><td>DRL: <code>$ctx.setValid(false); $ctx.setPermissionDenied(true);</code></td><td>DRL: <code>result.block("…");</code></td></tr>
+    </tbody>
+  </table></div>
+  <p class="hd">Procedure</p>
+  <ol class="steps">
+    <li><p>Change the dependency to <code>3.0.2</code> and rebuild.</p></li>
+    <li><p>Read the decision from the returned <code>RuleResult</code> instead of the context.</p></li>
+    <li><p>Remove the three decision fields from your context classes.</p></li>
+    <li><p>Update any hand-written DRL that calls <code>$ctx.setValid(…)</code> to use the <code>result</code> global (section 4.5).</p></li>
+    <li><p>Start the service. Builder rules are upgraded automatically.</p></li>
+  </ol>
+  <p class="hd">Verification</p>
+  <p>The startup log shows <code>Upgraded N builder rule(s) to write the library RuleResult.</code> on the first start, and <code>GET /admin/rules/{id}</code> shows <code>result.block(…)</code> in <code>drlText</code>.</p>
+  <div class="adm imp"><span class="ic" aria-hidden="true">!</span><div><div class="t">Important</div><p>You can upgrade in steps. A context that still has the three setters also receives the decision, so code that reads <code>context.isValid()</code> keeps working until you switch it to <code>RuleResult</code>. Do not remove the fields while hand-written DRL still writes to them.</p></div></div>
 </section>
 
 <!-- ============ 5 DEMAND ============ -->
@@ -923,6 +1071,8 @@ root     : userLimit</pre></div>
 <section id="ref-api">
   <h2><span class="chap">Appendix A.</span> Admin API reference</h2>
   <p class="intro">All endpoints are under <code>/admin</code> and are enabled while <code>rule-engine.admin.enabled</code> is <code>true</code>. Secure them at your gateway.</p>
+  <div class="refcard"><div><div class="rt">Admin API Reference</div><p>Every endpoint with parameters, request and response bodies, errors, data models and copyable examples.</p></div><a class="btn btn-pri" href="#api">Open the API reference</a></div>
+  <p class="tcap">Table A.1. Endpoint overview</p>
   <div class="tbl"><table>
     <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
     <tbody>
@@ -977,107 +1127,844 @@ root     : userLimit</pre></div>
   </dl>
 </section>
 
+<!-- ============ D RELEASE NOTES ============ -->
+<section id="release">
+  <h2><span class="chap">Appendix D.</span> Release notes</h2>
+  <p class="intro">Changes by library version. Upgrade by changing the dependency version; no database change is needed between these versions.</p>
+  <h3 id="sD-1"><span class="sn">D.1.</span> Version 3.0.2</h3>
+  <p class="hd">New</p>
+  <ul>
+    <li><code>RuleResult</code>: <code>execute(…)</code> returns the decision (valid, permission denied, message). Context classes no longer need decision fields.</li>
+    <li>Generated rules write <code>result.block(…)</code> / <code>result.allow(…)</code> through the <code>result</code> global.</li>
+    <li>Builder rules saved by older versions are regenerated automatically at startup.</li>
+  </ul>
+  <p class="hd">Compatibility</p>
+  <ul>
+    <li>Contexts that still have <code>setValid</code>, <code>setPermissionDenied</code> and <code>setValidationMessage</code> also receive the decision.</li>
+    <li>Hand-written DRL rules are not changed. Rules that still write <code>$ctx.setValid(…)</code> need the context fields until they are migrated.</li>
+  </ul>
+  <h3 id="sD-2"><span class="sn">D.2.</span> Version 3.0.1</h3>
+  <ul>
+    <li><code>requiredData(…)</code> and <code>RequiredData.needs(root)</code>: load only the data the active rules read.</li>
+    <li><code>GET /admin/flows/{flowCode}/required-data</code>.</li>
+    <li>Settings <code>rule-engine.required-data.enabled</code>, <code>shadow</code> and <code>trust-drl-hints</code>.</li>
+  </ul>
+  <h3 id="sD-3"><span class="sn">D.3.</span> Version 3.0.0</h3>
+  <ul>
+    <li>Four-table schema: <code>RULE_FLOW</code>, <code>RULE_GROUP</code>, <code>RULE_DEFINITION</code>, <code>RULE_FIELD_CATALOG</code>.</li>
+    <li>Active flags on flows, groups and rules, with separate activate and delete endpoints.</li>
+    <li>Shared groups and catalog fields for every flow.</li>
+  </ul>
+</section>
+
 <section id="legal">
   <h2><span class="chap">Legal notice.</span></h2>
   <div class="legal">
     <p>Copyright © 2026 Leads Corporation Limited. All rights reserved.</p>
     <p>This document and the Rule Engine Library it describes are proprietary to Leads Corporation Limited and are intended for internal use and for authorized client projects. Do not distribute outside these purposes without written permission.</p>
-    <p>Developed by K M Farhat Snigdah and Asrar Al Mohaimen Ahmed.</p>
+    <p>Developed by K M Farhat Snigdah, Asrar Al Mohaimen Ahmed and Saikat Datta.</p>
   </div>
 </section>
 
 </main>
 </div>
-
+</div>
+<div class="view" id="view-api" hidden>
+<div class="titleblock"><div class="wrap titleblock-in gutter">
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a href="#guide">Documentation</a><span class="sl">/</span>
+    <a href="#guide">Rule Engine Library</a><span class="sl">/</span>
+    <span>3.0.2</span><span class="sl">/</span>
+    <span class="cur">Admin API Reference</span>
+  </nav>
+  <div class="hero hero-api">
+    <div class="hero-main">
+      <div class="prodline"><span class="product">Rule Engine Library</span><span class="tag tag-ver">3.0.2</span><span class="tag tag-ok">Current release</span></div>
+      <h1>Rule Engine Admin API Reference</h1>
+      <p class="subtitle">REST endpoints for managing flows, groups, rules and catalog fields at runtime</p>
+      <div class="abstract">
+        <div class="lbl">Abstract</div>
+        <p>This reference describes every endpoint of the Rule Engine admin API: parameters, request bodies, responses, errors and data models, with a copyable example for each call. For concepts and integration steps, see the Developer Guide.</p>
+      </div>
+      <div class="cta">
+        <a class="btn btn-pri" href="#flows">Browse endpoints</a>
+        <a class="btn btn-sec" href="#schemas">Data models</a>
+        <a class="btn btn-ghost" href="#guide">Developer Guide</a>
+      </div>
+      <div class="counts" aria-label="Endpoints by method"><span class="tag tag-ver"><span class="m m-GET" style="min-width:0;padding:0 4px;margin-right:4px">GET</span>6</span><span class="tag tag-ver"><span class="m m-POST" style="min-width:0;padding:0 4px;margin-right:4px">POST</span>8</span><span class="tag tag-ver"><span class="m m-PUT" style="min-width:0;padding:0 4px;margin-right:4px">PUT</span>5</span><span class="tag tag-ver"><span class="m m-DELETE" style="min-width:0;padding:0 4px;margin-right:4px">DELETE</span>4</span></div>
+    </div>
+    <dl class="facts" aria-label="API facts">
+      <div><dt>Base path</dt><dd><code>/admin</code></dd></div>
+      <div><dt>Endpoints</dt><dd>23</dd></div>
+      <div><dt>Format</dt><dd>JSON over HTTP</dd></div>
+      <div><dt>Enabled by</dt><dd><code>rule-engine.admin.enabled</code> (default <code>true</code>)</dd></div>
+      <div><dt>Security</dt><dd>Protect at the gateway</dd></div>
+      <div><dt>Organization</dt><dd>Leads Corporation Limited</dd></div>
+      <div><dt>Last updated</dt><dd>16 October 2026</dd></div>
+    </dl>
+  </div>
+  <section class="byline" aria-label="Developed by">
+    <div class="by-lbl"><span class="by-rule" aria-hidden="true"></span>Developed by</div>
+    <div class="devs">
+      <div class="dev"><span class="av" aria-hidden="true">KS</span><div><div class="dn">K M Farhat Snigdah</div><div class="dr">Developer · Leads Corporation Limited</div></div></div>
+      <div class="dev"><span class="av av2" aria-hidden="true">AA</span><div><div class="dn">Asrar Al Mohaimen Ahmed</div><div class="dr">Developer · Leads Corporation Limited</div></div></div>
+      <div class="dev"><span class="av av3" aria-hidden="true">SD</span><div><div class="dn">Saikat Datta</div><div class="dr">Developer · Leads Corporation Limited</div></div></div>
+    </div>
+  </section>
+</div></div>
+<div class="wrap shell gutter"><aside class="rail" aria-label="Endpoints">
+  <details id="api-toc" open>
+    <summary>Contents</summary>
+    <label for="ep-filter" class="hd" style="display:block;margin:0 0 6px;font-size:13px">Filter endpoints</label>
+    <input id="ep-filter" class="filter" type="search" placeholder="e.g. rules, DELETE, active" autocomplete="off">
+    <div class="nomatch" id="nomatch" hidden>No endpoint matches.</div>
+    <ol>
+      <li><a href="#api-overview">Chapter 1. Overview</a></li>
+    </ol>
+    <div class="grp">Flows</div><ol><li class="ep" data-q="get /admin/flows list flows"><a href="#ep-list-flows"><span class="m m-GET">GET</span>List flows</a></li><li class="ep" data-q="post /admin/flows create or update a flow"><a href="#ep-upsert-flow"><span class="m m-POST">POST</span>Create or update a flow</a></li><li class="ep" data-q="put /admin/flows/{flowcode}/active activate or deactivate a flow"><a href="#ep-flow-active"><span class="m m-PUT">PUT</span>Activate or deactivate a flow</a></li><li class="ep" data-q="delete /admin/flows/{flowcode} delete a flow"><a href="#ep-delete-flow"><span class="m m-DELETE">DELETE</span>Delete a flow</a></li></ol><div class="grp">Groups</div><ol><li class="ep" data-q="get /admin/flows/{flowcode}/groups list a flow&#x27;s groups"><a href="#ep-list-groups"><span class="m m-GET">GET</span>List a flow's groups</a></li><li class="ep" data-q="post /admin/flows/{flowcode}/groups add a group to a flow"><a href="#ep-add-group"><span class="m m-POST">POST</span>Add a group to a flow</a></li><li class="ep" data-q="put /admin/flows/{flowcode}/groups/order reorder a flow&#x27;s groups"><a href="#ep-reorder-groups"><span class="m m-PUT">PUT</span>Reorder a flow's groups</a></li><li class="ep" data-q="post /admin/groups/shared add a shared group"><a href="#ep-add-shared-group"><span class="m m-POST">POST</span>Add a shared group</a></li><li class="ep" data-q="put /admin/groups/{groupid}/active activate or deactivate a group"><a href="#ep-group-active"><span class="m m-PUT">PUT</span>Activate or deactivate a group</a></li><li class="ep" data-q="delete /admin/groups/{groupid} delete a group"><a href="#ep-delete-group"><span class="m m-DELETE">DELETE</span>Delete a group</a></li></ol><div class="grp">Rules</div><ol><li class="ep" data-q="get /admin/groups/{groupid}/rules list a group&#x27;s rules"><a href="#ep-list-rules"><span class="m m-GET">GET</span>List a group's rules</a></li><li class="ep" data-q="post /admin/groups/{groupid}/rules create or replace a rule"><a href="#ep-save-rule"><span class="m m-POST">POST</span>Create or replace a rule</a></li><li class="ep" data-q="get /admin/rules/{id} get a rule"><a href="#ep-get-rule"><span class="m m-GET">GET</span>Get a rule</a></li><li class="ep" data-q="put /admin/rules/{id} update a rule"><a href="#ep-update-rule"><span class="m m-PUT">PUT</span>Update a rule</a></li><li class="ep" data-q="delete /admin/rules/{id} delete a rule"><a href="#ep-delete-rule"><span class="m m-DELETE">DELETE</span>Delete a rule</a></li><li class="ep" data-q="put /admin/rules/{id}/active activate or deactivate a rule"><a href="#ep-rule-active"><span class="m m-PUT">PUT</span>Activate or deactivate a rule</a></li><li class="ep" data-q="post /admin/rules/preview preview a builder rule"><a href="#ep-preview-rule"><span class="m m-POST">POST</span>Preview a builder rule</a></li></ol><div class="grp">Field catalog</div><ol><li class="ep" data-q="get /admin/flows/{flowcode}/fields list a flow&#x27;s fields"><a href="#ep-list-fields"><span class="m m-GET">GET</span>List a flow's fields</a></li><li class="ep" data-q="post /admin/fields add a catalog field"><a href="#ep-add-field"><span class="m m-POST">POST</span>Add a catalog field</a></li><li class="ep" data-q="delete /admin/fields/{id} delete a catalog field"><a href="#ep-delete-field"><span class="m m-DELETE">DELETE</span>Delete a catalog field</a></li></ol><div class="grp">Runtime and caching</div><ol><li class="ep" data-q="get /admin/flows/{flowcode}/required-data get a flow&#x27;s required data"><a href="#ep-required-data"><span class="m m-GET">GET</span>Get a flow's required data</a></li><li class="ep" data-q="post /admin/flows/reload reload routing and required data"><a href="#ep-reload-flows"><span class="m m-POST">POST</span>Reload routing and required data</a></li><li class="ep" data-q="post /admin/global-context/reload reload global reference data"><a href="#ep-reload-global"><span class="m m-POST">POST</span>Reload global reference data</a></li></ol><div class="grp">Data models</div><ol><li class="ep" data-q="flowdefinitionrequest schema model"><a href="#s-FlowDefinitionRequest">FlowDefinitionRequest</a></li><li class="ep" data-q="flowview schema model"><a href="#s-FlowView">FlowView</a></li><li class="ep" data-q="grouprequest schema model"><a href="#s-GroupRequest">GroupRequest</a></li><li class="ep" data-q="grouporderrequest schema model"><a href="#s-GroupOrderRequest">GroupOrderRequest</a></li><li class="ep" data-q="groupview schema model"><a href="#s-GroupView">GroupView</a></li><li class="ep" data-q="activerequest schema model"><a href="#s-ActiveRequest">ActiveRequest</a></li><li class="ep" data-q="ruledefinitionrequest schema model"><a href="#s-RuleDefinitionRequest">RuleDefinitionRequest</a></li><li class="ep" data-q="ruleview schema model"><a href="#s-RuleView">RuleView</a></li><li class="ep" data-q="builderrulespec schema model"><a href="#s-BuilderRuleSpec">BuilderRuleSpec</a></li><li class="ep" data-q="conditionnode schema model"><a href="#s-ConditionNode">ConditionNode</a></li><li class="ep" data-q="rulepreviewresponse schema model"><a href="#s-RulePreviewResponse">RulePreviewResponse</a></li><li class="ep" data-q="fieldrequest schema model"><a href="#s-FieldRequest">FieldRequest</a></li><li class="ep" data-q="rulefieldcatalog schema model"><a href="#s-RuleFieldCatalog">RuleFieldCatalog</a></li><li class="ep" data-q="requireddata schema model"><a href="#s-RequiredData">RequiredData</a></li><li class="ep" data-q="error schema model"><a href="#s-Error">Error</a></li></ol>
+    <ol style="margin-top:14px"><li><a href="#api-summary">Appendix A. Endpoint summary</a></li><li><a href="#api-legal">Legal notice</a></li></ol>
+  </details>
+</aside><main>
+<section id="api-overview">
+  <h2><span class="chap">Chapter 1.</span> Overview</h2>
+  <p class="intro">The admin API manages flows, groups, rules and catalog fields at runtime. Every write takes effect immediately; no restart or redeploy is needed.</p>
+  <h3 id="api-s1-1"><span class="sn">1.1.</span> Base path and format</h3>
+  <ul>
+    <li>All endpoints are served by the business microservice itself, under <code>/admin</code>. Examples use <code>http://localhost:8080</code>.</li>
+    <li>Request and response bodies are JSON. Send <code>Content-Type: application/json</code> with every body.</li>
+    <li>Ids are numbers generated by the database. Codes (<code>flowCode</code>, <code>groupCode</code>) are strings you choose.</li>
+  </ul>
+  <h3 id="api-s1-2"><span class="sn">1.2.</span> Enabling and securing the API</h3>
+  <p>The API is on by default. Switch it off in a service that should not expose it:</p>
+  <div class="code"><div class="code-head"><span class="lang">yaml</span><span class="file">application.yml</span><button class="copy" type="button">Copy</button></div><pre>rule-engine:
+  admin:
+    enabled: false</pre></div>
+  <div class="adm warn"><span class="ic" aria-hidden="true">!</span><div><div class="t">Warning</div><p>The library adds no authentication of its own. Expose <code>/admin/**</code> only to administrators: protect it at the API gateway or with the service's Spring Security configuration, and never publish it to the internet.</p></div></div>
+  <h3 id="api-s1-3"><span class="sn">1.3.</span> Status codes</h3>
+  <p class="tcap">Table 1.1. Status codes used by the admin API</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Code</th><th>Meaning</th><th>Typical cause</th></tr></thead>
+    <tbody>
+      <tr><td><span class="st st2">200</span></td><td>OK</td><td>Read or write succeeded; body holds the result.</td></tr>
+      <tr><td><span class="st st2">204</span></td><td>No Content</td><td>Delete succeeded.</td></tr>
+      <tr><td><span class="st st4">400</span></td><td>Bad Request</td><td>Validation failed, unknown id or code, duplicate name, or a rule that does not compile.</td></tr>
+      <tr><td><span class="st st4">409</span></td><td>Conflict</td><td>Deleting a flow or group that still has children, without <code>force=true</code>.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="adm note"><span class="ic" aria-hidden="true">i</span><div><div class="t">Note</div><p>An unknown id or code returns <strong>400</strong>, not 404. Read the <code>message</code> field for the reason.</p></div></div>
+  <h3 id="api-s1-4"><span class="sn">1.4.</span> Error responses</h3>
+  <p>Every 4xx response has the same body. Validation errors add <code>fieldErrors</code>.</p>
+  <div class="code"><div class="code-head"><span class="lang">json</span><span class="file">400 Bad Request — rule does not compile</span><button class="copy" type="button">Copy</button></div><pre>{
+  &quot;timestamp&quot;: &quot;2026-10-16T09:12:44.213Z&quot;,
+  &quot;status&quot;: 400,
+  &quot;error&quot;: &quot;Bad Request&quot;,
+  &quot;message&quot;: &quot;DRL compilation failed: [Message [id=1, level=ERROR, ... unable to resolve method using strict-mode: ValidationContext.getUserLimitt()]]&quot;
+}</pre></div>
+  <div class="code"><div class="code-head"><span class="lang">json</span><span class="file">400 Bad Request — validation</span><button class="copy" type="button">Copy</button></div><pre>{
+  &quot;timestamp&quot;: &quot;2026-10-16T09:13:02.007Z&quot;,
+  &quot;status&quot;: 400,
+  &quot;error&quot;: &quot;Bad Request&quot;,
+  &quot;message&quot;: &quot;Validation failed&quot;,
+  &quot;fieldErrors&quot;: { &quot;factType&quot;: &quot;must not be blank&quot; }
+}</pre></div>
+</section>
+<section id="flows">
+  <h2><span class="chap">Chapter 2.</span> Flows</h2>
+  <p class="intro">A flow is one business operation. Its request class routes calls from <code>execute()</code> to it, and its fact type is the context class its rules match.</p>
+<article class="ep-card" id="ep-list-flows" data-q="get /admin/flows list flows">
+<div class="ep-head"><span class="m m-GET">GET</span><span class="ep-path">/admin/flows</span><button class="copy copy-path" type="button" data-path="/admin/flows">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">2.1.</span> List flows</h3>
+<p>Returns every flow with its groups in firing order: active shared groups first, then the flow's own groups.</p>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>Array of flows.</td><td><a href="#s-FlowView"><code>FlowView[]</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-list-flows-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-list-flows-resp">Response 200</button></div>
+<div class="code pane" id="ep-list-flows-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl http://localhost:8080/admin/flows</pre></div>
+<div class="code pane" id="ep-list-flows-resp" hidden><div class="code-head"><span class="lang">json</span><span class="file">200 OK</span><button class="copy" type="button">Copy</button></div><pre>[
+  {
+    &quot;id&quot;: 1,
+    &quot;flowCode&quot;: &quot;TRANSFER_TRANSACTION&quot;,
+    &quot;requestClass&quot;: &quot;com.leads.transfer.dto.TransactionRequest&quot;,
+    &quot;factType&quot;: &quot;com.leads.transfer.model.ValidationContext&quot;,
+    &quot;label&quot;: &quot;Transfer Transaction&quot;,
+    &quot;active&quot;: true,
+    &quot;groups&quot;: [
+      { &quot;id&quot;: 1, &quot;groupCode&quot;: &quot;COMMON&quot;,     &quot;orderNo&quot;: 1, &quot;shared&quot;: true,  &quot;active&quot;: true },
+      { &quot;id&quot;: 2, &quot;groupCode&quot;: &quot;TRANSFER&quot;,   &quot;orderNo&quot;: 2, &quot;shared&quot;: false, &quot;active&quot;: true },
+      { &quot;id&quot;: 3, &quot;groupCode&quot;: &quot;VELOCITY&quot;,   &quot;orderNo&quot;: 3, &quot;shared&quot;: false, &quot;active&quot;: true },
+      { &quot;id&quot;: 4, &quot;groupCode&quot;: &quot;COMPLIANCE&quot;, &quot;orderNo&quot;: 4, &quot;shared&quot;: false, &quot;active&quot;: true }
+    ]
+  }
+]</pre></div>
+</div></article>
+<article class="ep-card" id="ep-upsert-flow" data-q="post /admin/flows create or update a flow">
+<div class="ep-head"><span class="m m-POST">POST</span><span class="ep-path">/admin/flows</span><button class="copy copy-path" type="button" data-path="/admin/flows">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">2.2.</span> Create or update a flow</h3>
+<p>Creates the flow, or updates it when <code>flowCode</code> already exists. Groups listed in <code>groups</code> are created if missing and appended in order; existing groups are never removed. A new flow starts active; an existing flow keeps its active flag.</p>
+<p class="hd">Request body</p><p><a href="#s-FlowDefinitionRequest"><code>FlowDefinitionRequest</code></a></p>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>The saved flow with its groups.</td><td><a href="#s-FlowView"><code>FlowView</code></a></td></tr>
+<tr><td><span class="st st4">400</span></td><td>Validation failed (missing <code>flowCode</code> or <code>factType</code>).</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-upsert-flow-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-upsert-flow-body">Request body</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-upsert-flow-resp">Response 200</button></div>
+<div class="code pane" id="ep-upsert-flow-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X POST http://localhost:8080/admin/flows \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{
+  &quot;flowCode&quot;: &quot;TRANSFER_TRANSACTION&quot;,
+  &quot;requestClass&quot;: &quot;com.leads.transfer.dto.TransactionRequest&quot;,
+  &quot;factType&quot;: &quot;com.leads.transfer.model.ValidationContext&quot;,
+  &quot;label&quot;: &quot;Transfer Transaction&quot;,
+  &quot;groups&quot;: [&quot;TRANSFER&quot;, &quot;VELOCITY&quot;, &quot;COMPLIANCE&quot;]
+}&#x27;</pre></div>
+<div class="code pane" id="ep-upsert-flow-body" hidden><div class="code-head"><span class="lang">json</span><span class="file">FlowDefinitionRequest</span><button class="copy" type="button">Copy</button></div><pre>{
+  &quot;flowCode&quot;: &quot;TRANSFER_TRANSACTION&quot;,
+  &quot;requestClass&quot;: &quot;com.leads.transfer.dto.TransactionRequest&quot;,
+  &quot;factType&quot;: &quot;com.leads.transfer.model.ValidationContext&quot;,
+  &quot;label&quot;: &quot;Transfer Transaction&quot;,
+  &quot;groups&quot;: [&quot;TRANSFER&quot;, &quot;VELOCITY&quot;, &quot;COMPLIANCE&quot;]
+}</pre></div>
+<div class="code pane" id="ep-upsert-flow-resp" hidden><div class="code-head"><span class="lang">json</span><span class="file">200 OK</span><button class="copy" type="button">Copy</button></div><pre>{
+  &quot;id&quot;: 1,
+  &quot;flowCode&quot;: &quot;TRANSFER_TRANSACTION&quot;,
+  &quot;requestClass&quot;: &quot;com.leads.transfer.dto.TransactionRequest&quot;,
+  &quot;factType&quot;: &quot;com.leads.transfer.model.ValidationContext&quot;,
+  &quot;label&quot;: &quot;Transfer Transaction&quot;,
+  &quot;active&quot;: true,
+  &quot;groups&quot;: [
+    { &quot;id&quot;: 1, &quot;groupCode&quot;: &quot;COMMON&quot;,     &quot;orderNo&quot;: 1, &quot;shared&quot;: true,  &quot;active&quot;: true },
+    { &quot;id&quot;: 2, &quot;groupCode&quot;: &quot;TRANSFER&quot;,   &quot;orderNo&quot;: 2, &quot;shared&quot;: false, &quot;active&quot;: true },
+    { &quot;id&quot;: 3, &quot;groupCode&quot;: &quot;VELOCITY&quot;,   &quot;orderNo&quot;: 3, &quot;shared&quot;: false, &quot;active&quot;: true },
+    { &quot;id&quot;: 4, &quot;groupCode&quot;: &quot;COMPLIANCE&quot;, &quot;orderNo&quot;: 4, &quot;shared&quot;: false, &quot;active&quot;: true }
+  ]
+}</pre></div>
+</div></article>
+<article class="ep-card" id="ep-flow-active" data-q="put /admin/flows/{flowcode}/active activate or deactivate a flow">
+<div class="ep-head"><span class="m m-PUT">PUT</span><span class="ep-path">/admin/flows/<span class="pv">{flowCode}</span>/active</span><button class="copy copy-path" type="button" data-path="/admin/flows/{flowCode}/active">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">2.3.</span> Activate or deactivate a flow</h3>
+<p>An inactive flow runs no rules: requests routed to it pass through. Routing and required data reload immediately.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>flowCode</code></td><td>path</td><td class="ty">string</td><td><span class=req>Required</span></td><td>Flow code, e.g. <code>TRANSFER_TRANSACTION</code>.</td></tr>
+</tbody></table></div>
+<p class="hd">Request body</p><p><a href="#s-ActiveRequest"><code>ActiveRequest</code></a></p>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>The updated flow.</td><td><a href="#s-FlowView"><code>FlowView</code></a></td></tr>
+<tr><td><span class="st st4">400</span></td><td>No flow with this code, or <code>active</code> missing.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-flow-active-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-flow-active-body">Request body</button></div>
+<div class="code pane" id="ep-flow-active-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X PUT http://localhost:8080/admin/flows/TRANSFER_TRANSACTION/active \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{ &quot;active&quot;: false }&#x27;</pre></div>
+<div class="code pane" id="ep-flow-active-body" hidden><div class="code-head"><span class="lang">json</span><span class="file">ActiveRequest</span><button class="copy" type="button">Copy</button></div><pre>{ &quot;active&quot;: false }</pre></div>
+</div></article>
+<article class="ep-card" id="ep-delete-flow" data-q="delete /admin/flows/{flowcode} delete a flow">
+<div class="ep-head"><span class="m m-DELETE">DELETE</span><span class="ep-path">/admin/flows/<span class="pv">{flowCode}</span></span><button class="copy copy-path" type="button" data-path="/admin/flows/{flowCode}">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">2.4.</span> Delete a flow</h3>
+<p>Permanently deletes the flow. Without <code>force</code>, the call is refused while the flow still has groups or catalog fields. With <code>force=true</code>, its groups, their rules and its fields are deleted too.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>flowCode</code></td><td>path</td><td class="ty">string</td><td><span class=req>Required</span></td><td>Flow code.</td></tr>
+<tr><td><code>force</code></td><td>query</td><td class="ty">boolean</td><td><span class=opt>Optional</span></td><td>Also delete groups, rules and fields. Default <code>false</code>.</td></tr>
+</tbody></table></div>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">204</span></td><td>Deleted. No body.</td><td>—</td></tr>
+<tr><td><span class="st st4">400</span></td><td>No flow with this code.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+<tr><td><span class="st st4">409</span></td><td>The flow still has groups or fields and <code>force</code> is not set.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-delete-flow-curl">Request (curl)</button></div>
+<div class="code pane" id="ep-delete-flow-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X DELETE &quot;http://localhost:8080/admin/flows/TRANSFER_TRANSACTION?force=true&quot;</pre></div>
+</div></article>
+</section>
+<section id="groups">
+  <h2><span class="chap">Chapter 3.</span> Groups</h2>
+  <p class="intro">A group is an ordered stage inside a flow and maps to a Drools agenda group. Groups without a flow are shared and fire first in every flow.</p>
+<article class="ep-card" id="ep-list-groups" data-q="get /admin/flows/{flowcode}/groups list a flow&#x27;s groups">
+<div class="ep-head"><span class="m m-GET">GET</span><span class="ep-path">/admin/flows/<span class="pv">{flowCode}</span>/groups</span><button class="copy copy-path" type="button" data-path="/admin/flows/{flowCode}/groups">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">3.1.</span> List a flow's groups</h3>
+<p>Returns the groups that apply to the flow in firing order: shared groups first, then the flow's own groups by <code>orderNo</code>. Inactive groups are included with <code>active: false</code>.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>flowCode</code></td><td>path</td><td class="ty">string</td><td><span class=req>Required</span></td><td>Flow code.</td></tr>
+</tbody></table></div>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>Array of groups.</td><td><a href="#s-GroupView"><code>GroupView[]</code></a></td></tr>
+<tr><td><span class="st st4">400</span></td><td>No flow with this code.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-list-groups-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-list-groups-resp">Response 200</button></div>
+<div class="code pane" id="ep-list-groups-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl http://localhost:8080/admin/flows/TRANSFER_TRANSACTION/groups</pre></div>
+<div class="code pane" id="ep-list-groups-resp" hidden><div class="code-head"><span class="lang">json</span><span class="file">200 OK</span><button class="copy" type="button">Copy</button></div><pre>[
+  { &quot;id&quot;: 1, &quot;groupCode&quot;: &quot;COMMON&quot;,   &quot;orderNo&quot;: 1, &quot;shared&quot;: true,  &quot;active&quot;: true },
+  { &quot;id&quot;: 2, &quot;groupCode&quot;: &quot;TRANSFER&quot;, &quot;orderNo&quot;: 2, &quot;shared&quot;: false, &quot;active&quot;: true }
+]</pre></div>
+</div></article>
+<article class="ep-card" id="ep-add-group" data-q="post /admin/flows/{flowcode}/groups add a group to a flow">
+<div class="ep-head"><span class="m m-POST">POST</span><span class="ep-path">/admin/flows/<span class="pv">{flowCode}</span>/groups</span><button class="copy copy-path" type="button" data-path="/admin/flows/{flowCode}/groups">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">3.2.</span> Add a group to a flow</h3>
+<p>Adds a group to the flow. When <code>orderNo</code> is omitted, the group is appended after the existing ones.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>flowCode</code></td><td>path</td><td class="ty">string</td><td><span class=req>Required</span></td><td>Flow code.</td></tr>
+</tbody></table></div>
+<p class="hd">Request body</p><p><a href="#s-GroupRequest"><code>GroupRequest</code></a></p>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>The new group.</td><td><a href="#s-GroupView"><code>GroupView</code></a></td></tr>
+<tr><td><span class="st st4">400</span></td><td>No flow with this code, or the flow already has a group with this code.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-add-group-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-add-group-body">Request body</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-add-group-resp">Response 200</button></div>
+<div class="code pane" id="ep-add-group-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X POST http://localhost:8080/admin/flows/TRANSFER_TRANSACTION/groups \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{ &quot;groupCode&quot;: &quot;FRAUD&quot; }&#x27;</pre></div>
+<div class="code pane" id="ep-add-group-body" hidden><div class="code-head"><span class="lang">json</span><span class="file">GroupRequest</span><button class="copy" type="button">Copy</button></div><pre>{ &quot;groupCode&quot;: &quot;FRAUD&quot; }</pre></div>
+<div class="code pane" id="ep-add-group-resp" hidden><div class="code-head"><span class="lang">json</span><span class="file">200 OK</span><button class="copy" type="button">Copy</button></div><pre>{ &quot;id&quot;: 5, &quot;groupCode&quot;: &quot;FRAUD&quot;, &quot;orderNo&quot;: 5, &quot;shared&quot;: false, &quot;active&quot;: true }</pre></div>
+</div></article>
+<article class="ep-card" id="ep-reorder-groups" data-q="put /admin/flows/{flowcode}/groups/order reorder a flow&#x27;s groups">
+<div class="ep-head"><span class="m m-PUT">PUT</span><span class="ep-path">/admin/flows/<span class="pv">{flowCode}</span>/groups/order</span><button class="copy copy-path" type="button" data-path="/admin/flows/{flowCode}/groups/order">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">3.3.</span> Reorder a flow's groups</h3>
+<p>Rewrites the firing order of the flow's own groups to match the order of <code>groupIds</code>. Shared groups keep running first.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>flowCode</code></td><td>path</td><td class="ty">string</td><td><span class=req>Required</span></td><td>Flow code.</td></tr>
+</tbody></table></div>
+<p class="hd">Request body</p><p><a href="#s-GroupOrderRequest"><code>GroupOrderRequest</code></a></p>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>Reordered. No body.</td><td>—</td></tr>
+<tr><td><span class="st st4">400</span></td><td>Unknown group id, or a group that does not belong to this flow.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-reorder-groups-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-reorder-groups-body">Request body</button></div>
+<div class="code pane" id="ep-reorder-groups-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X PUT http://localhost:8080/admin/flows/TRANSFER_TRANSACTION/groups/order \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{ &quot;groupIds&quot;: [3, 2, 4] }&#x27;</pre></div>
+<div class="code pane" id="ep-reorder-groups-body" hidden><div class="code-head"><span class="lang">json</span><span class="file">GroupOrderRequest</span><button class="copy" type="button">Copy</button></div><pre>{ &quot;groupIds&quot;: [3, 2, 4] }</pre></div>
+</div></article>
+<article class="ep-card" id="ep-add-shared-group" data-q="post /admin/groups/shared add a shared group">
+<div class="ep-head"><span class="m m-POST">POST</span><span class="ep-path">/admin/groups/shared</span><button class="copy copy-path" type="button" data-path="/admin/groups/shared">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">3.4.</span> Add a shared group</h3>
+<p>Creates a group with no owning flow. It fires first in every flow. <code>orderNo</code> defaults to 1.</p>
+<p class="hd">Request body</p><p><a href="#s-GroupRequest"><code>GroupRequest</code></a></p>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>The new shared group.</td><td><a href="#s-GroupView"><code>GroupView</code></a></td></tr>
+<tr><td><span class="st st4">400</span></td><td>A shared group with this code already exists.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-add-shared-group-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-add-shared-group-body">Request body</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-add-shared-group-resp">Response 200</button></div>
+<div class="code pane" id="ep-add-shared-group-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X POST http://localhost:8080/admin/groups/shared \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{ &quot;groupCode&quot;: &quot;COMMON&quot;, &quot;orderNo&quot;: 1 }&#x27;</pre></div>
+<div class="code pane" id="ep-add-shared-group-body" hidden><div class="code-head"><span class="lang">json</span><span class="file">GroupRequest</span><button class="copy" type="button">Copy</button></div><pre>{ &quot;groupCode&quot;: &quot;COMMON&quot;, &quot;orderNo&quot;: 1 }</pre></div>
+<div class="code pane" id="ep-add-shared-group-resp" hidden><div class="code-head"><span class="lang">json</span><span class="file">200 OK</span><button class="copy" type="button">Copy</button></div><pre>{ &quot;id&quot;: 1, &quot;groupCode&quot;: &quot;COMMON&quot;, &quot;orderNo&quot;: 1, &quot;shared&quot;: true, &quot;active&quot;: true }</pre></div>
+</div></article>
+<article class="ep-card" id="ep-group-active" data-q="put /admin/groups/{groupid}/active activate or deactivate a group">
+<div class="ep-head"><span class="m m-PUT">PUT</span><span class="ep-path">/admin/groups/<span class="pv">{groupId}</span>/active</span><button class="copy copy-path" type="button" data-path="/admin/groups/{groupId}/active">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">3.5.</span> Activate or deactivate a group</h3>
+<p>An inactive group is skipped at runtime; its rules stay stored. Deactivating a shared group affects every flow.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>groupId</code></td><td>path</td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Group id.</td></tr>
+</tbody></table></div>
+<p class="hd">Request body</p><p><a href="#s-ActiveRequest"><code>ActiveRequest</code></a></p>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>The updated group.</td><td><a href="#s-GroupView"><code>GroupView</code></a></td></tr>
+<tr><td><span class="st st4">400</span></td><td>No group with this id.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-group-active-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-group-active-body">Request body</button></div>
+<div class="code pane" id="ep-group-active-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X PUT http://localhost:8080/admin/groups/2/active \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{ &quot;active&quot;: false }&#x27;</pre></div>
+<div class="code pane" id="ep-group-active-body" hidden><div class="code-head"><span class="lang">json</span><span class="file">ActiveRequest</span><button class="copy" type="button">Copy</button></div><pre>{ &quot;active&quot;: false }</pre></div>
+</div></article>
+<article class="ep-card" id="ep-delete-group" data-q="delete /admin/groups/{groupid} delete a group">
+<div class="ep-head"><span class="m m-DELETE">DELETE</span><span class="ep-path">/admin/groups/<span class="pv">{groupId}</span></span><button class="copy copy-path" type="button" data-path="/admin/groups/{groupId}">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">3.6.</span> Delete a group</h3>
+<p>Permanently deletes the group. Without <code>force</code>, the call is refused while the group has rules. With <code>force=true</code>, its rules are deleted too.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>groupId</code></td><td>path</td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Group id.</td></tr>
+<tr><td><code>force</code></td><td>query</td><td class="ty">boolean</td><td><span class=opt>Optional</span></td><td>Also delete the group's rules. Default <code>false</code>.</td></tr>
+</tbody></table></div>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">204</span></td><td>Deleted. No body.</td><td>—</td></tr>
+<tr><td><span class="st st4">400</span></td><td>No group with this id.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+<tr><td><span class="st st4">409</span></td><td>The group still has rules and <code>force</code> is not set.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-delete-group-curl">Request (curl)</button></div>
+<div class="code pane" id="ep-delete-group-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X DELETE &quot;http://localhost:8080/admin/groups/5?force=true&quot;</pre></div>
+</div></article>
+</section>
+<section id="rules">
+  <h2><span class="chap">Chapter 4.</span> Rules</h2>
+  <p class="intro">A rule belongs to exactly one group. Builder rules are stored as a JSON condition tree and the library generates their DRL; DRL rules are stored as written. Every save is compiled first, so a rule that does not compile never reaches the running engine.</p>
+<article class="ep-card" id="ep-list-rules" data-q="get /admin/groups/{groupid}/rules list a group&#x27;s rules">
+<div class="ep-head"><span class="m m-GET">GET</span><span class="ep-path">/admin/groups/<span class="pv">{groupId}</span>/rules</span><button class="copy copy-path" type="button" data-path="/admin/groups/{groupId}/rules">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">4.1.</span> List a group's rules</h3>
+<p>Returns all rules in the group, active and inactive.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>groupId</code></td><td>path</td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Group id.</td></tr>
+</tbody></table></div>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>Array of rules.</td><td><a href="#s-RuleView"><code>RuleView[]</code></a></td></tr>
+<tr><td><span class="st st4">400</span></td><td>No group with this id.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-list-rules-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-list-rules-resp">Response 200</button></div>
+<div class="code pane" id="ep-list-rules-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl http://localhost:8080/admin/groups/2/rules</pre></div>
+<div class="code pane" id="ep-list-rules-resp" hidden><div class="code-head"><span class="lang">json</span><span class="file">200 OK</span><button class="copy" type="button">Copy</button></div><pre>[
+  {
+    &quot;id&quot;: 3,
+    &quot;groupId&quot;: 2,
+    &quot;groupCode&quot;: &quot;TRANSFER&quot;,
+    &quot;flowCode&quot;: &quot;TRANSFER_TRANSACTION&quot;,
+    &quot;ruleName&quot;: &quot;Block over-limit debit-restricted BDT transaction&quot;,
+    &quot;sourceType&quot;: &quot;BUILDER&quot;,
+    &quot;active&quot;: true,
+    &quot;version&quot;: 1,
+    &quot;sourceJson&quot;: &quot;{\&quot;ruleName\&quot;:\&quot;Block over-limit ...\&quot;,\&quot;conditionTree\&quot;:{...}}&quot;,
+    &quot;drlText&quot;: &quot;package com.leads.transfer.model;\n\nglobal leads.ruleengine.core.context.RuleResult result;\n\nrule ...&quot;
+  }
+]</pre></div>
+</div></article>
+<article class="ep-card" id="ep-save-rule" data-q="post /admin/groups/{groupid}/rules create or replace a rule">
+<div class="ep-head"><span class="m m-POST">POST</span><span class="ep-path">/admin/groups/<span class="pv">{groupId}</span>/rules</span><button class="copy copy-path" type="button" data-path="/admin/groups/{groupId}/rules">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">4.2.</span> Create or replace a rule</h3>
+<p>Saves a rule in the group. If the group already has a rule with the same <code>ruleName</code>, it is replaced and its version goes up by one. For <code>BUILDER</code>, send <code>sourceJson</code> (a <a href="#s-BuilderRuleSpec">BuilderRuleSpec</a> as a JSON string); for <code>DRL</code>, send <code>drl</code>. The full rule set is compiled before the save; the rule base reloads after it.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>groupId</code></td><td>path</td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Group id.</td></tr>
+</tbody></table></div>
+<p class="hd">Request body</p><p><a href="#s-RuleDefinitionRequest"><code>RuleDefinitionRequest</code></a></p>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>The saved rule, including the generated <code>drlText</code>.</td><td><a href="#s-RuleView"><code>RuleView</code></a></td></tr>
+<tr><td><span class="st st4">400</span></td><td>Compile error, missing <code>sourceJson</code> or <code>drl</code>, unknown group, or a builder rule sent to a shared group.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-save-rule-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-save-rule-body">Request body</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-save-rule-resp">Response 200</button></div>
+<div class="code pane" id="ep-save-rule-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X POST http://localhost:8080/admin/groups/2/rules \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{
+  &quot;ruleName&quot;: &quot;Block over-limit debit-restricted BDT transaction&quot;,
+  &quot;sourceType&quot;: &quot;BUILDER&quot;,
+  &quot;createdBy&quot;: &quot;farhat&quot;,
+  &quot;sourceJson&quot;: &quot;{\&quot;ruleName\&quot;:\&quot;Block over-limit debit-restricted BDT transaction\&quot;,\&quot;flow\&quot;:\&quot;TRANSFER_TRANSACTION\&quot;,\&quot;agendaGroup\&quot;:\&quot;TRANSFER\&quot;,\&quot;salience\&quot;:10,\&quot;conditionTree\&quot;:{...},\&quot;then\&quot;:{\&quot;decision\&quot;:\&quot;block\&quot;,\&quot;message\&quot;:\&quot;Blocked: ...\&quot;}}&quot;
+}&#x27;</pre></div>
+<div class="code pane" id="ep-save-rule-body" hidden><div class="code-head"><span class="lang">json</span><span class="file">RuleDefinitionRequest</span><button class="copy" type="button">Copy</button></div><pre>{
+  &quot;ruleName&quot;: &quot;Block over-limit debit-restricted BDT transaction&quot;,
+  &quot;sourceType&quot;: &quot;BUILDER&quot;,
+  &quot;createdBy&quot;: &quot;farhat&quot;,
+  &quot;sourceJson&quot;: &quot;{\&quot;ruleName\&quot;:\&quot;Block over-limit debit-restricted BDT transaction\&quot;,\&quot;flow\&quot;:\&quot;TRANSFER_TRANSACTION\&quot;,\&quot;agendaGroup\&quot;:\&quot;TRANSFER\&quot;,\&quot;salience\&quot;:10,\&quot;conditionTree\&quot;:{...},\&quot;then\&quot;:{\&quot;decision\&quot;:\&quot;block\&quot;,\&quot;message\&quot;:\&quot;Blocked: ...\&quot;}}&quot;
+}</pre></div>
+<div class="code pane" id="ep-save-rule-resp" hidden><div class="code-head"><span class="lang">json</span><span class="file">200 OK</span><button class="copy" type="button">Copy</button></div><pre>{
+  &quot;id&quot;: 3,
+  &quot;groupId&quot;: 2,
+  &quot;groupCode&quot;: &quot;TRANSFER&quot;,
+  &quot;flowCode&quot;: &quot;TRANSFER_TRANSACTION&quot;,
+  &quot;ruleName&quot;: &quot;Block over-limit debit-restricted BDT transaction&quot;,
+  &quot;sourceType&quot;: &quot;BUILDER&quot;,
+  &quot;active&quot;: true,
+  &quot;version&quot;: 1,
+  &quot;sourceJson&quot;: &quot;{\&quot;ruleName\&quot;:\&quot;Block over-limit ...\&quot;,\&quot;conditionTree\&quot;:{...}}&quot;,
+  &quot;drlText&quot;: &quot;package com.leads.transfer.model;\n\nglobal leads.ruleengine.core.context.RuleResult result;\n\nrule ...&quot;
+}</pre></div>
+</div></article>
+<article class="ep-card" id="ep-get-rule" data-q="get /admin/rules/{id} get a rule">
+<div class="ep-head"><span class="m m-GET">GET</span><span class="ep-path">/admin/rules/<span class="pv">{id}</span></span><button class="copy copy-path" type="button" data-path="/admin/rules/{id}">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">4.3.</span> Get a rule</h3>
+<p>Returns one rule with its source and generated DRL.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>id</code></td><td>path</td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Rule id.</td></tr>
+</tbody></table></div>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>The rule.</td><td><a href="#s-RuleView"><code>RuleView</code></a></td></tr>
+<tr><td><span class="st st4">400</span></td><td>No rule with this id.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-get-rule-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-get-rule-resp">Response 200</button></div>
+<div class="code pane" id="ep-get-rule-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl http://localhost:8080/admin/rules/3</pre></div>
+<div class="code pane" id="ep-get-rule-resp" hidden><div class="code-head"><span class="lang">json</span><span class="file">200 OK</span><button class="copy" type="button">Copy</button></div><pre>{
+  &quot;id&quot;: 3,
+  &quot;groupId&quot;: 2,
+  &quot;groupCode&quot;: &quot;TRANSFER&quot;,
+  &quot;flowCode&quot;: &quot;TRANSFER_TRANSACTION&quot;,
+  &quot;ruleName&quot;: &quot;Block over-limit debit-restricted BDT transaction&quot;,
+  &quot;sourceType&quot;: &quot;BUILDER&quot;,
+  &quot;active&quot;: true,
+  &quot;version&quot;: 1,
+  &quot;sourceJson&quot;: &quot;{\&quot;ruleName\&quot;:\&quot;Block over-limit ...\&quot;,\&quot;conditionTree\&quot;:{...}}&quot;,
+  &quot;drlText&quot;: &quot;package com.leads.transfer.model;\n\nglobal leads.ruleengine.core.context.RuleResult result;\n\nrule ...&quot;
+}</pre></div>
+</div></article>
+<article class="ep-card" id="ep-update-rule" data-q="put /admin/rules/{id} update a rule">
+<div class="ep-head"><span class="m m-PUT">PUT</span><span class="ep-path">/admin/rules/<span class="pv">{id}</span></span><button class="copy copy-path" type="button" data-path="/admin/rules/{id}">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">4.4.</span> Update a rule</h3>
+<p>Replaces the rule's content. The rule stays in its group. Renaming is allowed unless another rule in the same group already has the new name. Builder DRL is regenerated from <code>sourceJson</code>, the result is compiled, and the version goes up by one.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>id</code></td><td>path</td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Rule id.</td></tr>
+</tbody></table></div>
+<p class="hd">Request body</p><p><a href="#s-RuleDefinitionRequest"><code>RuleDefinitionRequest</code></a></p>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>The updated rule.</td><td><a href="#s-RuleView"><code>RuleView</code></a></td></tr>
+<tr><td><span class="st st4">400</span></td><td>Compile error, unknown rule, or duplicate name in the group.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-update-rule-curl">Request (curl)</button></div>
+<div class="code pane" id="ep-update-rule-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X PUT http://localhost:8080/admin/rules/3 \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{ ... same body as POST /admin/groups/{groupId}/rules ... }&#x27;</pre></div>
+</div></article>
+<article class="ep-card" id="ep-delete-rule" data-q="delete /admin/rules/{id} delete a rule">
+<div class="ep-head"><span class="m m-DELETE">DELETE</span><span class="ep-path">/admin/rules/<span class="pv">{id}</span></span><button class="copy copy-path" type="button" data-path="/admin/rules/{id}">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">4.5.</span> Delete a rule</h3>
+<p>Permanently deletes the rule and reloads the rule base. To only switch a rule off, use <a href="#ep-rule-active">Activate or deactivate a rule</a>.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>id</code></td><td>path</td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Rule id.</td></tr>
+</tbody></table></div>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">204</span></td><td>Deleted, or no rule had this id. No body.</td><td>—</td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-delete-rule-curl">Request (curl)</button></div>
+<div class="code pane" id="ep-delete-rule-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X DELETE http://localhost:8080/admin/rules/3</pre></div>
+</div></article>
+<article class="ep-card" id="ep-rule-active" data-q="put /admin/rules/{id}/active activate or deactivate a rule">
+<div class="ep-head"><span class="m m-PUT">PUT</span><span class="ep-path">/admin/rules/<span class="pv">{id}</span>/active</span><button class="copy copy-path" type="button" data-path="/admin/rules/{id}/active">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">4.6.</span> Activate or deactivate a rule</h3>
+<p>An inactive rule is not compiled into the running rule base. The rule base and required data reload immediately.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>id</code></td><td>path</td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Rule id.</td></tr>
+</tbody></table></div>
+<p class="hd">Request body</p><p><a href="#s-ActiveRequest"><code>ActiveRequest</code></a></p>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>The updated rule.</td><td><a href="#s-RuleView"><code>RuleView</code></a></td></tr>
+<tr><td><span class="st st4">400</span></td><td>No rule with this id.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-rule-active-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-rule-active-body">Request body</button></div>
+<div class="code pane" id="ep-rule-active-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X PUT http://localhost:8080/admin/rules/3/active \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{ &quot;active&quot;: false }&#x27;</pre></div>
+<div class="code pane" id="ep-rule-active-body" hidden><div class="code-head"><span class="lang">json</span><span class="file">ActiveRequest</span><button class="copy" type="button">Copy</button></div><pre>{ &quot;active&quot;: false }</pre></div>
+</div></article>
+<article class="ep-card" id="ep-preview-rule" data-q="post /admin/rules/preview preview a builder rule">
+<div class="ep-head"><span class="m m-POST">POST</span><span class="ep-path">/admin/rules/preview</span><button class="copy copy-path" type="button" data-path="/admin/rules/preview">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">4.7.</span> Preview a builder rule</h3>
+<p>Generates the DRL for a builder spec and compile-checks it, without saving anything. The fact type comes from the flow named in <code>flow</code>.</p>
+<p class="hd">Request body</p><p><a href="#s-BuilderRuleSpec"><code>BuilderRuleSpec</code></a></p>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>The generated DRL and whether it compiles. A failed compile still returns 200 with <code>valid: false</code>.</td><td><a href="#s-RulePreviewResponse"><code>RulePreviewResponse</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-preview-rule-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-preview-rule-body">Request body</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-preview-rule-resp">Response 200</button></div>
+<div class="code pane" id="ep-preview-rule-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X POST http://localhost:8080/admin/rules/preview \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{
+  &quot;ruleName&quot;: &quot;Block over-limit debit-restricted BDT transaction&quot;,
+  &quot;flow&quot;: &quot;TRANSFER_TRANSACTION&quot;,
+  &quot;agendaGroup&quot;: &quot;TRANSFER&quot;,
+  &quot;salience&quot;: 10,
+  &quot;conditionTree&quot;: {
+    &quot;type&quot;: &quot;GROUP&quot;, &quot;operator&quot;: &quot;AND&quot;,
+    &quot;children&quot;: [
+      { &quot;type&quot;: &quot;CONDITION&quot;, &quot;field&quot;: &quot;transaction.currency&quot;, &quot;operator&quot;: &quot;==&quot;, &quot;value&quot;: &quot;BDT&quot; },
+      { &quot;type&quot;: &quot;CONDITION&quot;, &quot;field&quot;: &quot;product.drRes&quot;,        &quot;operator&quot;: &quot;==&quot;, &quot;value&quot;: 1 },
+      { &quot;type&quot;: &quot;CONDITION&quot;, &quot;field&quot;: &quot;transaction.amount&quot;,   &quot;operator&quot;: &quot;&gt;&quot;,  &quot;valueField&quot;: &quot;userLimit.limit&quot; }
+    ]
+  },
+  &quot;then&quot;: { &quot;decision&quot;: &quot;block&quot;, &quot;message&quot;: &quot;Blocked: amount exceeds limit on a debit-restricted BDT account&quot; }
+}&#x27;</pre></div>
+<div class="code pane" id="ep-preview-rule-body" hidden><div class="code-head"><span class="lang">json</span><span class="file">BuilderRuleSpec</span><button class="copy" type="button">Copy</button></div><pre>{
+  &quot;ruleName&quot;: &quot;Block over-limit debit-restricted BDT transaction&quot;,
+  &quot;flow&quot;: &quot;TRANSFER_TRANSACTION&quot;,
+  &quot;agendaGroup&quot;: &quot;TRANSFER&quot;,
+  &quot;salience&quot;: 10,
+  &quot;conditionTree&quot;: {
+    &quot;type&quot;: &quot;GROUP&quot;, &quot;operator&quot;: &quot;AND&quot;,
+    &quot;children&quot;: [
+      { &quot;type&quot;: &quot;CONDITION&quot;, &quot;field&quot;: &quot;transaction.currency&quot;, &quot;operator&quot;: &quot;==&quot;, &quot;value&quot;: &quot;BDT&quot; },
+      { &quot;type&quot;: &quot;CONDITION&quot;, &quot;field&quot;: &quot;product.drRes&quot;,        &quot;operator&quot;: &quot;==&quot;, &quot;value&quot;: 1 },
+      { &quot;type&quot;: &quot;CONDITION&quot;, &quot;field&quot;: &quot;transaction.amount&quot;,   &quot;operator&quot;: &quot;&gt;&quot;,  &quot;valueField&quot;: &quot;userLimit.limit&quot; }
+    ]
+  },
+  &quot;then&quot;: { &quot;decision&quot;: &quot;block&quot;, &quot;message&quot;: &quot;Blocked: amount exceeds limit on a debit-restricted BDT account&quot; }
+}</pre></div>
+<div class="code pane" id="ep-preview-rule-resp" hidden><div class="code-head"><span class="lang">json</span><span class="file">200 OK</span><button class="copy" type="button">Copy</button></div><pre>{
+  &quot;drl&quot;: &quot;package com.leads.transfer.model;\n\nglobal leads.ruleengine.core.context.RuleResult result;\n\nrule \&quot;TRANSFER_TRANSACTION.TRANSFER::Block over-limit ...\&quot; ...&quot;,
+  &quot;valid&quot;: true,
+  &quot;error&quot;: null
+}</pre></div>
+</div></article>
+</section>
+<section id="fields">
+  <h2><span class="chap">Chapter 5.</span> Field catalog</h2>
+  <p class="intro">Catalog fields are what rule authors can pick in the Rule Builder. Each maps a field key to a real property path on the context. A field without a flow is shared by every flow. For client deployments, catalog rows are usually delivered by a database migration script instead.</p>
+<article class="ep-card" id="ep-list-fields" data-q="get /admin/flows/{flowcode}/fields list a flow&#x27;s fields">
+<div class="ep-head"><span class="m m-GET">GET</span><span class="ep-path">/admin/flows/<span class="pv">{flowCode}</span>/fields</span><button class="copy copy-path" type="button" data-path="/admin/flows/{flowCode}/fields">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">5.1.</span> List a flow's fields</h3>
+<p>Returns the flow's own fields plus shared fields, ordered by label.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>flowCode</code></td><td>path</td><td class="ty">string</td><td><span class=req>Required</span></td><td>Flow code.</td></tr>
+</tbody></table></div>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>Array of catalog fields.</td><td><a href="#s-RuleFieldCatalog"><code>RuleFieldCatalog[]</code></a></td></tr>
+<tr><td><span class="st st4">400</span></td><td>No flow with this code.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-list-fields-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-list-fields-resp">Response 200</button></div>
+<div class="code pane" id="ep-list-fields-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl http://localhost:8080/admin/flows/TRANSFER_TRANSACTION/fields</pre></div>
+<div class="code pane" id="ep-list-fields-resp" hidden><div class="code-head"><span class="lang">json</span><span class="file">200 OK</span><button class="copy" type="button">Copy</button></div><pre>[
+  {
+    &quot;id&quot;: 7,
+    &quot;flow&quot;: { &quot;id&quot;: 1, &quot;flowCode&quot;: &quot;TRANSFER_TRANSACTION&quot;, &quot;requestClass&quot;: &quot;com.leads.transfer.dto.TransactionRequest&quot;,
+              &quot;factType&quot;: &quot;com.leads.transfer.model.ValidationContext&quot;, &quot;label&quot;: &quot;Transfer Transaction&quot;, &quot;active&quot;: true },
+    &quot;fieldKey&quot;: &quot;userLimit.limit&quot;,
+    &quot;label&quot;: &quot;User Limit&quot;,
+    &quot;dataType&quot;: &quot;NUMBER&quot;,
+    &quot;drlPath&quot;: &quot;userLimit!.limit&quot;,
+    &quot;allowedOps&quot;: &quot;&gt; &lt; &gt;= &lt;= == !=&quot;,
+    &quot;allowedValues&quot;: null
+  }
+]</pre></div>
+</div></article>
+<article class="ep-card" id="ep-add-field" data-q="post /admin/fields add a catalog field">
+<div class="ep-head"><span class="m m-POST">POST</span><span class="ep-path">/admin/fields</span><button class="copy copy-path" type="button" data-path="/admin/fields">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">5.2.</span> Add a catalog field</h3>
+<p>Adds a field. Leave <code>flowCode</code> out to share it with every flow. Required data reloads so the new root is known immediately.</p>
+<p class="hd">Request body</p><p><a href="#s-FieldRequest"><code>FieldRequest</code></a></p>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>The saved field.</td><td><a href="#s-RuleFieldCatalog"><code>RuleFieldCatalog</code></a></td></tr>
+<tr><td><span class="st st4">400</span></td><td>Validation failed, or no flow with this code.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-add-field-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-add-field-body">Request body</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-add-field-resp">Response 200</button></div>
+<div class="code pane" id="ep-add-field-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X POST http://localhost:8080/admin/fields \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#x27;{
+  &quot;flowCode&quot;:   &quot;TRANSFER_TRANSACTION&quot;,
+  &quot;fieldKey&quot;:   &quot;userLimit.limit&quot;,
+  &quot;label&quot;:      &quot;User Limit&quot;,
+  &quot;dataType&quot;:   &quot;NUMBER&quot;,
+  &quot;drlPath&quot;:    &quot;userLimit!.limit&quot;,
+  &quot;allowedOps&quot;: &quot;&gt; &lt; &gt;= &lt;= == !=&quot;
+}&#x27;</pre></div>
+<div class="code pane" id="ep-add-field-body" hidden><div class="code-head"><span class="lang">json</span><span class="file">FieldRequest</span><button class="copy" type="button">Copy</button></div><pre>{
+  &quot;flowCode&quot;:   &quot;TRANSFER_TRANSACTION&quot;,
+  &quot;fieldKey&quot;:   &quot;userLimit.limit&quot;,
+  &quot;label&quot;:      &quot;User Limit&quot;,
+  &quot;dataType&quot;:   &quot;NUMBER&quot;,
+  &quot;drlPath&quot;:    &quot;userLimit!.limit&quot;,
+  &quot;allowedOps&quot;: &quot;&gt; &lt; &gt;= &lt;= == !=&quot;
+}</pre></div>
+<div class="code pane" id="ep-add-field-resp" hidden><div class="code-head"><span class="lang">json</span><span class="file">200 OK</span><button class="copy" type="button">Copy</button></div><pre>{
+  &quot;id&quot;: 7,
+  &quot;flow&quot;: { &quot;id&quot;: 1, &quot;flowCode&quot;: &quot;TRANSFER_TRANSACTION&quot;, &quot;requestClass&quot;: &quot;com.leads.transfer.dto.TransactionRequest&quot;,
+            &quot;factType&quot;: &quot;com.leads.transfer.model.ValidationContext&quot;, &quot;label&quot;: &quot;Transfer Transaction&quot;, &quot;active&quot;: true },
+  &quot;fieldKey&quot;: &quot;userLimit.limit&quot;,
+  &quot;label&quot;: &quot;User Limit&quot;,
+  &quot;dataType&quot;: &quot;NUMBER&quot;,
+  &quot;drlPath&quot;: &quot;userLimit!.limit&quot;,
+  &quot;allowedOps&quot;: &quot;&gt; &lt; &gt;= &lt;= == !=&quot;,
+  &quot;allowedValues&quot;: null
+}</pre></div>
+</div></article>
+<article class="ep-card" id="ep-delete-field" data-q="delete /admin/fields/{id} delete a catalog field">
+<div class="ep-head"><span class="m m-DELETE">DELETE</span><span class="ep-path">/admin/fields/<span class="pv">{id}</span></span><button class="copy copy-path" type="button" data-path="/admin/fields/{id}">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">5.3.</span> Delete a catalog field</h3>
+<p>Permanently deletes the field. Rules that use it keep their generated DRL until they are saved again.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>id</code></td><td>path</td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Field id.</td></tr>
+</tbody></table></div>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">204</span></td><td>Deleted. No body.</td><td>—</td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-delete-field-curl">Request (curl)</button></div>
+<div class="code pane" id="ep-delete-field-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X DELETE http://localhost:8080/admin/fields/7</pre></div>
+</div></article>
+</section>
+<section id="api-runtime">
+  <h2><span class="chap">Chapter 6.</span> Runtime and caching</h2>
+  <p class="intro">Rules, routing and required data are cached in memory. Admin writes refresh them automatically; these endpoints inspect the cache or refresh it after direct database changes.</p>
+<article class="ep-card" id="ep-required-data" data-q="get /admin/flows/{flowcode}/required-data get a flow&#x27;s required data">
+<div class="ep-head"><span class="m m-GET">GET</span><span class="ep-path">/admin/flows/<span class="pv">{flowCode}</span>/required-data</span><button class="copy copy-path" type="button" data-path="/admin/flows/{flowCode}/required-data">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">6.1.</span> Get a flow's required data</h3>
+<p>Shows which data roots and fields the flow's active rules read, as computed at the last reload. It reports the real analysis even when <code>rule-engine.required-data.enabled</code> is off.</p>
+<p class="hd">Parameters</p><div class="tbl"><table><thead><tr><th>Name</th><th>In</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody>
+<tr><td><code>flowCode</code></td><td>path</td><td class="ty">string</td><td><span class=req>Required</span></td><td>Flow code.</td></tr>
+</tbody></table></div>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>The flow's required data.</td><td><a href="#s-RequiredData"><code>RequiredData</code></a></td></tr>
+<tr><td><span class="st st4">400</span></td><td>No flow with this code.</td><td><a href="#s-Error"><code>Error</code></a></td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-required-data-curl">Request (curl)</button><button class="tab" role="tab" type="button" aria-selected="false" data-pane="ep-required-data-resp">Response 200</button></div>
+<div class="code pane" id="ep-required-data-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl http://localhost:8080/admin/flows/TRANSFER_TRANSACTION/required-data</pre></div>
+<div class="code pane" id="ep-required-data-resp" hidden><div class="code-head"><span class="lang">json</span><span class="file">200 OK</span><button class="copy" type="button">Copy</button></div><pre>{
+  &quot;flowCode&quot;:   &quot;TRANSFER_TRANSACTION&quot;,
+  &quot;roots&quot;:      [&quot;product&quot;, &quot;transaction&quot;, &quot;userLimit&quot;],
+  &quot;fields&quot;:     [&quot;product.drRes&quot;, &quot;transaction.amount&quot;, &quot;transaction.currency&quot;, &quot;userLimit.limit&quot;],
+  &quot;knownRoots&quot;: [&quot;product&quot;, &quot;transaction&quot;, &quot;user&quot;, &quot;userLimit&quot;],
+  &quot;complete&quot;:   true
+}</pre></div>
+</div></article>
+<article class="ep-card" id="ep-reload-flows" data-q="post /admin/flows/reload reload routing and required data">
+<div class="ep-head"><span class="m m-POST">POST</span><span class="ep-path">/admin/flows/reload</span><button class="copy copy-path" type="button" data-path="/admin/flows/reload">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">6.2.</span> Reload routing and required data</h3>
+<p>Re-reads flows, groups and catalog fields from the database. Use it after changing those tables with SQL. It does <strong>not</strong> recompile rules; after editing <code>RULE_DEFINITION</code> directly, restart the service.</p>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>Reloaded. No body.</td><td>—</td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-reload-flows-curl">Request (curl)</button></div>
+<div class="code pane" id="ep-reload-flows-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X POST http://localhost:8080/admin/flows/reload</pre></div>
+</div></article>
+<article class="ep-card" id="ep-reload-global" data-q="post /admin/global-context/reload reload global reference data">
+<div class="ep-head"><span class="m m-POST">POST</span><span class="ep-path">/admin/global-context/reload</span><button class="copy copy-path" type="button" data-path="/admin/global-context/reload">Copy path</button></div>
+<div class="ep-body">
+<h3><span class="sn">6.3.</span> Reload global reference data</h3>
+<p>Re-runs every <code>GlobalReferenceLoader</code> in the service, refreshing the data hand-written DRL reads through <code>globalContext</code>.</p>
+<p class="hd">Responses</p><div class="tbl"><table><thead><tr><th>Status</th><th>Description</th><th>Body</th></tr></thead><tbody>
+<tr><td><span class="st st2">200</span></td><td>Reloaded. No body.</td><td>—</td></tr>
+</tbody></table></div>
+<div class="tabs" role="tablist"><button class="tab on" role="tab" type="button" aria-selected="true" data-pane="ep-reload-global-curl">Request (curl)</button></div>
+<div class="code pane" id="ep-reload-global-curl"><div class="code-head"><span class="lang">bash</span><span class="file">curl</span><button class="copy" type="button">Copy</button></div><pre>curl -X POST http://localhost:8080/admin/global-context/reload</pre></div>
+</div></article>
+</section>
+<section id="schemas">
+  <h2><span class="chap">Chapter 7.</span> Data models</h2>
+  <p class="intro">Request and response bodies used by the endpoints. Required fields must be present in requests and are always present in responses.</p>
+<div class="schema" id="s-FlowDefinitionRequest"><h3><span class="sn">7.1.</span> <code>FlowDefinitionRequest</code></h3><p>Body of <code>POST /admin/flows</code>.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>flowCode</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Unique flow code, e.g. <code>TRANSFER_TRANSACTION</code>.</td></tr><tr><td><code>requestClass</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Fully qualified request class that routes to this flow. Unique.</td></tr><tr><td><code>factType</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Fully qualified context class the flow's rules match.</td></tr><tr><td><code>label</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Display name.</td></tr><tr><td><code>groups</code></td><td class="ty">string[]</td><td><span class=opt>Optional</span></td><td>Group codes to ensure exist, appended in this order.</td></tr></tbody></table></div></div>
+<div class="schema" id="s-FlowView"><h3><span class="sn">7.2.</span> <code>FlowView</code></h3><p>A flow with its groups.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Flow id.</td></tr><tr><td><code>flowCode</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Flow code.</td></tr><tr><td><code>requestClass</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Routing key.</td></tr><tr><td><code>factType</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Context class.</td></tr><tr><td><code>label</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Display name.</td></tr><tr><td><code>active</code></td><td class="ty">boolean</td><td><span class=req>Required</span></td><td>Whether the flow runs rules.</td></tr><tr><td><code>groups</code></td><td class="ty">GroupView[]</td><td><span class=req>Required</span></td><td>Groups in firing order, shared first.</td></tr></tbody></table></div></div>
+<div class="schema" id="s-GroupRequest"><h3><span class="sn">7.3.</span> <code>GroupRequest</code></h3><p>Body of the add-group endpoints.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>groupCode</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Agenda-group code, e.g. <code>COMPLIANCE</code>.</td></tr><tr><td><code>orderNo</code></td><td class="ty">integer</td><td><span class=opt>Optional</span></td><td>Position. Defaults to after the last group (or 1 for shared groups).</td></tr></tbody></table></div></div>
+<div class="schema" id="s-GroupOrderRequest"><h3><span class="sn">7.4.</span> <code>GroupOrderRequest</code></h3><p>Body of the reorder endpoint.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>groupIds</code></td><td class="ty">integer[]</td><td><span class=req>Required</span></td><td>The flow's own group ids in the new order.</td></tr></tbody></table></div></div>
+<div class="schema" id="s-GroupView"><h3><span class="sn">7.5.</span> <code>GroupView</code></h3><p>One group.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Group id.</td></tr><tr><td><code>groupCode</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Agenda-group code.</td></tr><tr><td><code>orderNo</code></td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Firing position.</td></tr><tr><td><code>shared</code></td><td class="ty">boolean</td><td><span class=req>Required</span></td><td><code>true</code> when the group has no owning flow.</td></tr><tr><td><code>active</code></td><td class="ty">boolean</td><td><span class=req>Required</span></td><td>Whether the group runs.</td></tr></tbody></table></div></div>
+<div class="schema" id="s-ActiveRequest"><h3><span class="sn">7.6.</span> <code>ActiveRequest</code></h3><p>Body of every <code>…/active</code> endpoint.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>active</code></td><td class="ty">boolean</td><td><span class=req>Required</span></td><td><code>true</code> to switch on, <code>false</code> to switch off.</td></tr></tbody></table></div></div>
+<div class="schema" id="s-RuleDefinitionRequest"><h3><span class="sn">7.7.</span> <code>RuleDefinitionRequest</code></h3><p>Body for creating or updating a rule.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>ruleName</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Name, unique within the group.</td></tr><tr><td><code>sourceType</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td><code>BUILDER</code> or <code>DRL</code>.</td></tr><tr><td><code>sourceJson</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Required for <code>BUILDER</code>: a <a href="#s-BuilderRuleSpec">BuilderRuleSpec</a> serialized as a JSON string.</td></tr><tr><td><code>drl</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Required for <code>DRL</code>: the hand-written rule text.</td></tr><tr><td><code>createdBy</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Author, stored for audit.</td></tr></tbody></table></div></div>
+<div class="schema" id="s-RuleView"><h3><span class="sn">7.8.</span> <code>RuleView</code></h3><p>One rule.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Rule id.</td></tr><tr><td><code>groupId</code></td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Owning group id.</td></tr><tr><td><code>groupCode</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Owning group code.</td></tr><tr><td><code>flowCode</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Owning flow, or <code>null</code> for a shared group.</td></tr><tr><td><code>ruleName</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Name.</td></tr><tr><td><code>sourceType</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td><code>BUILDER</code> or <code>DRL</code>.</td></tr><tr><td><code>active</code></td><td class="ty">boolean</td><td><span class=req>Required</span></td><td>Whether the rule is compiled and runs.</td></tr><tr><td><code>version</code></td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Increases by one on every save.</td></tr><tr><td><code>sourceJson</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Builder spec, for builder rules.</td></tr><tr><td><code>drlText</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>The DRL the engine compiles.</td></tr></tbody></table></div></div>
+<div class="schema" id="s-BuilderRuleSpec"><h3><span class="sn">7.9.</span> <code>BuilderRuleSpec</code></h3><p>A builder rule. Send it to the preview endpoint as JSON, or inside <code>sourceJson</code> as a string.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>ruleName</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Rule name.</td></tr><tr><td><code>flow</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Flow code; selects the fact type.</td></tr><tr><td><code>agendaGroup</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Group code the rule belongs to.</td></tr><tr><td><code>salience</code></td><td class="ty">integer</td><td><span class=opt>Optional</span></td><td>Priority inside the group; higher runs first. Default 0.</td></tr><tr><td><code>conditionTree</code></td><td class="ty">ConditionNode</td><td><span class=req>Required</span></td><td>Root of the condition tree.</td></tr><tr><td><code>then</code></td><td class="ty">Outcome</td><td><span class=req>Required</span></td><td><code>{ "decision": "block" | "allow", "message": string }</code>.</td></tr><tr><td><code>otherwise</code></td><td class="ty">Outcome</td><td><span class=opt>Optional</span></td><td>Optional else branch, generated as a second rule with the negated tree.</td></tr></tbody></table></div></div>
+<div class="schema" id="s-ConditionNode"><h3><span class="sn">7.10.</span> <code>ConditionNode</code></h3><p>A node of the condition tree: either a group or a condition. Groups nest to a depth of 10.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>type</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td><code>GROUP</code> or <code>CONDITION</code>.</td></tr><tr><td><code>operator</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Group: <code>AND</code> or <code>OR</code>. Condition: <code>&gt; &lt; &gt;= &lt;= == !=</code>.</td></tr><tr><td><code>children</code></td><td class="ty">ConditionNode[]</td><td><span class=opt>Optional</span></td><td>Group only: child nodes, at least one.</td></tr><tr><td><code>field</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Condition only: catalog field key, e.g. <code>transaction.amount</code>.</td></tr><tr><td><code>value</code></td><td class="ty">any</td><td><span class=opt>Optional</span></td><td>Condition only: literal to compare with.</td></tr><tr><td><code>valueField</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Condition only: compare with another field instead of a literal.</td></tr></tbody></table></div></div>
+<div class="schema" id="s-RulePreviewResponse"><h3><span class="sn">7.11.</span> <code>RulePreviewResponse</code></h3><p>Result of a preview.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>drl</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Generated DRL, or <code>null</code> if generation failed.</td></tr><tr><td><code>valid</code></td><td class="ty">boolean</td><td><span class=req>Required</span></td><td>Whether the DRL compiles.</td></tr><tr><td><code>error</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Compile or generation error.</td></tr></tbody></table></div></div>
+<div class="schema" id="s-FieldRequest"><h3><span class="sn">7.12.</span> <code>FieldRequest</code></h3><p>Body of <code>POST /admin/fields</code>.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>flowCode</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Owning flow. Omit for a shared field.</td></tr><tr><td><code>fieldKey</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Key rule authors pick, e.g. <code>userLimit.limit</code>.</td></tr><tr><td><code>label</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Display name.</td></tr><tr><td><code>dataType</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td><code>NUMBER</code>, <code>ENUM</code>, <code>BOOLEAN</code> or <code>STRING</code>.</td></tr><tr><td><code>drlPath</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Property path on the context. Use <code>!.</code> after nullable objects.</td></tr><tr><td><code>allowedOps</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Space-separated operators, e.g. <code>&gt; &lt; &gt;= &lt;= == !=</code>.</td></tr><tr><td><code>allowedValues</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>For <code>ENUM</code>: comma-separated values.</td></tr></tbody></table></div></div>
+<div class="schema" id="s-RuleFieldCatalog"><h3><span class="sn">7.13.</span> <code>RuleFieldCatalog</code></h3><p>A catalog field as stored.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td class="ty">integer</td><td><span class=req>Required</span></td><td>Field id.</td></tr><tr><td><code>flow</code></td><td class="ty">object</td><td><span class=opt>Optional</span></td><td>Owning flow, or <code>null</code> when shared.</td></tr><tr><td><code>fieldKey</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Field key.</td></tr><tr><td><code>label</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Display name.</td></tr><tr><td><code>dataType</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Data type.</td></tr><tr><td><code>drlPath</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Property path.</td></tr><tr><td><code>allowedOps</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Allowed operators.</td></tr><tr><td><code>allowedValues</code></td><td class="ty">string</td><td><span class=opt>Optional</span></td><td>Enum values.</td></tr></tbody></table></div></div>
+<div class="schema" id="s-RequiredData"><h3><span class="sn">7.14.</span> <code>RequiredData</code></h3><p>What a flow's active rules read.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>flowCode</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>Flow code.</td></tr><tr><td><code>roots</code></td><td class="ty">string[]</td><td><span class=req>Required</span></td><td>Roots the active rules read; these must be loaded.</td></tr><tr><td><code>fields</code></td><td class="ty">string[]</td><td><span class=req>Required</span></td><td>Exact field keys the active rules read.</td></tr><tr><td><code>knownRoots</code></td><td class="ty">string[]</td><td><span class=req>Required</span></td><td>Every root the flow can have; used to catch typos.</td></tr><tr><td><code>complete</code></td><td class="ty">boolean</td><td><span class=req>Required</span></td><td><code>false</code> when a rule could not be analysed; the service then loads everything.</td></tr></tbody></table></div></div>
+<div class="schema" id="s-Error"><h3><span class="sn">7.15.</span> <code>Error</code></h3><p>Body of every 4xx response from the admin API.</p><div class="tbl"><table><thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead><tbody><tr><td><code>timestamp</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>ISO-8601 time of the error.</td></tr><tr><td><code>status</code></td><td class="ty">integer</td><td><span class=req>Required</span></td><td>HTTP status code.</td></tr><tr><td><code>error</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>HTTP reason phrase.</td></tr><tr><td><code>message</code></td><td class="ty">string</td><td><span class=req>Required</span></td><td>What went wrong.</td></tr><tr><td><code>fieldErrors</code></td><td class="ty">object</td><td><span class=opt>Optional</span></td><td>Only for validation errors: field name → message.</td></tr></tbody></table></div></div>
+</section>
+<section id="api-summary">
+  <h2><span class="chap">Appendix A.</span> Endpoint summary</h2>
+  <div class="tbl"><table><thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead><tbody><tr><td><span class="m m-GET">GET</span></td><td><a href="#ep-list-flows"><code>/admin/flows</code></a></td><td>List flows</td></tr><tr><td><span class="m m-POST">POST</span></td><td><a href="#ep-upsert-flow"><code>/admin/flows</code></a></td><td>Create or update a flow</td></tr><tr><td><span class="m m-PUT">PUT</span></td><td><a href="#ep-flow-active"><code>/admin/flows/{flowCode}/active</code></a></td><td>Activate or deactivate a flow</td></tr><tr><td><span class="m m-DELETE">DELETE</span></td><td><a href="#ep-delete-flow"><code>/admin/flows/{flowCode}</code></a></td><td>Delete a flow</td></tr><tr><td><span class="m m-GET">GET</span></td><td><a href="#ep-list-groups"><code>/admin/flows/{flowCode}/groups</code></a></td><td>List a flow's groups</td></tr><tr><td><span class="m m-POST">POST</span></td><td><a href="#ep-add-group"><code>/admin/flows/{flowCode}/groups</code></a></td><td>Add a group to a flow</td></tr><tr><td><span class="m m-PUT">PUT</span></td><td><a href="#ep-reorder-groups"><code>/admin/flows/{flowCode}/groups/order</code></a></td><td>Reorder a flow's groups</td></tr><tr><td><span class="m m-POST">POST</span></td><td><a href="#ep-add-shared-group"><code>/admin/groups/shared</code></a></td><td>Add a shared group</td></tr><tr><td><span class="m m-PUT">PUT</span></td><td><a href="#ep-group-active"><code>/admin/groups/{groupId}/active</code></a></td><td>Activate or deactivate a group</td></tr><tr><td><span class="m m-DELETE">DELETE</span></td><td><a href="#ep-delete-group"><code>/admin/groups/{groupId}</code></a></td><td>Delete a group</td></tr><tr><td><span class="m m-GET">GET</span></td><td><a href="#ep-list-rules"><code>/admin/groups/{groupId}/rules</code></a></td><td>List a group's rules</td></tr><tr><td><span class="m m-POST">POST</span></td><td><a href="#ep-save-rule"><code>/admin/groups/{groupId}/rules</code></a></td><td>Create or replace a rule</td></tr><tr><td><span class="m m-GET">GET</span></td><td><a href="#ep-get-rule"><code>/admin/rules/{id}</code></a></td><td>Get a rule</td></tr><tr><td><span class="m m-PUT">PUT</span></td><td><a href="#ep-update-rule"><code>/admin/rules/{id}</code></a></td><td>Update a rule</td></tr><tr><td><span class="m m-DELETE">DELETE</span></td><td><a href="#ep-delete-rule"><code>/admin/rules/{id}</code></a></td><td>Delete a rule</td></tr><tr><td><span class="m m-PUT">PUT</span></td><td><a href="#ep-rule-active"><code>/admin/rules/{id}/active</code></a></td><td>Activate or deactivate a rule</td></tr><tr><td><span class="m m-POST">POST</span></td><td><a href="#ep-preview-rule"><code>/admin/rules/preview</code></a></td><td>Preview a builder rule</td></tr><tr><td><span class="m m-GET">GET</span></td><td><a href="#ep-list-fields"><code>/admin/flows/{flowCode}/fields</code></a></td><td>List a flow's fields</td></tr><tr><td><span class="m m-POST">POST</span></td><td><a href="#ep-add-field"><code>/admin/fields</code></a></td><td>Add a catalog field</td></tr><tr><td><span class="m m-DELETE">DELETE</span></td><td><a href="#ep-delete-field"><code>/admin/fields/{id}</code></a></td><td>Delete a catalog field</td></tr><tr><td><span class="m m-GET">GET</span></td><td><a href="#ep-required-data"><code>/admin/flows/{flowCode}/required-data</code></a></td><td>Get a flow's required data</td></tr><tr><td><span class="m m-POST">POST</span></td><td><a href="#ep-reload-flows"><code>/admin/flows/reload</code></a></td><td>Reload routing and required data</td></tr><tr><td><span class="m m-POST">POST</span></td><td><a href="#ep-reload-global"><code>/admin/global-context/reload</code></a></td><td>Reload global reference data</td></tr></tbody></table></div>
+</section>
+<section id="api-legal">
+  <h2><span class="chap">Legal notice.</span></h2>
+  <div class="legal">
+    <p>Copyright © 2026 Leads Corporation Limited. All rights reserved.</p>
+    <p>This document and the Rule Engine Library it describes are proprietary to Leads Corporation Limited and are intended for internal use and for authorized client projects. Do not distribute outside these purposes without written permission.</p>
+    <p>Developed by K M Farhat Snigdah, Asrar Al Mohaimen Ahmed and Saikat Datta.</p>
+  </div>
+</section></main></div>
+</div>
 <footer class="foot"><div class="wrap foot-in gutter">
-  <span>© 2026 Leads Corporation Limited · Developed by K M Farhat Snigdah and Asrar Al Mohaimen Ahmed</span>
-  <span>Rule Engine Library 3.0.2 · Developer Guide</span>
-</div></footer>
-
-<script>
+  <span>© 2026 Leads Corporation Limited · Developed by K M Farhat Snigdah, Asrar Al Mohaimen Ahmed and Saikat Datta</span>
+  <span>Rule Engine Library 3.0.2 · Developer Guide and Admin API Reference</span>
+</div></footer><script>
 (function(){
+  var views = { guide: document.getElementById('view-guide'), api: document.getElementById('view-api') };
+  var navs = [].slice.call(document.querySelectorAll('.docnav a[data-view]'));
+
+  function viewOf(el){ return el && el.closest('#view-api') ? 'api' : 'guide'; }
+  function show(name){
+    Object.keys(views).forEach(function(k){ views[k].hidden = (k !== name); });
+    navs.forEach(function(a){ var on = a.dataset.view === name; a.classList.toggle('cur', on); if (on) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
+    document.title = name === 'api' ? 'Rule Engine Admin API Reference' : 'Rule Engine Developer Guide';
+  }
+  function route(){
+    var id = decodeURIComponent((location.hash || '').slice(1));
+    if (!id || id === 'guide') { show('guide'); if (id) window.scrollTo(0,0); return; }
+    if (id === 'api') { show('api'); window.scrollTo(0,0); return; }
+    var el = document.getElementById(id);
+    if (!el) { show('guide'); return; }
+    show(viewOf(el));
+    requestAnimationFrame(function(){ el.scrollIntoView(); });
+  }
+  window.addEventListener('hashchange', route);
+  route();
+
+  // ---- copy buttons (both documents)
+  function copyText(btn, text, sel){
+    var orig = btn.dataset.label || (btn.dataset.label = btn.textContent);
+    var reset = function(){ setTimeout(function(){ btn.textContent = orig; }, 1400); };
+    var done = function(){ btn.textContent = 'Copied'; reset(); };
+    var fb = function(){ if (sel){ var r=document.createRange(); r.selectNodeContents(sel); var s=window.getSelection(); s.removeAllRanges(); s.addRange(r); } btn.textContent='Selected'; reset(); };
+    try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fb); else fb(); } catch(e){ fb(); }
+  }
   document.querySelectorAll('.copy').forEach(function(btn){
     btn.addEventListener('click', function(){
-      var pre = btn.closest('.code').querySelector('pre');
-      var text = pre.innerText;
-      var done = function(){ btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = 'Copy'; }, 1400); };
-      var fallback = function(){
-        var r = document.createRange(); r.selectNodeContents(pre);
-        var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
-        btn.textContent = 'Selected';
-        setTimeout(function(){ btn.textContent = 'Copy'; }, 1400);
-      };
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(done, fallback);
-        } else { fallback(); }
-      } catch (e) { fallback(); }
+      if (btn.dataset.path) { copyText(btn, btn.dataset.path, null); return; }
+      var pre = btn.closest('.code').querySelector('pre'); copyText(btn, pre.innerText, pre);
     });
   });
 
-  var links = Array.prototype.slice.call(document.querySelectorAll('.rail a[href^="#"]'));
-  var byId = {};
-  links.forEach(function(a){ byId[a.getAttribute('href').slice(1)] = a; });
-  var sections = Array.prototype.slice.call(document.querySelectorAll('main > section[id], main h3[id]'));
-  function mark(id){
-    links.forEach(function(a){ a.classList.remove('on'); });
-    if (byId[id]) byId[id].classList.add('on');
-  }
-  if ('IntersectionObserver' in window) {
-    var io = new IntersectionObserver(function(entries){
-      entries.forEach(function(e){ if (e.isIntersecting) mark(e.target.id); });
-    }, { rootMargin: '-15% 0px -70% 0px' });
-    sections.forEach(function(s){ io.observe(s); });
-  }
-  mark('about');
-
-  var toc = document.getElementById('toc');
-  var mq = window.matchMedia('(max-width: 980px)');
-  function syncToc(){ if (mq.matches) toc.removeAttribute('open'); else toc.setAttribute('open',''); }
-  syncToc();
-  if (mq.addEventListener) mq.addEventListener('change', syncToc);
-  links.forEach(function(a){ a.addEventListener('click', function(){ if (mq.matches) toc.removeAttribute('open'); }); });
-})();
-</script>
-
-<script>
-(function(){
-  // quick-start tabs
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('.qs-tab'));
-  function sel(t){
-    tabs.forEach(function(x){
-      var on = x === t; x.classList.toggle('on', on); x.setAttribute('aria-selected', on ? 'true' : 'false');
-      document.getElementById(x.getAttribute('aria-controls')).hidden = !on;
-    });
-  }
-  tabs.forEach(function(t, i){
-    t.addEventListener('click', function(){ sel(t); });
-    t.addEventListener('keydown', function(e){
-      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft'){
-        var n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; sel(n); n.focus();
-      }
-    });
+  // ---- guide: quick-start tabs
+  var qtabs = [].slice.call(document.querySelectorAll('.qs-tab'));
+  function qsel(t){ qtabs.forEach(function(x){ var on=x===t; x.classList.toggle('on',on); x.setAttribute('aria-selected',on?'true':'false'); document.getElementById(x.getAttribute('aria-controls')).hidden=!on; }); }
+  qtabs.forEach(function(t,i){
+    t.addEventListener('click', function(){ qsel(t); });
+    t.addEventListener('keydown', function(e){ if (e.key==='ArrowRight'||e.key==='ArrowLeft'){ var n=qtabs[(i+(e.key==='ArrowRight'?1:qtabs.length-1))%qtabs.length]; qsel(n); n.focus(); } });
   });
 
-  // collapsible table of contents
-  var chaps = Array.prototype.slice.call(document.querySelectorAll('.rail li.chap'));
-  function setOpen(li, open){ li.classList.toggle('open', open); li.querySelector('.tg').setAttribute('aria-expanded', open ? 'true' : 'false'); }
-  chaps.forEach(function(li){ li.querySelector('.tg').addEventListener('click', function(){ li.dataset.manual = '1'; setOpen(li, !li.classList.contains('open')); }); });
-  document.getElementById('toc-exp').addEventListener('click', function(){ chaps.forEach(function(li){ li.dataset.manual='1'; setOpen(li, true); }); });
-  document.getElementById('toc-col').addEventListener('click', function(){ chaps.forEach(function(li){ li.dataset.manual='1'; setOpen(li, false); }); });
+  // ---- api: example tabs
+  document.querySelectorAll('.tabs').forEach(function(bar){
+    var tabs = [].slice.call(bar.querySelectorAll('.tab'));
+    tabs.forEach(function(t){ t.addEventListener('click', function(){
+      tabs.forEach(function(x){ var on=x===t; x.classList.toggle('on',on); x.setAttribute('aria-selected',on?'true':'false'); document.getElementById(x.dataset.pane).hidden=!on; });
+    }); });
+  });
 
-  // keep the chapter you are reading open
+  // ---- api: endpoint filter
+  var f = document.getElementById('ep-filter');
+  if (f) {
+    var items = [].slice.call(views.api.querySelectorAll('.rail li.ep')), none = document.getElementById('nomatch');
+    f.addEventListener('input', function(){
+      var q=f.value.trim().toLowerCase(), shown=0;
+      items.forEach(function(li){ var ok=!q||li.dataset.q.indexOf(q)>-1; li.hidden=!ok; if(ok) shown++; });
+      views.api.querySelectorAll('.rail .grp').forEach(function(g){ var ol=g.nextElementSibling; var any=[].some.call(ol.children,function(li){return !li.hidden;}); g.hidden=!any; ol.hidden=!any; });
+      none.hidden = shown>0;
+    });
+  }
+
+  // ---- guide: collapsible table of contents
+  var guideRail = views.guide.querySelector('.rail');
+  var chaps = [].slice.call(guideRail.querySelectorAll('li.chap'));
+  function setOpen(li, open){ li.classList.toggle('open', open); li.querySelector('.tg').setAttribute('aria-expanded', open?'true':'false'); }
+  chaps.forEach(function(li){ li.querySelector('.tg').addEventListener('click', function(){ li.dataset.manual='1'; setOpen(li, !li.classList.contains('open')); }); });
+  var ex = document.getElementById('toc-exp'), co = document.getElementById('toc-col');
+  if (ex) ex.addEventListener('click', function(){ chaps.forEach(function(li){ li.dataset.manual='1'; setOpen(li,true); }); });
+  if (co) co.addEventListener('click', function(){ chaps.forEach(function(li){ li.dataset.manual='1'; setOpen(li,false); }); });
   var current = null;
-  var obs = new MutationObserver(function(){
-    var on = document.querySelector('.rail a.on'); if (!on) return;
-    var li = on.closest('li[data-sec]') || on.closest('li.chap');
-    while (li && !li.hasAttribute('data-sec')) li = li.parentElement.closest('li');
+  function openFor(a){
+    var li = a.closest('li[data-sec]'); while (li && !li.hasAttribute('data-sec')) li = li.parentElement.closest('li');
     if (!li || li === current) return;
     if (current && current.classList.contains('chap') && !current.dataset.manual) setOpen(current, false);
     current = li;
     if (li.classList.contains('chap')) { delete li.dataset.manual; setOpen(li, true); }
-  });
-  obs.observe(document.querySelector('.rail'), { subtree: true, attributes: true, attributeFilter: ['class'] });
+  }
+
+  // ---- scroll spy, per document
+  function spy(view, selector, onMark){
+    var links = [].slice.call(view.querySelectorAll('.rail a[href^="#"]')), byId = {};
+    links.forEach(function(a){ byId[a.getAttribute('href').slice(1)] = a; });
+    function mark(id){ var a=byId[id]; if(!a) return; links.forEach(function(x){ x.classList.remove('on'); }); a.classList.add('on'); if (onMark) onMark(a); }
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) mark(e.target.id); }); }, { rootMargin: '-15% 0px -70% 0px' });
+      view.querySelectorAll(selector).forEach(function(s){ io.observe(s); });
+    }
+    return links;
+  }
+  var gl = spy(views.guide, 'main > section[id], main h3[id]', openFor);
+  var al = spy(views.api, 'main > section[id], .ep-card[id], .schema[id]', null);
+
+  // ---- mobile: tables of contents start closed and close after a click
+  var tocs = [document.getElementById('toc'), document.getElementById('api-toc')].filter(Boolean);
+  var mq = window.matchMedia('(max-width: 980px)');
+  function sync(){ tocs.forEach(function(t){ if (mq.matches) t.removeAttribute('open'); else t.setAttribute('open',''); }); }
+  sync(); if (mq.addEventListener) mq.addEventListener('change', sync);
+  gl.concat(al).forEach(function(a){ a.addEventListener('click', function(){ if (mq.matches) tocs.forEach(function(t){ t.removeAttribute('open'); }); }); });
 })();
 </script>
 </body>
