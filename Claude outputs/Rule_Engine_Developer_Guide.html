@@ -332,7 +332,7 @@ td code{white-space:nowrap}
     <a href="#api" data-view="api">Admin API Reference</a>
   </nav>
   <div class="bar-right">
-    <span class="pill">Version <b>3.0.2</b></span>
+    <span class="pill">Version <b>3.0.3</b></span>
     <span class="pill">Format <b>Single-page HTML</b></span>
   </div>
 </div></header>
@@ -341,12 +341,12 @@ td code{white-space:nowrap}
   <nav class="crumbs" aria-label="Breadcrumb">
     <a href="#about">Documentation</a><span class="sl">/</span>
     <a href="#overview">Rule Engine Library</a><span class="sl">/</span>
-    <span>3.0.2</span><span class="sl">/</span>
+    <span>3.0.3</span><span class="sl">/</span>
     <span class="cur">Developer Guide</span>
   </nav>
   <div class="hero">
     <div class="hero-main">
-      <div class="prodline"><span class="product">Rule Engine Library</span><span class="tag tag-ver">3.0.2</span><span class="tag tag-ok">Current release</span></div>
+      <div class="prodline"><span class="product">Rule Engine Library</span><span class="tag tag-ver">3.0.3</span><span class="tag tag-ok">Current release</span></div>
       <h1>Rule Engine Developer Guide</h1>
       <p class="subtitle">Integrating <code>com.leads:rule-engine</code> into a Spring Boot microservice</p>
       <div class="abstract">
@@ -376,7 +376,7 @@ td code{white-space:nowrap}
       <div class="code qs-panel" role="tabpanel" id="qp-1" aria-labelledby="qt-1"><div class="code-head"><span class="file">pom.xml</span><button class="copy" type="button">Copy</button></div><pre>&lt;dependency&gt;
   &lt;groupId&gt;com.leads&lt;/groupId&gt;
   &lt;artifactId&gt;rule-engine&lt;/artifactId&gt;
-  &lt;version&gt;3.0.2&lt;/version&gt;
+  &lt;version&gt;3.0.3&lt;/version&gt;
 &lt;/dependency&gt;</pre></div>
       <div class="code qs-panel" role="tabpanel" id="qp-2" aria-labelledby="qt-2" hidden><div class="code-head"><span class="file">application.yml (optional)</span><button class="copy" type="button">Copy</button></div><pre>rule-engine:
   required-data:
@@ -443,7 +443,7 @@ RuleResult result =
 <li data-sec="glossary"><a href="#glossary">Appendix C. Glossary</a>
 </li>
 <li class="chap" data-sec="release"><div class="tocrow"><a href="#release">Appendix D. Release notes</a><button class="tg" type="button" aria-expanded="false" aria-label="Show sections of Appendix D. Release notes"></button></div>
-<ol><li><a href="#sD-1">D.1. Version 3.0.2</a></li><li><a href="#sD-2">D.2. Version 3.0.1</a></li><li><a href="#sD-3">D.3. Version 3.0.0</a></li></ol>
+<ol><li><a href="#sD-1">D.1. Version 3.0.3</a></li><li><a href="#sD-2">D.2. Version 3.0.2</a></li><li><a href="#sD-3">D.3. Version 3.0.1</a></li><li><a href="#sD-4">D.4. Version 3.0.0</a></li></ol>
 </li>
 <li data-sec="legal"><a href="#legal">Legal notice</a>
 </li>
@@ -538,7 +538,7 @@ RuleResult result =
 <div class="code"><div class="code-head"><span class="lang">xml</span><span class="file">pom.xml</span><button class="copy" type="button">Copy</button></div><pre>&lt;dependency&gt;
     &lt;groupId&gt;com.leads&lt;/groupId&gt;
     &lt;artifactId&gt;rule-engine&lt;/artifactId&gt;
-    &lt;version&gt;3.0.2&lt;/version&gt;
+    &lt;version&gt;3.0.3&lt;/version&gt;
 &lt;/dependency&gt;</pre></div></li>
     <li><p>Create the four library tables: <code>RULE_FLOW</code>, <code>RULE_GROUP</code>, <code>RULE_DEFINITION</code> and <code>RULE_FIELD_CATALOG</code>. Whether you run a script depends on <code>spring.jpa.hibernate.ddl-auto</code>; see <a href="#s2-1">2.1. Database schema</a>.</p></li>
     <li><p>Add the library settings to <code>application.yml</code>.</p>
@@ -877,7 +877,7 @@ transferService.post(request);   <span class="c">// only reached when no rule bl
   </table></div>
   <p class="hd">Procedure</p>
   <ol class="steps">
-    <li><p>Change the dependency to <code>3.0.2</code> and rebuild.</p></li>
+    <li><p>Change the dependency to <code>3.0.3</code> and rebuild.</p></li>
     <li><p>Read the decision from the returned <code>RuleResult</code> instead of the context.</p></li>
     <li><p>Remove the three decision fields from your context classes.</p></li>
     <li><p>Update any hand-written DRL that calls <code>$ctx.setValid(…)</code> to use the <code>result</code> global (section 4.5).</p></li>
@@ -1131,7 +1131,11 @@ root     : userLimit</pre></div>
 <section id="release">
   <h2><span class="chap">Appendix D.</span> Release notes</h2>
   <p class="intro">Changes by library version. Upgrade by changing the dependency version; no database change is needed between these versions.</p>
-  <h3 id="sD-1"><span class="sn">D.1.</span> Version 3.0.2</h3>
+  <h3 id="sD-1"><span class="sn">D.1.</span> Version 3.0.3</h3>
+  <ul>
+    <li>Release number for redeployment to Nexus. Contains everything listed under 3.0.2 and 3.0.1; no API changes compared with 3.0.2.</li>
+  </ul>
+  <h3 id="sD-2"><span class="sn">D.2.</span> Version 3.0.2</h3>
   <p class="hd">New</p>
   <ul>
     <li><code>RuleResult</code>: <code>execute(…)</code> returns the decision (valid, permission denied, message). Context classes no longer need decision fields.</li>
@@ -1143,13 +1147,13 @@ root     : userLimit</pre></div>
     <li>Contexts that still have <code>setValid</code>, <code>setPermissionDenied</code> and <code>setValidationMessage</code> also receive the decision.</li>
     <li>Hand-written DRL rules are not changed. Rules that still write <code>$ctx.setValid(…)</code> need the context fields until they are migrated.</li>
   </ul>
-  <h3 id="sD-2"><span class="sn">D.2.</span> Version 3.0.1</h3>
+  <h3 id="sD-3"><span class="sn">D.3.</span> Version 3.0.1</h3>
   <ul>
     <li><code>requiredData(…)</code> and <code>RequiredData.needs(root)</code>: load only the data the active rules read.</li>
     <li><code>GET /admin/flows/{flowCode}/required-data</code>.</li>
     <li>Settings <code>rule-engine.required-data.enabled</code>, <code>shadow</code> and <code>trust-drl-hints</code>.</li>
   </ul>
-  <h3 id="sD-3"><span class="sn">D.3.</span> Version 3.0.0</h3>
+  <h3 id="sD-4"><span class="sn">D.4.</span> Version 3.0.0</h3>
   <ul>
     <li>Four-table schema: <code>RULE_FLOW</code>, <code>RULE_GROUP</code>, <code>RULE_DEFINITION</code>, <code>RULE_FIELD_CATALOG</code>.</li>
     <li>Active flags on flows, groups and rules, with separate activate and delete endpoints.</li>
@@ -1174,12 +1178,12 @@ root     : userLimit</pre></div>
   <nav class="crumbs" aria-label="Breadcrumb">
     <a href="#guide">Documentation</a><span class="sl">/</span>
     <a href="#guide">Rule Engine Library</a><span class="sl">/</span>
-    <span>3.0.2</span><span class="sl">/</span>
+    <span>3.0.3</span><span class="sl">/</span>
     <span class="cur">Admin API Reference</span>
   </nav>
   <div class="hero hero-api">
     <div class="hero-main">
-      <div class="prodline"><span class="product">Rule Engine Library</span><span class="tag tag-ver">3.0.2</span><span class="tag tag-ok">Current release</span></div>
+      <div class="prodline"><span class="product">Rule Engine Library</span><span class="tag tag-ver">3.0.3</span><span class="tag tag-ok">Current release</span></div>
       <h1>Rule Engine Admin API Reference</h1>
       <p class="subtitle">REST endpoints for managing flows, groups, rules and catalog fields at runtime</p>
       <div class="abstract">
@@ -1861,7 +1865,7 @@ root     : userLimit</pre></div>
 </div>
 <footer class="foot"><div class="wrap foot-in gutter">
   <span>© 2026 Leads Corporation Limited · Developed by K M Farhat Snigdah, Asrar Al Mohaimen Ahmed and Saikat Datta</span>
-  <span>Rule Engine Library 3.0.2 · Developer Guide and Admin API Reference</span>
+  <span>Rule Engine Library 3.0.3 · Developer Guide and Admin API Reference</span>
 </div></footer><script>
 (function(){
   var views = { guide: document.getElementById('view-guide'), api: document.getElementById('view-api') };

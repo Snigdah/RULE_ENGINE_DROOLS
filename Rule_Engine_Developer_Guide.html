@@ -1,0 +1,1207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rule Engine Developer Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: official product-docs shell — black utility bar, light title block with breadcrumb + abstract,
+   sticky table of contents on the left, one reading column (~70ch), legal notice at the end */
+:root{
+  --bg:#ffffff; --bg-soft:#f5f6f7; --bg-code:#f3f4f6; --line:#e0e3e7; --line-strong:#c8cdd3;
+  --fg:#151a20; --fg-2:#3f4852; --fg-3:#6a737d;
+  --bar:#0b0f14; --bar-fg:#f2f4f6; --bar-dim:#a3adb8;
+  --accent:#0a6a8f; --accent-strong:#075473; --accent-soft:#e4f1f6; --accent-fg:#ffffff;
+  --note:#2b6cb0; --note-bg:#ebf3fb;
+  --imp:#9a5b00; --imp-bg:#fdf4e3;
+  --warn:#b42318; --warn-bg:#fdecea;
+  --tip:#1d7446; --tip-bg:#e8f5ee;
+  --dot:rgba(10,106,143,.10);
+  --font-body:"IBM Plex Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#101418; --bg-soft:#161c22; --bg-code:#131920; --line:#262f38; --line-strong:#36424e;
+  --fg:#e7ebef; --fg-2:#b6c0ca; --fg-3:#8592a0;
+  --bar:#05080b; --bar-fg:#eef1f4; --bar-dim:#8f9cab;
+  --accent:#55b6dc; --accent-strong:#7fc9e6; --accent-soft:#132f3b; --accent-fg:#071319;
+  --note:#7fb2ea; --note-bg:#14222f;
+  --imp:#e2a84f; --imp-bg:#291f10;
+  --warn:#f08c84; --warn-bg:#2d1715;
+  --tip:#69c697; --tip-bg:#12261c; --dot:rgba(85,182,220,.10);
+  color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#101418; --bg-soft:#161c22; --bg-code:#131920; --line:#262f38; --line-strong:#36424e;
+  --fg:#e7ebef; --fg-2:#b6c0ca; --fg-3:#8592a0;
+  --bar:#05080b; --bar-fg:#eef1f4; --bar-dim:#8f9cab;
+  --accent:#55b6dc; --accent-strong:#7fc9e6; --accent-soft:#132f3b; --accent-fg:#071319;
+  --note:#7fb2ea; --note-bg:#14222f;
+  --imp:#e2a84f; --imp-bg:#291f10;
+  --warn:#f08c84; --warn-bg:#2d1715;
+  --tip:#69c697; --tip-bg:#12261c; --dot:rgba(85,182,220,.10);
+  color-scheme:dark; }
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:20px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:3px}
+a:hover{color:var(--accent-strong)}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+code,pre{font-family:var(--font-mono)}
+.gutter{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.wrap{max-width:1280px;margin:0 auto}
+
+/* utility bar */
+.bar{background:var(--bar);color:var(--bar-fg);font-size:14px}
+.bar-in{padding-block:11px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.org{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:.01em}
+.org-mark{width:26px;height:26px;border-radius:5px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-weight:700;font-size:12.5px}
+.bar-sep{width:1px;height:18px;background:var(--bar-dim);opacity:.4}
+.bar-dim{color:var(--bar-dim)}
+.bar-right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{font-size:12px;border:1px solid rgba(163,173,184,.35);color:var(--bar-dim);border-radius:3px;padding:2px 8px;white-space:nowrap}
+.pill b{color:var(--bar-fg);font-weight:500}
+
+.docnav{display:flex;gap:4px;margin-left:18px}
+.docnav a{color:var(--bar-dim);text-decoration:none;font-size:13.5px;padding:4px 10px;border-radius:3px}
+.docnav a:hover{color:var(--bar-fg);background:rgba(255,255,255,.06)}
+.docnav a.cur{color:var(--bar-fg);background:rgba(255,255,255,.1)}
+.refcard{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--accent);background:var(--accent-soft);border-radius:6px;padding:16px 18px;margin:8px 0 22px}
+.refcard .rt{font-weight:600;font-size:16px}
+.refcard p{margin:2px 0 0;color:var(--fg-2);font-size:14.5px}
+@media (max-width: 980px){ .docnav{margin-left:0} }
+
+/* title block */
+.titleblock{border-bottom:1px solid var(--line);background:
+  radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0) 0 0/22px 22px,
+  linear-gradient(180deg, var(--bg-soft), var(--bg));}
+.titleblock-in{padding-block:20px 0}
+.crumbs{font-size:13.5px;color:var(--fg-3);display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:26px}
+.crumbs a{color:var(--fg-3);text-decoration:none}
+.crumbs a:hover{color:var(--accent);text-decoration:underline}
+.crumbs .sl{opacity:.6}
+.crumbs .cur{color:var(--fg-2);font-weight:500}
+.hero{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:44px;align-items:start}
+.hero-main{min-width:0}
+.prodline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.product{font-size:15px;font-weight:600;color:var(--accent);letter-spacing:.01em}
+.tag{font-size:11.5px;font-weight:600;letter-spacing:.04em;border-radius:3px;padding:2px 8px;border:1px solid}
+.tag-ver{color:var(--fg-2);border-color:var(--line-strong);background:var(--bg);font-family:var(--font-mono)}
+.tag-ok{color:var(--tip);border-color:color-mix(in srgb, var(--tip) 40%, transparent);background:var(--tip-bg)}
+.titleblock h1{font-size:clamp(32px,4.4vw,46px);line-height:1.1;font-weight:600;margin:0 0 8px;letter-spacing:-.015em;text-wrap:balance}
+.subtitle{font-size:18px;color:var(--fg-2);margin:0 0 22px}
+.abstract{max-width:70ch;border-left:3px solid var(--accent);background:var(--bg);padding:12px 16px;margin:0 0 22px;border-radius:0 4px 4px 0;box-shadow:0 1px 0 var(--line)}
+.abstract .lbl{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-3);margin-bottom:4px}
+.abstract p{margin:0;color:var(--fg-2)}
+.cta{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}
+.btn{display:inline-flex;align-items:center;gap:8px;font-weight:500;font-size:15px;padding:9px 18px;border-radius:4px;text-decoration:none;border:1px solid transparent;transition:background .15s,border-color .15s,color .15s}
+.btn-pri{background:var(--accent);color:var(--accent-fg)}
+.btn-pri:hover{background:var(--accent-strong);color:var(--accent-fg)}
+.btn-pri::after{content:"→"}
+.btn-sec{border-color:var(--accent);color:var(--accent);background:var(--bg)}
+.btn-sec:hover{background:var(--accent-soft)}
+.btn-ghost{color:var(--fg-2)}
+.btn-ghost:hover{color:var(--accent);text-decoration:underline}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12.5px;color:var(--fg-2);background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 10px}
+
+.qs{border:1px solid var(--line-strong);border-radius:6px;background:var(--bg);box-shadow:0 10px 30px -18px rgba(10,30,50,.35);overflow:hidden;min-width:0}
+.qs-head{padding:14px 16px 10px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid var(--line)}
+.qs-title{font-weight:600;font-size:15px}
+.qs-sub{font-size:13px;color:var(--fg-3)}
+.qs-tabs{display:flex;border-bottom:1px solid var(--line);background:var(--bg-soft);overflow-x:auto}
+.qs-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;font:500 13.5px var(--font-body);color:var(--fg-2);background:transparent;border:0;border-bottom:2px solid transparent;padding:10px 12px;cursor:pointer;white-space:nowrap}
+.qs-tab span{width:18px;height:18px;border-radius:50%;border:1px solid var(--line-strong);display:grid;place-items:center;font-size:11px;font-family:var(--font-mono)}
+.qs-tab:hover{color:var(--fg)}
+.qs-tab.on{color:var(--accent);border-bottom-color:var(--accent);background:var(--bg)}
+.qs-tab.on span{border-color:var(--accent);background:var(--accent);color:var(--accent-fg)}
+.qs .code{margin:0;border:0;border-radius:0}
+.qs pre{min-height:150px}
+.qs-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin:0;padding:12px 16px;border-top:1px solid var(--line);font-size:13.5px}
+.qs-meta dt{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.qs-meta dd{margin:2px 0 0}
+
+.byline{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;margin-top:30px;padding-block:14px;border-top:1px solid var(--line);font-size:14.5px}
+.by-lbl{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.person{display:inline-flex;align-items:center;gap:9px;font-weight:500}
+.av{width:30px;height:30px;border-radius:50%;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-size:12px;font-weight:600;letter-spacing:.03em}
+.av2{background:var(--fg-2);color:var(--bg)}
+
+/* shell */
+.shell{display:grid;grid-template-columns:280px minmax(0,1fr);gap:56px;padding-block:36px 72px}
+.rail{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 16px);align-self:start;max-height:calc(100vh - 32px);overflow:auto;font-size:14px;padding-right:4px}
+.rail summary{list-style:none;font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-3);font-weight:600;margin-bottom:12px;cursor:default}
+.rail summary::-webkit-details-marker{display:none}
+.rail ol{list-style:none;margin:0;padding:0}
+.rail li{margin:0}
+.rail a{display:block;padding:5px 10px 5px 12px;color:var(--fg-2);text-decoration:none;border-left:2px solid var(--line);line-height:1.4}
+.rail a:hover{color:var(--fg);border-left-color:var(--line-strong);background:var(--bg-soft)}
+.rail a.on{color:var(--accent);border-left-color:var(--accent);font-weight:500;background:var(--accent-soft)}
+.rail .tocrow{display:flex;align-items:stretch}
+.rail .tocrow a{flex:1;min-width:0}
+.rail .tg{flex:none;width:30px;border:0;border-left:2px solid transparent;background:transparent;color:var(--fg-3);cursor:pointer;font-size:12px;border-radius:0}
+.rail .tg:hover{color:var(--fg);background:var(--bg-soft)}
+.rail .tg::before{content:"";display:inline-block;width:7px;height:7px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
+.rail li.open > .tocrow .tg::before{transform:rotate(45deg) translate(-1px,-1px)}
+.rail li.chap > ol{display:none}
+.rail li.chap.open > ol{display:block}
+.rail ol ol a{padding-left:28px;font-size:13px;color:var(--fg-3)}
+.rail ol ol a.on{color:var(--accent);font-weight:500}
+.rail .tocbar{display:flex;gap:12px;margin:-4px 0 10px;font-size:12.5px}
+.rail .tocbar button{border:0;background:none;color:var(--accent);cursor:pointer;padding:0;font:500 12.5px var(--font-body)}
+.rail .tocbar button:hover{text-decoration:underline}
+
+/* reading column */
+main{min-width:0;max-width:840px}
+main > section{padding-bottom:30px;border-bottom:1px solid var(--line);margin-bottom:40px}
+main > section:last-of-type{border-bottom:0}
+h2{font-size:30px;line-height:1.22;font-weight:600;margin:0 0 14px;text-wrap:balance;letter-spacing:-.01em}
+h2 .chap{color:var(--fg-3);font-weight:500}
+h3{font-size:21px;line-height:1.3;font-weight:600;margin:36px 0 10px;text-wrap:balance}
+h3 .sn{color:var(--fg-3);font-weight:500;margin-right:4px}
+.hd{font-size:15px;font-weight:600;color:var(--fg);margin:22px 0 8px}
+p,li{max-width:70ch}
+p{margin:0 0 14px}
+.intro{color:var(--fg-2);font-size:17px;margin-bottom:20px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin:4px 0}
+:not(pre) > code{font-size:.87em;background:var(--bg-code);border:1px solid var(--line);border-radius:3px;padding:1px 5px;white-space:nowrap}
+strong{font-weight:600}
+.res{list-style:none;padding:0}
+.res li::before{content:"›";color:var(--accent);font-weight:700;margin-right:8px}
+
+/* procedure steps */
+ol.steps{list-style:none;padding:0;counter-reset:s;margin:8px 0 18px}
+ol.steps > li{counter-increment:s;position:relative;padding-left:40px;margin:0 0 18px;max-width:none}
+ol.steps > li::before{content:counter(s) ".";position:absolute;left:0;top:0;width:28px;text-align:right;color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+ol.steps > li > p:first-child{margin-bottom:8px}
+
+/* code */
+.code{margin:12px 0 20px;border:1px solid var(--line);border-radius:4px;background:var(--bg-code);overflow:hidden}
+.code-head{display:flex;align-items:center;gap:10px;padding:6px 8px 6px 14px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--fg-3);background:var(--bg-soft)}
+.code-head .lang{font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.06em;font-size:11px}
+.code-head .file{font-family:var(--font-mono);color:var(--fg-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.copy{margin-left:auto;font:500 12px var(--font-body);color:var(--fg-2);background:var(--bg);border:1px solid var(--line-strong);border-radius:3px;padding:3px 10px;cursor:pointer;white-space:nowrap}
+.copy:hover{color:var(--fg);border-color:var(--fg-3)}
+pre{margin:0;padding:14px 16px;overflow-x:auto;font-size:13.5px;line-height:1.6;color:var(--fg);tab-size:4}
+.code.tall pre{max-height:520px;overflow:auto}
+pre .c{color:var(--fg-3)}
+pre .k{color:var(--accent);font-weight:500}
+pre .s{color:var(--tip)}
+pre .h{background:var(--accent-soft);display:inline-block;min-width:calc(100% + 32px);margin:0 -16px;padding:0 16px}
+
+/* admonitions */
+.adm{display:grid;grid-template-columns:22px minmax(0,1fr);gap:12px;border:1px solid var(--line);border-top:3px solid var(--c);background:var(--b);border-radius:3px;padding:12px 16px;margin:16px 0 20px}
+.adm .ic{width:22px;height:22px;border-radius:50%;background:var(--c);color:var(--bg);font-weight:700;font-size:13px;display:grid;place-items:center;margin-top:2px;font-family:var(--font-body)}
+.adm .t{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--c);margin-bottom:2px}
+.adm p:last-child,.adm ul:last-child{margin-bottom:0}
+.adm.note{--c:var(--note);--b:var(--note-bg)}
+.adm.imp{--c:var(--imp);--b:var(--imp-bg)}
+.adm.warn{--c:var(--warn);--b:var(--warn-bg)}
+.adm.tip{--c:var(--tip);--b:var(--tip-bg)}
+
+/* tables */
+.tbl{overflow-x:auto;margin:12px 0 20px;border:1px solid var(--line);border-radius:4px}
+.tcap{font-size:13.5px;font-weight:600;color:var(--fg-2);margin:18px 0 -4px}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--bg-soft);font-weight:600;font-size:13px;color:var(--fg-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+.yes{color:var(--tip);font-weight:600}
+.no{color:var(--fg-3)}
+
+/* lifecycle */
+.flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:18px 0 8px}
+.flow .st{border:1px solid var(--line-strong);border-radius:4px;padding:12px;background:var(--bg);min-width:0}
+.flow .st .n{font-family:var(--font-mono);font-size:11.5px;color:var(--accent);font-weight:500}
+.flow .st .h{font-weight:600;font-size:14.5px;margin:2px 0 4px}
+.flow .st .d{font-size:13px;color:var(--fg-2);line-height:1.45}
+.flow .st.mem{border-color:var(--accent);background:var(--accent-soft)}
+.flow .st.db{border-style:dashed}
+.legend{display:flex;flex-wrap:wrap;gap:18px;font-size:13px;color:var(--fg-3);margin-bottom:18px}
+.legend span::before{content:"";display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.legend .lm::before{background:var(--accent-soft);border:1px solid var(--accent)}
+.legend .ld::before{border:1px dashed var(--line-strong)}
+
+.concepts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 20px}
+.concept{border:1px solid var(--line);border-radius:4px;padding:14px 16px;min-width:0}
+.concept .h{font-weight:600;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.concept .h code{font-size:12px}
+.concept p{font-size:14.5px;color:var(--fg-2);margin:6px 0 0}
+
+.kv{display:grid;grid-template-columns:auto 1fr;gap:8px 20px;font-size:14.5px;margin:6px 0 16px}
+.kv dt{font-weight:600}
+.kv dd{margin:0;color:var(--fg-2)}
+
+.authors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:10px 0 18px}
+.author{border:1px solid var(--line);border-radius:4px;padding:12px 16px}
+.author .nm{font-weight:600}
+.author .rl{font-size:13.5px;color:var(--fg-3)}
+
+.legal{font-size:13.5px;color:var(--fg-3)}
+.legal p{max-width:none}
+
+.foot{border-top:1px solid var(--line);background:var(--bg-soft);color:var(--fg-3);font-size:13px}
+.foot-in{padding-block:22px 34px;display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between}
+
+@media (max-width: 980px){
+  .shell{grid-template-columns:minmax(0,1fr);gap:20px;padding-block:20px 60px}
+  .rail{position:static;max-height:none;border:1px solid var(--line);border-radius:4px;padding:12px 14px;background:var(--bg-soft)}
+  .rail summary{cursor:pointer;margin:0}
+  .rail details[open] summary{margin-bottom:10px}
+  .rail summary::after{content:" ▾"}
+  .flow,.concepts{grid-template-columns:minmax(0,1fr)}
+  .hero{grid-template-columns:minmax(0,1fr);gap:24px}
+}
+@media (max-width: 560px){
+  h2{font-size:25px}
+  .bar-right{margin-left:0}
+  .bar-sep{display:none}
+  .authors{grid-template-columns:minmax(0,1fr)}
+  :not(pre) > code{white-space:normal;overflow-wrap:anywhere}
+}
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+
+<header class="bar"><div class="wrap bar-in gutter">
+  <div class="org"><span class="org-mark" aria-hidden="true">L</span>Leads Corporation Limited</div>
+  <span class="bar-sep" aria-hidden="true"></span>
+  <span class="bar-dim">Product Documentation</span>
+  <nav class="docnav" aria-label="Documents">
+    <a class="cur" href="Rule_Engine_Developer_Guide.html" aria-current="page">Developer Guide</a>
+    <a href="Rule_Engine_API_Reference.html">Admin API Reference</a>
+  </nav>
+  <div class="bar-right">
+    <span class="pill">Version <b>3.0.2</b></span>
+    <span class="pill">Format <b>Single-page HTML</b></span>
+  </div>
+</div></header>
+
+<div class="titleblock"><div class="wrap titleblock-in gutter">
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a href="#about">Documentation</a><span class="sl">/</span>
+    <a href="#overview">Rule Engine Library</a><span class="sl">/</span>
+    <span>3.0.2</span><span class="sl">/</span>
+    <span class="cur">Developer Guide</span>
+  </nav>
+  <div class="hero">
+    <div class="hero-main">
+      <div class="prodline"><span class="product">Rule Engine Library</span><span class="tag tag-ver">3.0.2</span><span class="tag tag-ok">Current release</span></div>
+      <h1>Rule Engine Developer Guide</h1>
+      <p class="subtitle">Integrating <code>com.leads:rule-engine</code> into a Spring Boot microservice</p>
+      <div class="abstract">
+        <div class="lbl">Abstract</div>
+        <p>This guide explains how service developers install the Rule Engine Library, register a request type, run business rules, and load only the data the active rules need. It also describes how runtime rule changes are cached and how to resolve common problems.</p>
+      </div>
+      <div class="cta">
+        <a class="btn btn-pri" href="#install">Get started</a>
+        <a class="btn btn-sec" href="#demand">Load only what you need</a>
+        <a class="btn btn-ghost" href="Rule_Engine_API_Reference.html">Admin API Reference</a>
+      </div>
+      <div class="chips" aria-label="Supported platform">
+        <span class="chip">Spring Boot 3.5.x</span><span class="chip">Java 21</span><span class="chip">PostgreSQL</span><span class="chip">Oracle</span><span class="chip">Drools</span>
+      </div>
+    </div>
+
+    <aside class="qs" aria-label="Quick start">
+      <div class="qs-head">
+        <span class="qs-title">Quick start</span>
+        <span class="qs-sub">Three changes in your service</span>
+      </div>
+      <div class="qs-tabs" role="tablist">
+        <button class="qs-tab on" role="tab" id="qt-1" aria-selected="true" aria-controls="qp-1" type="button"><span>1</span>Dependency</button>
+        <button class="qs-tab" role="tab" id="qt-2" aria-selected="false" aria-controls="qp-2" type="button"><span>2</span>Config</button>
+        <button class="qs-tab" role="tab" id="qt-3" aria-selected="false" aria-controls="qp-3" type="button"><span>3</span>Run rules</button>
+      </div>
+      <div class="code qs-panel" role="tabpanel" id="qp-1" aria-labelledby="qt-1"><div class="code-head"><span class="file">pom.xml</span><button class="copy" type="button">Copy</button></div><pre>&lt;dependency&gt;
+  &lt;groupId&gt;com.leads&lt;/groupId&gt;
+  &lt;artifactId&gt;rule-engine&lt;/artifactId&gt;
+  &lt;version&gt;3.0.2&lt;/version&gt;
+&lt;/dependency&gt;</pre></div>
+      <div class="code qs-panel" role="tabpanel" id="qp-2" aria-labelledby="qt-2" hidden><div class="code-head"><span class="file">application.yml (optional)</span><button class="copy" type="button">Copy</button></div><pre>rule-engine:
+  required-data:
+    enabled: true</pre></div>
+      <div class="code qs-panel" role="tabpanel" id="qp-3" aria-labelledby="qt-3" hidden><div class="code-head"><span class="file">TransactionRuleService.java</span><button class="copy" type="button">Copy</button></div><pre>RequiredData need =
+    ruleEngine.requiredData(TransactionRequest.<span class="k">class</span>);
+
+<span class="k">if</span> (need.needs(<span class="s">"userLimit"</span>)) {
+    ctx.setUserLimit(repo.findByUserId(id));
+}
+RuleResult result =
+    ruleEngine.execute(ctx, TransactionRequest.<span class="k">class</span>);</pre></div>
+      <dl class="qs-meta">
+        <div><dt>Organization</dt><dd>Leads Corporation Limited</dd></div>
+        <div><dt>Last updated</dt><dd>15 October 2026</dd></div>
+      </dl>
+    </aside>
+  </div>
+
+  <div class="byline">
+    <span class="by-lbl">Developed by</span>
+    <span class="person"><span class="av" aria-hidden="true">KS</span>K M Farhat Snigdah</span>
+    <span class="person"><span class="av av2" aria-hidden="true">AA</span>Asrar Al Mohaimen Ahmed</span>
+  </div>
+</div></div>
+
+<div class="wrap shell gutter">
+<aside class="rail" aria-label="Table of contents">
+  <details id="toc" open>
+    <summary>Table of contents</summary>
+    <div class="tocbar"><button type="button" id="toc-exp">Expand all</button><button type="button" id="toc-col">Collapse all</button></div><ol>
+<li data-sec="about"><a href="#about">Preface. About this guide</a>
+</li>
+<li class="chap" data-sec="overview"><div class="tocrow"><a href="#overview">Chapter 1. Overview</a><button class="tg" type="button" aria-expanded="false" aria-label="Show sections of Chapter 1. Overview"></button></div>
+<ol><li><a href="#s1-1">1.1. Key concepts</a></li><li><a href="#s1-2">1.2. How a request runs</a></li><li><a href="#s1-3">1.3. What is cached</a></li></ol>
+</li>
+<li class="chap" data-sec="install"><div class="tocrow"><a href="#install">Chapter 2. Installing the library</a><button class="tg" type="button" aria-expanded="false" aria-label="Show sections of Chapter 2. Installing the library"></button></div>
+<ol><li><a href="#s2-1">2.1. Database schema</a></li></ol>
+</li>
+<li class="chap" data-sec="onboard"><div class="tocrow"><a href="#onboard">Chapter 3. Onboarding a request type</a><button class="tg" type="button" aria-expanded="false" aria-label="Show sections of Chapter 3. Onboarding a request type"></button></div>
+<ol><li><a href="#s3-1">3.1. Write the request and context classes</a></li><li><a href="#s3-2">3.2. Register the flow</a></li><li><a href="#s3-3">3.3. What rule authors do next</a></li></ol>
+</li>
+<li class="chap" data-sec="execute"><div class="tocrow"><a href="#execute">Chapter 4. Running the rules and reading the result</a><button class="tg" type="button" aria-expanded="false" aria-label="Show sections of Chapter 4. Running the rules and reading the result"></button></div>
+<ol><li><a href="#s4-1">4.1. The two forms of execute</a></li><li><a href="#s4-2">4.2. Reading the decision</a></li><li><a href="#s4-3">4.3. How several rules combine</a></li><li><a href="#s4-4">4.4. Using the result in your service</a></li><li><a href="#s4-5">4.5. Writing the result from hand-written DRL</a></li><li><a href="#s4-6">4.6. Migrating from context decision fields</a></li></ol>
+</li>
+<li class="chap" data-sec="demand"><div class="tocrow"><a href="#demand">Chapter 5. Loading only the data you need</a><button class="tg" type="button" aria-expanded="false" aria-label="Show sections of Chapter 5. Loading only the data you need"></button></div>
+<ol><li><a href="#s5-1">5.1. Ask, then check before each lookup</a></li><li><a href="#s5-2">5.2. Which name to pass</a></li><li><a href="#s5-3">5.3. How the library works out the roots</a></li><li><a href="#s5-4">5.4. Safety rules</a></li></ol>
+</li>
+<li class="chap" data-sec="context"><div class="tocrow"><a href="#context">Chapter 6. Designing the context object</a><button class="tg" type="button" aria-expanded="false" aria-label="Show sections of Chapter 6. Designing the context object"></button></div>
+<ol><li><a href="#s6-1">6.1. Rules for the context</a></li><li><a href="#s6-2">6.2. Example: nested path</a></li></ol>
+</li>
+<li class="chap" data-sec="runtime"><div class="tocrow"><a href="#runtime">Chapter 7. Runtime changes and caching</a><button class="tg" type="button" aria-expanded="false" aria-label="Show sections of Chapter 7. Runtime changes and caching"></button></div>
+<ol><li><a href="#s7-1">7.1. What happens on a rule save</a></li><li><a href="#s7-2">7.2. Direct database changes</a></li></ol>
+</li>
+<li data-sec="trouble"><a href="#trouble">Chapter 8. Troubleshooting</a>
+</li>
+<li data-sec="ref-api"><a href="#ref-api">Appendix A. Admin API reference</a>
+</li>
+<li data-sec="ref-config"><a href="#ref-config">Appendix B. Configuration reference</a>
+</li>
+<li data-sec="glossary"><a href="#glossary">Appendix C. Glossary</a>
+</li>
+<li class="chap" data-sec="release"><div class="tocrow"><a href="#release">Appendix D. Release notes</a><button class="tg" type="button" aria-expanded="false" aria-label="Show sections of Appendix D. Release notes"></button></div>
+<ol><li><a href="#sD-1">D.1. Version 3.0.2</a></li><li><a href="#sD-2">D.2. Version 3.0.1</a></li><li><a href="#sD-3">D.3. Version 3.0.0</a></li></ol>
+</li>
+<li data-sec="legal"><a href="#legal">Legal notice</a>
+</li>
+</ol>
+  </details>
+</aside>
+
+<main>
+
+<!-- ============ PREFACE ============ -->
+<section id="about">
+  <h2><span class="chap">Preface.</span> About this guide</h2>
+  <p class="intro">This guide is for developers who add <code>com.leads:rule-engine</code> to a business microservice. It does not cover building rules in the Rule Builder UI; rule administrators do that.</p>
+  <p>Every example uses the same scenario: a <strong>fund transfer service</strong> that must block a transfer when the amount is over the user's limit on a debit-restricted account. Follow the chapters in order to go from an empty service to running rules.</p>
+
+  <h3>Developed by</h3>
+  <div class="authors">
+    <div class="author"><div class="nm">K M Farhat Snigdah</div><div class="rl">Leads Corporation Limited</div></div>
+    <div class="author"><div class="nm">Asrar Al Mohaimen Ahmed</div><div class="rl">Leads Corporation Limited</div></div>
+  </div>
+
+  <h3>Document conventions</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>You see</th><th>It means</th></tr></thead>
+    <tbody>
+      <tr><td><code>monospace</code></td><td>Code, class names, endpoints, file names and values you type exactly.</td></tr>
+      <tr><td><strong>Prerequisites</strong></td><td>What must be in place before you start.</td></tr>
+      <tr><td><strong>Procedure</strong></td><td>Numbered steps. Do them in order.</td></tr>
+      <tr><td><strong>Verification</strong></td><td>How to confirm a procedure worked.</td></tr>
+      <tr><td><strong>Additional resources</strong></td><td>Related sections to read next.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="adm note"><span class="ic" aria-hidden="true">i</span><div><div class="t">Note</div><p>Extra information that helps you understand a point.</p></div></div>
+  <div class="adm imp"><span class="ic" aria-hidden="true">!</span><div><div class="t">Important</div><p>Something you must do, or the feature will not work as described.</p></div></div>
+  <div class="adm warn"><span class="ic" aria-hidden="true">!</span><div><div class="t">Warning</div><p>An action that can cause wrong decisions or data loss.</p></div></div>
+</section>
+
+<!-- ============ 1 OVERVIEW ============ -->
+<section id="overview">
+  <h2><span class="chap">Chapter 1.</span> Overview</h2>
+  <p class="intro">The library runs business rules stored in the database. Rules can be added, changed, switched on and off, or deleted at runtime, without redeploying your service.</p>
+
+  <h3 id="s1-1"><span class="sn">1.1.</span> Key concepts</h3>
+  <div class="concepts">
+    <div class="concept"><div class="h">Flow <code>RULE_FLOW</code></div><p>One business operation, such as <code>TRANSFER_TRANSACTION</code>. Each request class maps to exactly one flow.</p></div>
+    <div class="concept"><div class="h">Rule group <code>RULE_GROUP</code></div><p>An ordered stage inside a flow, such as <code>TRANSFER</code> then <code>COMPLIANCE</code>. Groups fire top to bottom.</p></div>
+    <div class="concept"><div class="h">Rule <code>RULE_DEFINITION</code></div><p>One condition and its outcome (block or allow). Built in the Rule Builder and stored as JSON plus generated DRL.</p></div>
+    <div class="concept"><div class="h">Field catalog <code>RULE_FIELD_CATALOG</code></div><p>The fields rule authors can pick, each mapped to a real property path on your context object.</p></div>
+    <div class="concept"><div class="h">Context</div><p>A Java object your service fills with request data and looked-up data. Rules read it and write the decision back into it.</p></div>
+    <div class="concept"><div class="h">Root</div><p>The first part of a field path. <code>userLimit.limit</code> has root <code>userLimit</code>. One lookup fills one root.</p></div>
+  </div>
+
+  <h3 id="s1-2"><span class="sn">1.2.</span> How a request runs</h3>
+  <p>When your service receives a request, five things happen. Only the lookups your service performs touch the database; everything the library does at request time is in memory.</p>
+  <div class="flow" role="list">
+    <div class="st" role="listitem"><div class="n">01</div><div class="h">Request arrives</div><div class="d">Your controller receives a <code>TransactionRequest</code>.</div></div>
+    <div class="st mem" role="listitem"><div class="n">02</div><div class="h">Ask what is needed</div><div class="d"><code>requiredData()</code> returns the roots the active rules read.</div></div>
+    <div class="st db" role="listitem"><div class="n">03</div><div class="h">Load data</div><div class="d">Your service runs only the needed lookups.</div></div>
+    <div class="st mem" role="listitem"><div class="n">04</div><div class="h">Run rules</div><div class="d"><code>execute()</code> fires the flow's groups in order.</div></div>
+    <div class="st" role="listitem"><div class="n">05</div><div class="h">Read decision</div><div class="d">Your service reads <code>valid</code> and the message.</div></div>
+  </div>
+  <div class="legend"><span class="lm">In memory, no database call</span><span class="ld">Your database or service calls</span></div>
+
+  <h3 id="s1-3"><span class="sn">1.3.</span> What is cached</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Item</th><th>Where it lives at request time</th><th>Database call per request</th></tr></thead>
+    <tbody>
+      <tr><td>Compiled rules</td><td>In memory, rebuilt when rules change</td><td class="no">No</td></tr>
+      <tr><td>Routing (request class → flow → groups)</td><td>In memory, rebuilt when flows or groups change</td><td class="no">No</td></tr>
+      <tr><td>Required data (roots per flow)</td><td>In memory, rebuilt with the rules</td><td class="no">No</td></tr>
+      <tr><td>Business data (user limit, product, …)</td><td>Loaded by your service</td><td class="yes">Yes, only what is needed</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ 2 INSTALL ============ -->
+<section id="install">
+  <h2><span class="chap">Chapter 2.</span> Installing the library</h2>
+  <p class="intro">The library is a Spring Boot starter. Add the dependency and the four tables; everything else registers itself.</p>
+
+  <p class="hd">Prerequisites</p>
+  <ul>
+    <li>Spring Boot <strong>3.5.x</strong> and Java <strong>21</strong>.</li>
+    <li>Access to the internal Nexus repository that hosts <code>com.leads:rule-engine</code>.</li>
+    <li>A database where your service can create four tables (Oracle or PostgreSQL).</li>
+  </ul>
+
+  <p class="hd">Procedure</p>
+  <ol class="steps">
+    <li><p>Add the dependency to <code>pom.xml</code>.</p>
+<div class="code"><div class="code-head"><span class="lang">xml</span><span class="file">pom.xml</span><button class="copy" type="button">Copy</button></div><pre>&lt;dependency&gt;
+    &lt;groupId&gt;com.leads&lt;/groupId&gt;
+    &lt;artifactId&gt;rule-engine&lt;/artifactId&gt;
+    &lt;version&gt;3.0.2&lt;/version&gt;
+&lt;/dependency&gt;</pre></div></li>
+    <li><p>Create the four library tables: <code>RULE_FLOW</code>, <code>RULE_GROUP</code>, <code>RULE_DEFINITION</code> and <code>RULE_FIELD_CATALOG</code>. Whether you run a script depends on <code>spring.jpa.hibernate.ddl-auto</code>; see <a href="#s2-1">2.1. Database schema</a>.</p></li>
+    <li><p>Add the library settings to <code>application.yml</code>.</p>
+<div class="code"><div class="code-head"><span class="lang">yaml</span><span class="file">application.yml</span><button class="copy" type="button">Copy</button></div><pre>rule-engine:
+  admin:
+    enabled: true            <span class="c"># expose the /admin API (default true)</span>
+  required-data:
+    enabled: true            <span class="c"># load only the data active rules need (default false)</span>
+    shadow: false            <span class="c"># true = log what would be skipped, but load everything</span>
+    trust-drl-hints: true    <span class="c"># read "// @requires:" lines in hand-written DRL</span></pre></div></li>
+  </ol>
+
+  <div class="adm imp"><span class="ic" aria-hidden="true">!</span><div><div class="t">Important</div><p>The <code>rule-engine</code> block is optional. If you leave it out, the service still runs every rule correctly, using the defaults: the admin API stays on, and <code>required-data.enabled</code> is <code>false</code>. With that default, <code>need.needs(...)</code> always answers <code>true</code>, so every lookup runs as before. You only lose the saving from skipped lookups. See <a href="#s5-4">5.4. Safety rules</a>.</p></div></div>
+  <p class="tcap">Table 2.1. What changes when the block is missing</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Setting</th><th>Without the block</th><th>Effect on your service</th></tr></thead>
+    <tbody>
+      <tr><td><code>admin.enabled</code></td><td><code>true</code></td><td>Admin API available</td></tr>
+      <tr><td><code>required-data.enabled</code></td><td><code>false</code></td><td>Rules run normally; <code>needs()</code> is always <code>true</code>, no lookups skipped</td></tr>
+      <tr><td><code>required-data.shadow</code></td><td><code>false</code></td><td>No effect while the feature is off</td></tr>
+      <tr><td><code>required-data.trust-drl-hints</code></td><td><code>true</code></td><td>No effect while the feature is off</td></tr>
+    </tbody>
+  </table></div>
+  <p class="hd">Verification</p>
+  <p>Start the service and call <code>GET /admin/flows</code>. An empty list <code>[]</code> means the library is running and the tables are reachable.</p>
+  <div class="adm note"><span class="ic" aria-hidden="true">i</span><div><div class="t">Note</div><p>The library uses its own package, <code>leads.ruleengine.core</code>, for its entities, repositories and controllers. It does not scan or touch your own packages.</p></div></div>
+
+  <h3 id="s2-1"><span class="sn">2.1.</span> Database schema</h3>
+  <p>The library's entities map to four tables. Who creates them depends on the <code>spring.jpa.hibernate.ddl-auto</code> setting of your service.</p>
+  <p class="tcap">Table 2.2. Who creates the library tables</p>
+  <div class="tbl"><table>
+    <thead><tr><th><code>ddl-auto</code></th><th>Typical use</th><th>Tables created by</th><th>Run the DDL script?</th></tr></thead>
+    <tbody>
+      <tr><td><code>update</code> / <code>create</code></td><td>Local development, POC</td><td>Hibernate, at startup</td><td class="no">No</td></tr>
+      <tr><td><code>validate</code></td><td>Banking, UAT, production</td><td>The DBA, before the first start</td><td class="yes">Yes. Startup fails if a table or column is missing</td></tr>
+      <tr><td><code>none</code></td><td>Banking, UAT, production</td><td>The DBA, before the first start</td><td class="yes">Yes. Otherwise the first rule call fails</td></tr>
+    </tbody>
+  </table></div>
+  <div class="adm imp"><span class="ic" aria-hidden="true">!</span><div><div class="t">Important</div><p>In a banking or production database, keep <code>ddl-auto</code> at <code>none</code> or <code>validate</code> and have the DBA run the script below once per service schema, before the service starts for the first time. The script is also shipped inside the library jar at <code>db/oracle/schema-oracle.sql</code>.</p></div></div>
+  <p class="hd">Procedure</p>
+  <ol class="steps">
+    <li><p>Connect to the schema the service uses, as a user that can create tables, sequences and indexes.</p></li>
+    <li><p>Run the script below as one migration. The statements are already in foreign-key order: <code>RULE_FLOW</code>, then <code>RULE_GROUP</code>, then <code>RULE_DEFINITION</code> and <code>RULE_FIELD_CATALOG</code>.</p></li>
+    <li><p>Run your seed script for flows, groups and catalog fields (see <a href="#s3-2">3.2. Register the flow</a>), then start the service.</p></li>
+  </ol>
+<div class="code tall"><div class="code-head"><span class="lang">sql</span><span class="file">schema-oracle.sql</span><button class="copy" type="button">Copy</button></div><pre><span class="c">-- =============================================================================</span>
+<span class="c">--  Rule Engine library - Oracle schema (reference DDL) - 4 tables, FK-linked</span>
+<span class="c">--  Run once per service schema. Create order honours the foreign keys.</span>
+<span class="c">-- =============================================================================</span>
+
+<span class="c">-- ---- RULE_FLOW : the flow master + router ----------------------------------</span>
+CREATE TABLE RULE_FLOW (
+    ID            NUMBER(19)    NOT NULL,
+    FLOW_CODE     VARCHAR2(255) NOT NULL,
+    REQUEST_CLASS VARCHAR2(500),
+    FACT_TYPE     VARCHAR2(500) NOT NULL,
+    LABEL         VARCHAR2(255),
+    ACTIVE        NUMBER(1)     DEFAULT 1 NOT NULL,
+    CONSTRAINT PK_RULE_FLOW PRIMARY KEY (ID),
+    CONSTRAINT UK_RULE_FLOW_CODE UNIQUE (FLOW_CODE),
+    CONSTRAINT UK_RULE_FLOW_REQUEST UNIQUE (REQUEST_CLASS),
+    CONSTRAINT CK_RULE_FLOW_ACTIVE CHECK (ACTIVE IN (0, 1))
+);
+CREATE SEQUENCE RULE_FLOW_SEQ START WITH 1 INCREMENT BY 1 NOCACHE;
+
+<span class="c">-- ---- RULE_GROUP : a flow&#x27;s ordered agenda groups (FLOW_ID NULL = shared) ---</span>
+CREATE TABLE RULE_GROUP (
+    ID         NUMBER(19)    NOT NULL,
+    FLOW_ID    NUMBER(19),
+    GROUP_CODE VARCHAR2(100) NOT NULL,
+    ORDER_NO   NUMBER(10)    NOT NULL,
+    ACTIVE     NUMBER(1)     DEFAULT 1 NOT NULL,
+    CONSTRAINT PK_RULE_GROUP PRIMARY KEY (ID),
+    CONSTRAINT FK_RULE_GROUP_FLOW FOREIGN KEY (FLOW_ID) REFERENCES RULE_FLOW (ID),
+    CONSTRAINT UK_RULE_GROUP UNIQUE (FLOW_ID, GROUP_CODE),
+    CONSTRAINT CK_RULE_GROUP_ACTIVE CHECK (ACTIVE IN (0, 1))
+);
+CREATE SEQUENCE RULE_GROUP_SEQ START WITH 1 INCREMENT BY 1 NOCACHE;
+CREATE INDEX IX_RULE_GROUP_FLOW ON RULE_GROUP (FLOW_ID);
+
+<span class="c">-- ---- RULE_DEFINITION : the rules (each points at ONE group) ----------------</span>
+CREATE TABLE RULE_DEFINITION (
+    ID          NUMBER(19)    NOT NULL,
+    GROUP_ID    NUMBER(19)    NOT NULL,
+    RULE_NAME   VARCHAR2(255) NOT NULL,
+    SOURCE_TYPE VARCHAR2(20)  DEFAULT &#x27;DRL&#x27; NOT NULL,
+    SOURCE_JSON CLOB,
+    DRL_TEXT    CLOB          NOT NULL,
+    VERSION_NO  NUMBER(10)    DEFAULT 1 NOT NULL,
+    STATUS      VARCHAR2(20)  DEFAULT &#x27;ACTIVE&#x27; NOT NULL,
+    ACTIVE      NUMBER(1)     DEFAULT 1 NOT NULL,
+    CREATED_BY  VARCHAR2(100),
+    UPDATED_AT  TIMESTAMP     NOT NULL,
+    CONSTRAINT PK_RULE_DEFINITION PRIMARY KEY (ID),
+    CONSTRAINT FK_RULE_DEF_GROUP FOREIGN KEY (GROUP_ID) REFERENCES RULE_GROUP (ID),
+    CONSTRAINT UK_RULE_DEFINITION_NAME UNIQUE (GROUP_ID, RULE_NAME),
+    CONSTRAINT CK_RULE_DEFINITION_ACTIVE CHECK (ACTIVE IN (0, 1)),
+    CONSTRAINT CK_RULE_DEFINITION_SRC CHECK (SOURCE_TYPE IN (&#x27;DRL&#x27;, &#x27;BUILDER&#x27;))
+);
+CREATE SEQUENCE RULE_DEFINITION_SEQ START WITH 1 INCREMENT BY 1 NOCACHE;
+CREATE INDEX IX_RULE_DEFINITION_GROUP ON RULE_DEFINITION (GROUP_ID);
+
+<span class="c">-- ---- RULE_FIELD_CATALOG : builder fields (FLOW_ID NULL = shared field) -----</span>
+CREATE TABLE RULE_FIELD_CATALOG (
+    ID             NUMBER(19)    NOT NULL,
+    FLOW_ID        NUMBER(19),
+    FIELD_KEY      VARCHAR2(200) NOT NULL,
+    LABEL          VARCHAR2(200) NOT NULL,
+    DATA_TYPE      VARCHAR2(20)  NOT NULL,
+    DRL_PATH       VARCHAR2(300) NOT NULL,
+    ALLOWED_OPS    VARCHAR2(200) NOT NULL,
+    ALLOWED_VALUES VARCHAR2(1000),
+    CONSTRAINT PK_RULE_FIELD_CATALOG PRIMARY KEY (ID),
+    CONSTRAINT FK_RULE_FIELD_FLOW FOREIGN KEY (FLOW_ID) REFERENCES RULE_FLOW (ID),
+    CONSTRAINT UK_RULE_FIELD UNIQUE (FLOW_ID, FIELD_KEY),
+    CONSTRAINT CK_RULE_FIELD_TYPE CHECK (DATA_TYPE IN (&#x27;NUMBER&#x27;, &#x27;ENUM&#x27;, &#x27;BOOLEAN&#x27;, &#x27;STRING&#x27;))
+);
+CREATE SEQUENCE RULE_FIELD_CATALOG_SEQ START WITH 1 INCREMENT BY 1 NOCACHE;
+CREATE INDEX IX_RULE_FIELD_FLOW ON RULE_FIELD_CATALOG (FLOW_ID);</pre></div>
+  <p class="tcap">Table 2.3. What each table holds</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Table</th><th>Holds</th><th>Key rule</th></tr></thead>
+    <tbody>
+      <tr><td><code>RULE_FLOW</code></td><td>One row per flow: routing key and context class</td><td><code>REQUEST_CLASS</code> is unique, so one request class maps to one flow</td></tr>
+      <tr><td><code>RULE_GROUP</code></td><td>A flow's ordered groups</td><td><code>FLOW_ID</code> null means shared by every flow</td></tr>
+      <tr><td><code>RULE_DEFINITION</code></td><td>The rules, each in one group</td><td>Rule names are unique per group, not globally</td></tr>
+      <tr><td><code>RULE_FIELD_CATALOG</code></td><td>Fields rule authors can pick</td><td><code>FLOW_ID</code> null means shared field</td></tr>
+    </tbody>
+  </table></div>
+  <p class="hd">Verification</p>
+  <p>With <code>ddl-auto: validate</code>, the service starts without schema errors. Then <code>GET /admin/flows</code> returns your seeded flows.</p>
+</section>
+
+<!-- ============ 3 ONBOARD ============ -->
+<section id="onboard">
+  <h2><span class="chap">Chapter 3.</span> Onboarding a request type</h2>
+  <p class="intro">To run rules for a new business operation, write two Java classes and register them with the library once. After that, rule authors manage the rules themselves.</p>
+
+  <h3 id="s3-1"><span class="sn">3.1.</span> Write the request and context classes</h3>
+  <p>The <strong>request class</strong> is what your API receives; its full class name selects the flow. The <strong>context class</strong> holds only the data the rules read. It needs no decision fields: the library returns the decision separately (see <a href="#s4-2">4.2. Reading the decision</a>).</p>
+<div class="code"><div class="code-head"><span class="lang">java</span><span class="file">ValidationContext.java</span><button class="copy" type="button">Copy</button></div><pre><span class="k">public class</span> ValidationContext {
+
+    <span class="c">// data the rules read (each one is a root)</span>
+    <span class="k">private</span> String userId;
+    <span class="k">private</span> Transaction transaction;   <span class="c">// built from the request</span>
+    <span class="k">private</span> UserLimit userLimit;       <span class="c">// looked up</span>
+    <span class="k">private</span> Product product;           <span class="c">// looked up</span>
+    <span class="k">private</span> User user;                 <span class="c">// looked up</span>
+
+    <span class="c">// getters and setters for every field - no decision fields needed</span>
+}</pre></div>
+  <div class="adm note"><span class="ic" aria-hidden="true">i</span><div><div class="t">Note</div><p>Earlier versions required <code>valid</code>, <code>permissionDenied</code> and <code>validationMessage</code> on every context. They are no longer needed. A context that still has them keeps working: the library copies the decision onto it as well.</p></div></div>
+
+  <h3 id="s3-2"><span class="sn">3.2.</span> Register the flow</h3>
+  <p>Register the flow once through the admin API. <code>requestClass</code> and <code>factType</code> are full class names.</p>
+  <p class="hd">Procedure</p>
+  <ol class="steps">
+    <li><p>Create the flow and its ordered groups.</p>
+<div class="code"><div class="code-head"><span class="lang">bash</span><button class="copy" type="button">Copy</button></div><pre>curl -X POST http://localhost:8080/admin/flows \
+  -H "Content-Type: application/json" -d '{
+    "flowCode":     "TRANSFER_TRANSACTION",
+    "requestClass": "com.leads.transfer.dto.TransactionRequest",
+    "factType":     "com.leads.transfer.model.ValidationContext",
+    "label":        "Transfer Transaction",
+    "groups":       ["TRANSFER", "VELOCITY", "COMPLIANCE"]
+  }'</pre></div></li>
+    <li><p>Add the fields rule authors may use. <code>drlPath</code> is the real property path on your context; use <code>!.</code> after any object that can be null.</p>
+<div class="code"><div class="code-head"><span class="lang">bash</span><button class="copy" type="button">Copy</button></div><pre>curl -X POST http://localhost:8080/admin/fields \
+  -H "Content-Type: application/json" -d '{
+    "flowCode":   "TRANSFER_TRANSACTION",
+    "fieldKey":   "userLimit.limit",
+    "label":      "User Limit",
+    "dataType":   "NUMBER",
+    "drlPath":    "userLimit!.limit",
+    "allowedOps": "&gt; &lt; &gt;= &lt;= == !="
+  }'</pre></div>
+      <p>Repeat for each field, for example <code>transaction.amount</code>, <code>transaction.currency</code> and <code>product.drRes</code>. Leave <code>flowCode</code> out to share a field with every flow.</p>
+      <div class="adm imp"><span class="ic" aria-hidden="true">!</span><div><div class="t">Important</div><p>The field catalog has no UI. In development you can add fields with the API call above. For a <strong>client deployment</strong>, catalog rows are delivered as a <strong>database migration script</strong> that runs with the release, so every environment gets the same fields.</p></div></div>
+<div class="code"><div class="code-head"><span class="lang">sql</span><span class="file">V3_0_2__transfer_field_catalog.sql (PostgreSQL)</span><button class="copy" type="button">Copy</button></div><pre>INSERT INTO rule_field_catalog
+  (id, flow_id, field_key, label, data_type, drl_path, allowed_ops, allowed_values)
+VALUES
+  (nextval('rule_field_catalog_seq'),
+   (SELECT id FROM rule_flow WHERE flow_code = 'TRANSFER_TRANSACTION'),
+   'userLimit.limit', 'User Limit', 'NUMBER', 'userLimit!.limit',
+   '&gt; &lt; &gt;= &lt;= == !=', NULL);</pre></div>
+<div class="code"><div class="code-head"><span class="lang">sql</span><span class="file">V3_0_2__transfer_field_catalog.sql (Oracle)</span><button class="copy" type="button">Copy</button></div><pre>INSERT INTO RULE_FIELD_CATALOG
+  (ID, FLOW_ID, FIELD_KEY, LABEL, DATA_TYPE, DRL_PATH, ALLOWED_OPS, ALLOWED_VALUES)
+VALUES
+  (RULE_FIELD_CATALOG_SEQ.NEXTVAL,
+   (SELECT ID FROM RULE_FLOW WHERE FLOW_CODE = 'TRANSFER_TRANSACTION'),
+   'userLimit.limit', 'User Limit', 'NUMBER', 'userLimit!.limit',
+   '&gt; &lt; &gt;= &lt;= == !=', NULL);</pre></div>
+      <p>Run the script before the service starts, or call <code>POST /admin/flows/reload</code> afterwards so the running service picks up the new fields. Use <code>NULL</code> for <code>flow_id</code> to share a field with every flow.</p></li>
+  </ol>
+  <p class="hd">Verification</p>
+  <p><code>GET /admin/flows/TRANSFER_TRANSACTION/groups</code> lists the three groups in order, and <code>GET /admin/flows/TRANSFER_TRANSACTION/fields</code> lists your fields.</p>
+
+  <h3 id="s3-3"><span class="sn">3.3.</span> What rule authors do next</h3>
+  <p>Administrators build rules in the Rule Builder UI, or post them to <code>POST /admin/groups/{groupId}/rules</code>. Each builder rule is saved as a JSON condition tree; the library turns it into DRL and compiles it before saving. A rule that does not compile is rejected and never reaches the running engine.</p>
+<div class="code"><div class="code-head"><span class="lang">json</span><span class="file">condition tree of one builder rule</span><button class="copy" type="button">Copy</button></div><pre>{
+  "type": "GROUP", "operator": "AND",
+  "children": [
+    { "type": "CONDITION", "field": "transaction.currency", "operator": "==", "value": "BDT" },
+    { "type": "CONDITION", "field": "product.drRes",        "operator": "==", "value": 1 },
+    { "type": "CONDITION", "field": "transaction.amount",   "operator": "&gt;",  "valueField": "userLimit.limit" }
+  ]
+}</pre></div>
+  <p class="hd">Additional resources</p>
+  <ul class="res"><li><a href="#s6-1">6.1. Rules for the context</a></li><li><a href="#ref-api">Appendix A. Admin API reference</a></li></ul>
+</section>
+
+<!-- ============ 4 EXECUTE ============ -->
+<section id="execute">
+  <h2><span class="chap">Chapter 4.</span> Running the rules and reading the result</h2>
+  <p class="intro">Inject <code>RuleExecutionService</code>, fill a context, and call <code>execute</code> with your request class. The request class picks the flow, the context is what the rules read, and the returned <code>RuleResult</code> is the decision.</p>
+<div class="code"><div class="code-head"><span class="lang">java</span><span class="file">TransactionRuleService.java</span><button class="copy" type="button">Copy</button></div><pre>@Service
+<span class="k">public class</span> TransactionRuleService {
+
+    <span class="k">private final</span> RuleExecutionService ruleEngine;
+
+    <span class="k">public</span> TransactionResponse validate(TransactionRequest request) {
+        ValidationContext context = buildContext(request);           <span class="c">// chapter 5</span>
+
+<span class="h">        RuleResult result = ruleEngine.execute(context, TransactionRequest.<span class="k">class</span>);</span>
+
+        <span class="k">return new</span> TransactionResponse(
+                result.isValid(),
+                result.isPermissionDenied(),
+                result.getMessage());
+    }
+}</pre></div>
+
+  <h3 id="s4-1"><span class="sn">4.1.</span> The two forms of execute</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Call</th><th>Use when</th></tr></thead>
+    <tbody>
+      <tr><td><code>RuleResult execute(context, X.class)</code></td><td>All rules are builder rules. This is the normal case.</td></tr>
+      <tr><td><code>RuleResult execute(context, X.class, globalContext)</code></td><td>A hand-written DRL rule reads shared reference data through the <code>globalContext</code> global.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="adm note"><span class="ic" aria-hidden="true">i</span><div><div class="t">Note</div><p>Builder rules never use the global context, so passing it or not makes no difference to them.</p></div></div>
+
+  <h3 id="s4-2"><span class="sn">4.2.</span> Reading the decision</h3>
+  <p>Every call returns a new <code>leads.ruleengine.core.context.RuleResult</code>. It starts as valid; a rule with the outcome <strong>block</strong> marks it blocked and sets its message. If no rule matches, the request passes.</p>
+  <p class="tcap">Table 4.2. RuleResult methods</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Method</th><th>Returns</th></tr></thead>
+    <tbody>
+      <tr><td><code>isValid()</code></td><td><code>true</code> unless a rule blocked the request</td></tr>
+      <tr><td><code>isPermissionDenied()</code></td><td><code>true</code> when a rule blocked the request</td></tr>
+      <tr><td><code>getMessage()</code></td><td>The message of the deciding rule, or <code>null</code></td></tr>
+      <tr><td><code>isDecided()</code></td><td><code>true</code> when any rule made a block or allow decision</td></tr>
+    </tbody>
+  </table></div>
+  <p>Builder rules write to it through a Drools global named <code>result</code>. This is the generated <code>then</code> part of a blocking rule:</p>
+<div class="code"><div class="code-head"><span class="lang">drl</span><span class="file">generated by the library</span><button class="copy" type="button">Copy</button></div><pre><span class="k">global</span> leads.ruleengine.core.context.RuleResult result;
+
+<span class="k">rule</span> <span class="s">"TRANSFER_TRANSACTION.TRANSFER::Block over-limit debit-restricted BDT transaction"</span>
+    <span class="k">when</span>
+        $ctx : ValidationContext( transaction.amount &gt; userLimit!.limit, ... )
+    <span class="k">then</span>
+<span class="h">        result.block(<span class="s">"Blocked: amount exceeds limit on a debit-restricted BDT account"</span>);</span>
+<span class="k">end</span></pre></div>
+  <div class="adm tip"><span class="ic" aria-hidden="true">✓</span><div><div class="t">Tip</div><p>A hand-written DRL rule can use the same object: declare <code>global leads.ruleengine.core.context.RuleResult result;</code> and call <code>result.block("…")</code> or <code>result.allow("…")</code>.</p></div></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Request</th><th>valid</th><th>message</th></tr></thead>
+    <tbody>
+      <tr><td>BDT 5,000 from a normal account</td><td class="yes">true</td><td>(none)</td></tr>
+      <tr><td>BDT 20,000 from a debit-restricted account, limit 10,000</td><td>false</td><td>Blocked: amount exceeds limit on a debit-restricted BDT account</td></tr>
+    </tbody>
+  </table></div>
+  <div class="adm tip"><span class="ic" aria-hidden="true">✓</span><div><div class="t">Tip</div><p>A flow that is switched off runs no rules, so every request passes. This is intentional and is not an error.</p></div></div>
+
+  <h3 id="s4-3"><span class="sn">4.3.</span> How several rules combine</h3>
+  <p>Every rule that matches writes to the same <code>RuleResult</code>. Rules run group by group in the flow's order; inside a group, a higher <code>salience</code> runs first.</p>
+  <ul>
+    <li><code>result.block(msg)</code> sets <code>valid = false</code> and <code>permissionDenied = true</code>.</li>
+    <li><code>result.allow(msg)</code> sets <code>valid = true</code>. It does not clear <code>permissionDenied</code>.</li>
+    <li>A non-blank message replaces the previous one, so the <strong>last rule that set a message</strong> provides it.</li>
+    <li>If no rule matches, the result stays <code>valid = true</code>, <code>permissionDenied = false</code>, message <code>null</code>, and <code>isDecided()</code> is <code>false</code>.</li>
+  </ul>
+  <p class="tcap">Table 4.3. Worked example: transfer of USD 150,000 to country OTHER</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Order</th><th>Group</th><th>Rule</th><th>Matches</th><th>Result after the rule</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>TRANSFER</td><td>High-value or cross-border transfer</td><td class="yes">yes</td><td>valid = false · "Blocked: high-value agent transfer, or cross-border non-BDT transfer"</td></tr>
+      <tr><td>2</td><td>VELOCITY</td><td>Block rapid high-value agent transfers</td><td class="no">no</td><td>unchanged</td></tr>
+      <tr><td>3</td><td>COMPLIANCE</td><td>Block high-value cross-border non-BDT transfer</td><td class="yes">yes</td><td>valid = false · "Blocked: cross-border high-value transfer needs manual review"</td></tr>
+    </tbody>
+  </table></div>
+  <p>The service receives <code>valid = false</code> with the COMPLIANCE message, because that rule wrote last.</p>
+  <div class="adm tip"><span class="ic" aria-hidden="true">✓</span><div><div class="t">Tip</div><p>Put the group whose message the customer should see last in the flow's order, or give its rules a lower salience within the same group.</p></div></div>
+
+  <h3 id="s4-4"><span class="sn">4.4.</span> Using the result in your service</h3>
+  <p>Return it to the caller, turn a block into an error, or log it. These are the common patterns.</p>
+<div class="code"><div class="code-head"><span class="lang">java</span><span class="file">map to the API response</span><button class="copy" type="button">Copy</button></div><pre>RuleResult result = ruleEngine.execute(context, TransactionRequest.<span class="k">class</span>);
+<span class="k">return new</span> TransactionResponse(result.isValid(), result.isPermissionDenied(), result.getMessage());</pre></div>
+<div class="code"><div class="code-head"><span class="lang">java</span><span class="file">stop the business operation on a block</span><button class="copy" type="button">Copy</button></div><pre>RuleResult result = ruleEngine.execute(context, TransactionRequest.<span class="k">class</span>);
+<span class="k">if</span> (!result.isValid()) {
+    <span class="k">throw new</span> ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, result.getMessage());
+}
+transferService.post(request);   <span class="c">// only reached when no rule blocked</span></pre></div>
+<div class="code"><div class="code-head"><span class="lang">java</span><span class="file">audit log</span><button class="copy" type="button">Copy</button></div><pre>log.info(<span class="s">"rules {} user={} -&gt; {}"</span>, <span class="s">"TRANSFER_TRANSACTION"</span>, request.getUserId(), result);
+<span class="c">// rules TRANSFER_TRANSACTION user=USER-001 -&gt; RuleResult{valid=false, permissionDenied=true, message='...'}</span></pre></div>
+  <div class="adm note"><span class="ic" aria-hidden="true">i</span><div><div class="t">Note</div><p>Each call to <code>execute</code> returns a new <code>RuleResult</code>. It is safe to keep, log or pass on; it is never shared between requests.</p></div></div>
+
+  <h3 id="s4-5"><span class="sn">4.5.</span> Writing the result from hand-written DRL</h3>
+  <p>Builder rules use <code>RuleResult</code> automatically. A hand-written DRL rule declares the global once and calls the same methods.</p>
+<div class="code"><div class="code-head"><span class="lang">drl</span><span class="file">hand-written rule</span><button class="copy" type="button">Copy</button></div><pre><span class="k">package</span> com.leads.transfer.rules;
+
+<span class="k">import</span> com.leads.transfer.model.ValidationContext;
+
+<span class="k">global</span> leads.ruleengine.core.context.RuleResult result;
+
+<span class="k">rule</span> <span class="s">"Block weekend agent transfers over 1,00,000"</span>
+    <span class="k">agenda-group</span> <span class="s">"TRANSFER"</span>
+    <span class="k">when</span>
+        $ctx : ValidationContext( transaction.channel == <span class="s">"AGENT"</span>, transaction.amount &gt; 100000 )
+    <span class="k">then</span>
+        result.block(<span class="s">"Blocked: agent limit exceeded"</span>);
+<span class="k">end</span></pre></div>
+
+  <h3 id="s4-6"><span class="sn">4.6.</span> Migrating from context decision fields</h3>
+  <p>Before 3.0.2, every context carried <code>valid</code>, <code>permissionDenied</code> and <code>validationMessage</code>, and the service read them after <code>execute</code>. Move to the returned result as follows.</p>
+  <p class="tcap">Table 4.4. Before and after</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Before (3.0.1 and earlier)</th><th>From 3.0.2</th></tr></thead>
+    <tbody>
+      <tr><td><code>ruleEngine.execute(context, X.class);</code></td><td><code>RuleResult result = ruleEngine.execute(context, X.class);</code></td></tr>
+      <tr><td><code>context.isValid()</code></td><td><code>result.isValid()</code></td></tr>
+      <tr><td><code>context.isPermissionDenied()</code></td><td><code>result.isPermissionDenied()</code></td></tr>
+      <tr><td><code>context.getValidationMessage()</code></td><td><code>result.getMessage()</code></td></tr>
+      <tr><td>Three decision fields on every context</td><td>Remove them</td></tr>
+      <tr><td>DRL: <code>$ctx.setValid(false); $ctx.setPermissionDenied(true);</code></td><td>DRL: <code>result.block("…");</code></td></tr>
+    </tbody>
+  </table></div>
+  <p class="hd">Procedure</p>
+  <ol class="steps">
+    <li><p>Change the dependency to <code>3.0.2</code> and rebuild.</p></li>
+    <li><p>Read the decision from the returned <code>RuleResult</code> instead of the context.</p></li>
+    <li><p>Remove the three decision fields from your context classes.</p></li>
+    <li><p>Update any hand-written DRL that calls <code>$ctx.setValid(…)</code> to use the <code>result</code> global (section 4.5).</p></li>
+    <li><p>Start the service. Builder rules are upgraded automatically.</p></li>
+  </ol>
+  <p class="hd">Verification</p>
+  <p>The startup log shows <code>Upgraded N builder rule(s) to write the library RuleResult.</code> on the first start, and <code>GET /admin/rules/{id}</code> shows <code>result.block(…)</code> in <code>drlText</code>.</p>
+  <div class="adm imp"><span class="ic" aria-hidden="true">!</span><div><div class="t">Important</div><p>You can upgrade in steps. A context that still has the three setters also receives the decision, so code that reads <code>context.isValid()</code> keeps working until you switch it to <code>RuleResult</code>. Do not remove the fields while hand-written DRL still writes to them.</p></div></div>
+</section>
+
+<!-- ============ 5 DEMAND ============ -->
+<section id="demand">
+  <h2><span class="chap">Chapter 5.</span> Loading only the data you need</h2>
+  <p class="intro">Each lookup costs a database or service call on every request. If no active rule reads a piece of data, there is no reason to load it. The library tells you which data the active rules read, so you can skip the rest.</p>
+
+  <h3 id="s5-1"><span class="sn">5.1.</span> Ask, then check before each lookup</h3>
+  <p>Call <code>requiredData</code> once per request. It is answered from memory. Then put <code>need.needs("root")</code> in front of each lookup.</p>
+<div class="code"><div class="code-head"><span class="lang">java</span><span class="file">TransactionRuleService.java</span><button class="copy" type="button">Copy</button></div><pre><span class="k">import static</span> java.util.concurrent.CompletableFuture.completedFuture;
+<span class="k">import static</span> java.util.concurrent.CompletableFuture.supplyAsync;
+
+<span class="k">private</span> ValidationContext buildContext(TransactionRequest request) {
+<span class="h">    RequiredData need = ruleEngine.requiredData(TransactionRequest.<span class="k">class</span>);   <span class="c">// memory, no DB</span></span>
+
+    <span class="c">// same parallel code as before - each lookup now has a needs() check in front</span>
+    CompletableFuture&lt;UserLimit&gt; limitF = need.needs(<span class="s">"userLimit"</span>)
+            ? supplyAsync(() -&gt; lookup.userLimit(request.getUserId()), lookupExecutor)
+            : completedFuture(<span class="k">null</span>);
+
+    CompletableFuture&lt;Product&gt; productF = need.needs(<span class="s">"product"</span>)
+            ? supplyAsync(() -&gt; lookup.product(request.getSourceAccount()), lookupExecutor)
+            : completedFuture(<span class="k">null</span>);
+
+    CompletableFuture&lt;User&gt; userF = need.needs(<span class="s">"user"</span>)
+            ? supplyAsync(() -&gt; lookup.user(request.getUserId()), lookupExecutor)
+            : completedFuture(<span class="k">null</span>);
+
+    CompletableFuture.allOf(limitF, productF, userF).join();
+
+    ValidationContext context = <span class="k">new</span> ValidationContext();
+    context.setUserId(request.getUserId());       <span class="c">// from the request - always set</span>
+    context.setTransaction(toFact(request));      <span class="c">// from the request - always set</span>
+    context.setUserLimit(limitF.join());          <span class="c">// null when no active rule reads it</span>
+    context.setProduct(productF.join());
+    context.setUser(userF.join());
+    <span class="k">return</span> context;
+}</pre></div>
+  <p>Without parallel lookups, it is a plain <code>if</code>. The data can come from a repository, another service, or a cache; the library only answers yes or no.</p>
+<div class="code"><div class="code-head"><span class="lang">java</span><span class="file">sequential form</span><button class="copy" type="button">Copy</button></div><pre><span class="k">if</span> (need.needs(<span class="s">"userLimit"</span>)) {
+    context.setUserLimit(userLimitRepository.findByUserId(request.getUserId()));
+}</pre></div>
+
+  <h3 id="s5-2"><span class="sn">5.2.</span> Which name to pass</h3>
+  <p>Pass the <strong>root</strong>: the first part of the field's <code>drlPath</code> in the catalog. One lookup fills one root, so one lookup gets one check.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Catalog drlPath</th><th>Root to pass</th><th>Lookup it guards</th></tr></thead>
+    <tbody>
+      <tr><td><code>userLimit!.limit</code></td><td><code>"userLimit"</code></td><td><code>lookup.userLimit(...)</code></td></tr>
+      <tr><td><code>product!.drRes</code></td><td><code>"product"</code></td><td><code>lookup.product(...)</code></td></tr>
+      <tr><td><code>user!.kycVerified</code></td><td><code>"user"</code></td><td><code>lookup.user(...)</code></td></tr>
+      <tr><td><code>transaction.currency</code></td><td>(no check)</td><td>Built from the request, so it is free</td></tr>
+    </tbody>
+  </table></div>
+  <div class="adm warn"><span class="ic" aria-hidden="true">!</span><div><div class="t">Warning</div><p>Do not pass a field such as <code>"transaction.currency"</code>, and do not guard one lookup with another root's name. The check must name the data that lookup loads.</p></div></div>
+
+  <h3 id="s5-3"><span class="sn">5.3.</span> How the library works out the roots</h3>
+  <p>The answer is computed once, when rules reload, and kept in memory. It follows four steps.</p>
+  <ol class="steps">
+    <li><p><strong>Find the rules that can fire.</strong> Active rules in the flow's active groups, plus active shared groups.</p></li>
+    <li><p><strong>Read every condition</strong> of each builder rule, however deeply nested, taking both <code>field</code> and <code>valueField</code>.</p></li>
+    <li><p><strong>Turn each field into its root</strong> using the catalog <code>drlPath</code>: <code>userLimit.limit</code> → <code>userLimit!.limit</code> → <code>userLimit</code>.</p></li>
+    <li><p><strong>Remove duplicates.</strong> The result is <code>roots</code>.</p></li>
+  </ol>
+  <p>You can see the result for any flow:</p>
+<div class="code"><div class="code-head"><span class="lang">http</span><span class="file">GET /admin/flows/TRANSFER_TRANSACTION/required-data</span><button class="copy" type="button">Copy</button></div><pre>{
+  "flowCode":   "TRANSFER_TRANSACTION",
+  "roots":      ["userLimit", "product", "transaction"],
+  "fields":     ["transaction.amount", "userLimit.limit", "transaction.currency",
+                 "transaction.country", "transaction.dailyTxnCount",
+                 "transaction.channel", "product.drRes"],
+  "knownRoots": ["userLimit", "user", "transaction", "product"],
+  "complete":   true
+}</pre></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Part</th><th>Meaning</th><th>Used by needs()</th></tr></thead>
+    <tbody>
+      <tr><td><code>roots</code></td><td>Objects the active rules read. These must be loaded.</td><td class="yes">Yes, this is the answer</td></tr>
+      <tr><td><code>knownRoots</code></td><td>Every root the flow could have, from its catalog.</td><td>Only to catch typos</td></tr>
+      <tr><td><code>fields</code></td><td>The exact fields the active rules read.</td><td class="no">No, for reading only</td></tr>
+      <tr><td><code>complete</code></td><td><code>true</code> when every active rule could be checked.</td><td>Yes: <code>false</code> loads everything</td></tr>
+    </tbody>
+  </table></div>
+  <p>With this response, the three checks give:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Call</th><th>Result</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><code>needs("userLimit")</code></td><td class="yes">true</td><td>In <code>roots</code>; the over-limit rule reads <code>userLimit.limit</code>.</td></tr>
+      <tr><td><code>needs("product")</code></td><td class="yes">true</td><td>In <code>roots</code>.</td></tr>
+      <tr><td><code>needs("user")</code></td><td>false</td><td>No active rule reads <code>user</code>. The lookup is skipped.</td></tr>
+      <tr><td><code>needs("userLimt")</code></td><td class="yes">true</td><td>Not a known root (typo). Logs an ERROR and loads, to stay safe.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="s5-4"><span class="sn">5.4.</span> Safety rules</h3>
+  <ul>
+    <li><code>needs()</code> answers <code>false</code> only when it is proven that no active rule reads that root.</li>
+    <li>When the feature is off (<code>required-data.enabled: false</code>) or in shadow mode, <code>needs()</code> always answers <code>true</code>.</li>
+    <li>A hand-written DRL rule without a <code>// @requires:</code> line cannot be checked, so its whole flow loads everything (<code>complete: false</code>).</li>
+    <li>A service that never calls <code>requiredData()</code> keeps working exactly as before.</li>
+  </ul>
+  <div class="adm tip"><span class="ic" aria-hidden="true">✓</span><div><div class="t">Tip</div><p>Roll out with <code>shadow: true</code> first. The service still loads everything, and the debug log shows what it would have skipped. Switch shadow off once the log matches your expectation.</p></div></div>
+  <p class="hd">Additional resources</p>
+  <ul class="res"><li><a href="#s7-1">7.1. What happens on a rule save</a></li><li><a href="#ref-config">Appendix B. Configuration reference</a></li></ul>
+</section>
+
+<!-- ============ 6 CONTEXT ============ -->
+<section id="context">
+  <h2><span class="chap">Chapter 6.</span> Designing the context object</h2>
+  <p class="intro">Rules reach your data only through the context's getters, following each field's <code>drlPath</code>. A few simple habits keep rules reliable.</p>
+  <h3 id="s6-1"><span class="sn">6.1.</span> Rules for the context</h3>
+  <ul>
+    <li><strong>Give every path a public getter.</strong> <code>userLimit.limit</code> needs <code>getUserLimit()</code> on the context and <code>getLimit()</code> on <code>UserLimit</code>.</li>
+    <li><strong>Nesting works to any depth.</strong> <code>userLimit!.policy!.tier</code> is valid; the root is still <code>userLimit</code>.</li>
+    <li><strong>Use <code>!.</code> after anything that can be null.</strong> A skipped lookup leaves its root <code>null</code>. With <code>!.</code> the condition is simply false instead of failing.</li>
+    <li><strong>Fields directly on the context are roots too.</strong> A field <code>userName</code> has root <code>userName</code>.</li>
+    <li><strong>Collections need hand-written DRL.</strong> The builder compares single values, not lists.</li>
+  </ul>
+  <h3 id="s6-2"><span class="sn">6.2.</span> Example: nested path</h3>
+<div class="code"><div class="code-head"><span class="lang">text</span><span class="file">catalog row → generated DRL</span><button class="copy" type="button">Copy</button></div><pre>fieldKey : userLimit.policy.tier
+drlPath  : userLimit!.policy!.tier
+
+generated: $ctx : ValidationContext( userLimit!.policy!.tier == "GOLD" )
+root     : userLimit</pre></div>
+  <div class="adm warn"><span class="ic" aria-hidden="true">!</span><div><div class="t">Warning</div><p>If you rename a getter, update the catalog <code>drlPath</code> and re-save the affected rules. Otherwise the rules no longer compile on the next reload.</p></div></div>
+</section>
+
+<!-- ============ 7 RUNTIME ============ -->
+<section id="runtime">
+  <h2><span class="chap">Chapter 7.</span> Runtime changes and caching</h2>
+  <p class="intro">Rules, routing and required data live in memory. Changes made through the admin API refresh all three at once; you do not call any reload endpoint.</p>
+  <h3 id="s7-1"><span class="sn">7.1.</span> What happens on a rule save</h3>
+  <ol class="steps">
+    <li><p><strong>Compile check.</strong> The new rule set is compiled in a throw-away container. A rule with errors is rejected with HTTP 400 and nothing changes.</p></li>
+    <li><p><strong>Save.</strong> The rule is written to <code>RULE_DEFINITION</code>.</p></li>
+    <li><p><strong>Required data first.</strong> Roots and fields are recomputed, so the new rule's data is loaded before the rule can run.</p></li>
+    <li><p><strong>Rules second.</strong> The freshly compiled rules replace the old ones in one atomic swap. Requests in progress finish on the old rules.</p></li>
+  </ol>
+  <div class="tbl"><table>
+    <thead><tr><th>Admin change</th><th>Refreshes automatically</th></tr></thead>
+    <tbody>
+      <tr><td>Rule create, update, delete, on/off</td><td>Compiled rules and required data</td></tr>
+      <tr><td>Group or flow add, delete, reorder, on/off</td><td>Routing and required data</td></tr>
+      <tr><td>Catalog field add or delete</td><td>Required data</td></tr>
+    </tbody>
+  </table></div>
+  <div class="adm note"><span class="ic" aria-hidden="true">i</span><div><div class="t">Note</div><p>At startup, builder rules saved by an older library version (which wrote <code>$ctx.setValid(…)</code>) are regenerated automatically from their stored JSON to write <code>RuleResult</code>. Hand-written DRL rules are never changed.</p></div></div>
+
+  <h3 id="s7-2"><span class="sn">7.2.</span> Direct database changes</h3>
+  <p>If someone changes the tables with SQL, the service does not notice until something reloads.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Changed with SQL</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>Flow or group (active, order)</td><td><code>POST /admin/flows/reload</code></td></tr>
+      <tr><td>Field catalog</td><td><code>POST /admin/flows/reload</code></td></tr>
+      <tr><td>A rule in <code>RULE_DEFINITION</code></td><td>Restart the service, or call <code>PUT /admin/rules/{id}/active</code> on any rule</td></tr>
+    </tbody>
+  </table></div>
+  <div class="adm warn"><span class="ic" aria-hidden="true">!</span><div><div class="t">Warning</div><p>Never edit <code>source_json</code> directly in the database. The engine runs <code>drl_text</code>, which is only regenerated by <code>PUT /admin/rules/{id}</code>. If they differ, the required-data analysis reads the new conditions while the engine runs the old ones, and a rule can run without its data.</p></div></div>
+  <p class="hd">Additional resources</p>
+  <ul class="res"><li><a href="#trouble">Chapter 8. Troubleshooting</a></li></ul>
+</section>
+
+<!-- ============ 8 TROUBLE ============ -->
+<section id="trouble">
+  <h2><span class="chap">Chapter 8.</span> Troubleshooting</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td><code>FlowNotConfiguredException</code>: no flow mapped for request class</td><td>No <code>RULE_FLOW</code> row has this exact <code>requestClass</code>.</td><td>Register the flow with the full class name (chapter 3.2).</td></tr>
+      <tr><td>Rule save returns 400 with a DRL compile error</td><td>A <code>drlPath</code> does not match a getter on the context.</td><td>Check the getters along each path (chapter 6.1).</td></tr>
+      <tr><td>Hand-written DRL fails with <code>result</code> unresolved</td><td>The rule calls <code>result.block(…)</code> without declaring the global.</td><td>Add <code>global leads.ruleengine.core.context.RuleResult result;</code> to the rule.</td></tr>
+      <tr><td>A rule never blocks</td><td>Its data was not loaded, so the condition sees <code>null</code>.</td><td>Check <code>roots</code> in the required-data endpoint and the <code>needs()</code> name in your service.</td></tr>
+      <tr><td>Log shows <code>is not a root of flow …</code></td><td>Typo in a <code>needs("…")</code> name.</td><td>Use the root from the catalog <code>drlPath</code> (chapter 5.2).</td></tr>
+      <tr><td><code>complete</code> is <code>false</code></td><td>An active hand-written DRL rule has no <code>// @requires:</code> line.</td><td>Add the line, or convert the rule to a builder rule.</td></tr>
+      <tr><td>Every request passes</td><td>The flow, or all of its groups, is switched off.</td><td>Check <code>GET /admin/flows</code> for <code>active: false</code>.</td></tr>
+      <tr><td>Delete group returns 409</td><td>The group still has rules.</td><td>Delete the rules first, or add <code>?force=true</code>.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ A API ============ -->
+<section id="ref-api">
+  <h2><span class="chap">Appendix A.</span> Admin API reference</h2>
+  <p class="intro">All endpoints are under <code>/admin</code> and are enabled while <code>rule-engine.admin.enabled</code> is <code>true</code>. Secure them at your gateway.</p>
+  <div class="refcard"><div><div class="rt">Admin API Reference</div><p>Every endpoint with parameters, request and response bodies, errors, data models and copyable examples.</p></div><a class="btn btn-pri" href="Rule_Engine_API_Reference.html">Open the API reference</a></div>
+  <p class="tcap">Table A.1. Endpoint overview</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>GET</td><td><code>/admin/flows</code></td><td>List flows with their groups</td></tr>
+      <tr><td>POST</td><td><code>/admin/flows</code></td><td>Create or update a flow (and its groups)</td></tr>
+      <tr><td>PUT</td><td><code>/admin/flows/{flowCode}/active</code></td><td>Switch a flow on or off</td></tr>
+      <tr><td>DELETE</td><td><code>/admin/flows/{flowCode}?force</code></td><td>Delete a flow</td></tr>
+      <tr><td>GET</td><td><code>/admin/flows/{flowCode}/required-data</code></td><td>Roots and fields the active rules read</td></tr>
+      <tr><td>GET · POST</td><td><code>/admin/flows/{flowCode}/groups</code></td><td>List or add a flow's groups</td></tr>
+      <tr><td>PUT</td><td><code>/admin/flows/{flowCode}/groups/order</code></td><td>Reorder groups</td></tr>
+      <tr><td>POST</td><td><code>/admin/groups/shared</code></td><td>Add a group shared by every flow</td></tr>
+      <tr><td>PUT</td><td><code>/admin/groups/{id}/active</code></td><td>Switch a group on or off</td></tr>
+      <tr><td>DELETE</td><td><code>/admin/groups/{id}?force</code></td><td>Delete a group</td></tr>
+      <tr><td>GET · POST</td><td><code>/admin/groups/{id}/rules</code></td><td>List or add rules in a group</td></tr>
+      <tr><td>GET · PUT · DELETE</td><td><code>/admin/rules/{id}</code></td><td>Read, update or delete a rule</td></tr>
+      <tr><td>PUT</td><td><code>/admin/rules/{id}/active</code></td><td>Switch a rule on or off</td></tr>
+      <tr><td>POST</td><td><code>/admin/rules/preview</code></td><td>Generate and compile-check DRL without saving</td></tr>
+      <tr><td>GET</td><td><code>/admin/flows/{flowCode}/fields</code></td><td>Catalog fields for a flow</td></tr>
+      <tr><td>POST · DELETE</td><td><code>/admin/fields</code> · <code>/admin/fields/{id}</code></td><td>Add or delete a catalog field</td></tr>
+      <tr><td>POST</td><td><code>/admin/flows/reload</code></td><td>Reload routing and required data from the database</td></tr>
+      <tr><td>POST</td><td><code>/admin/global-context/reload</code></td><td>Reload global reference data</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ B CONFIG ============ -->
+<section id="ref-config">
+  <h2><span class="chap">Appendix B.</span> Configuration reference</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Property</th><th>Default</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td><code>rule-engine.admin.enabled</code></td><td><code>true</code></td><td>Exposes the <code>/admin</code> API.</td></tr>
+      <tr><td><code>rule-engine.required-data.enabled</code></td><td><code>false</code></td><td>When <code>false</code>, <code>needs()</code> always answers <code>true</code>.</td></tr>
+      <tr><td><code>rule-engine.required-data.shadow</code></td><td><code>false</code></td><td>Logs what would be skipped, but <code>needs()</code> still answers <code>true</code>.</td></tr>
+      <tr><td><code>rule-engine.required-data.trust-drl-hints</code></td><td><code>true</code></td><td>When <code>false</code>, every hand-written DRL rule counts as unknown.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ C GLOSSARY ============ -->
+<section id="glossary">
+  <h2><span class="chap">Appendix C.</span> Glossary</h2>
+  <dl class="kv">
+    <dt>Builder rule</dt><dd>A rule made in the Rule Builder and stored as a JSON condition tree. The library generates its DRL.</dd>
+    <dt>DRL rule</dt><dd>A hand-written Drools rule. It may declare what it reads with <code>// @requires: root, …</code>.</dd>
+    <dt>Fact type</dt><dd>The full class name of the context object a flow's rules match.</dd>
+    <dt>Root</dt><dd>The first part of a <code>drlPath</code>. The unit a service loads with one lookup.</dd>
+    <dt>RuleResult</dt><dd>The decision returned by <code>execute()</code>: valid, permission denied and message. Rules write it through the <code>result</code> global.</dd>
+    <dt>Firing set</dt><dd>The active rules in a flow's active groups plus active shared groups.</dd>
+    <dt>Shared group</dt><dd>A group with no owning flow; it fires first in every flow.</dd>
+    <dt>Complete</dt><dd>Whether the library could check every rule in the firing set.</dd>
+  </dl>
+</section>
+
+<!-- ============ D RELEASE NOTES ============ -->
+<section id="release">
+  <h2><span class="chap">Appendix D.</span> Release notes</h2>
+  <p class="intro">Changes by library version. Upgrade by changing the dependency version; no database change is needed between these versions.</p>
+  <h3 id="sD-1"><span class="sn">D.1.</span> Version 3.0.2</h3>
+  <p class="hd">New</p>
+  <ul>
+    <li><code>RuleResult</code>: <code>execute(…)</code> returns the decision (valid, permission denied, message). Context classes no longer need decision fields.</li>
+    <li>Generated rules write <code>result.block(…)</code> / <code>result.allow(…)</code> through the <code>result</code> global.</li>
+    <li>Builder rules saved by older versions are regenerated automatically at startup.</li>
+  </ul>
+  <p class="hd">Compatibility</p>
+  <ul>
+    <li>Contexts that still have <code>setValid</code>, <code>setPermissionDenied</code> and <code>setValidationMessage</code> also receive the decision.</li>
+    <li>Hand-written DRL rules are not changed. Rules that still write <code>$ctx.setValid(…)</code> need the context fields until they are migrated.</li>
+  </ul>
+  <h3 id="sD-2"><span class="sn">D.2.</span> Version 3.0.1</h3>
+  <ul>
+    <li><code>requiredData(…)</code> and <code>RequiredData.needs(root)</code>: load only the data the active rules read.</li>
+    <li><code>GET /admin/flows/{flowCode}/required-data</code>.</li>
+    <li>Settings <code>rule-engine.required-data.enabled</code>, <code>shadow</code> and <code>trust-drl-hints</code>.</li>
+  </ul>
+  <h3 id="sD-3"><span class="sn">D.3.</span> Version 3.0.0</h3>
+  <ul>
+    <li>Four-table schema: <code>RULE_FLOW</code>, <code>RULE_GROUP</code>, <code>RULE_DEFINITION</code>, <code>RULE_FIELD_CATALOG</code>.</li>
+    <li>Active flags on flows, groups and rules, with separate activate and delete endpoints.</li>
+    <li>Shared groups and catalog fields for every flow.</li>
+  </ul>
+</section>
+
+<section id="legal">
+  <h2><span class="chap">Legal notice.</span></h2>
+  <div class="legal">
+    <p>Copyright © 2026 Leads Corporation Limited. All rights reserved.</p>
+    <p>This document and the Rule Engine Library it describes are proprietary to Leads Corporation Limited and are intended for internal use and for authorized client projects. Do not distribute outside these purposes without written permission.</p>
+    <p>Developed by K M Farhat Snigdah and Asrar Al Mohaimen Ahmed.</p>
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer class="foot"><div class="wrap foot-in gutter">
+  <span>© 2026 Leads Corporation Limited · Developed by K M Farhat Snigdah and Asrar Al Mohaimen Ahmed</span>
+  <span>Rule Engine Library 3.0.2 · Developer Guide</span>
+</div></footer>
+
+<script>
+(function(){
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var pre = btn.closest('.code').querySelector('pre');
+      var text = pre.innerText;
+      var done = function(){ btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = 'Copy'; }, 1400); };
+      var fallback = function(){
+        var r = document.createRange(); r.selectNodeContents(pre);
+        var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+        btn.textContent = 'Selected';
+        setTimeout(function(){ btn.textContent = 'Copy'; }, 1400);
+      };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, fallback);
+        } else { fallback(); }
+      } catch (e) { fallback(); }
+    });
+  });
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('.rail a[href^="#"]'));
+  var byId = {};
+  links.forEach(function(a){ byId[a.getAttribute('href').slice(1)] = a; });
+  var sections = Array.prototype.slice.call(document.querySelectorAll('main > section[id], main h3[id]'));
+  function mark(id){
+    links.forEach(function(a){ a.classList.remove('on'); });
+    if (byId[id]) byId[id].classList.add('on');
+  }
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if (e.isIntersecting) mark(e.target.id); });
+    }, { rootMargin: '-15% 0px -70% 0px' });
+    sections.forEach(function(s){ io.observe(s); });
+  }
+  mark('about');
+
+  var toc = document.getElementById('toc');
+  var mq = window.matchMedia('(max-width: 980px)');
+  function syncToc(){ if (mq.matches) toc.removeAttribute('open'); else toc.setAttribute('open',''); }
+  syncToc();
+  if (mq.addEventListener) mq.addEventListener('change', syncToc);
+  links.forEach(function(a){ a.addEventListener('click', function(){ if (mq.matches) toc.removeAttribute('open'); }); });
+})();
+</script>
+
+<script>
+(function(){
+  // quick-start tabs
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.qs-tab'));
+  function sel(t){
+    tabs.forEach(function(x){
+      var on = x === t; x.classList.toggle('on', on); x.setAttribute('aria-selected', on ? 'true' : 'false');
+      document.getElementById(x.getAttribute('aria-controls')).hidden = !on;
+    });
+  }
+  tabs.forEach(function(t, i){
+    t.addEventListener('click', function(){ sel(t); });
+    t.addEventListener('keydown', function(e){
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft'){
+        var n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; sel(n); n.focus();
+      }
+    });
+  });
+
+  // collapsible table of contents
+  var chaps = Array.prototype.slice.call(document.querySelectorAll('.rail li.chap'));
+  function setOpen(li, open){ li.classList.toggle('open', open); li.querySelector('.tg').setAttribute('aria-expanded', open ? 'true' : 'false'); }
+  chaps.forEach(function(li){ li.querySelector('.tg').addEventListener('click', function(){ li.dataset.manual = '1'; setOpen(li, !li.classList.contains('open')); }); });
+  document.getElementById('toc-exp').addEventListener('click', function(){ chaps.forEach(function(li){ li.dataset.manual='1'; setOpen(li, true); }); });
+  document.getElementById('toc-col').addEventListener('click', function(){ chaps.forEach(function(li){ li.dataset.manual='1'; setOpen(li, false); }); });
+
+  // keep the chapter you are reading open
+  var current = null;
+  var obs = new MutationObserver(function(){
+    var on = document.querySelector('.rail a.on'); if (!on) return;
+    var li = on.closest('li[data-sec]') || on.closest('li.chap');
+    while (li && !li.hasAttribute('data-sec')) li = li.parentElement.closest('li');
+    if (!li || li === current) return;
+    if (current && current.classList.contains('chap') && !current.dataset.manual) setOpen(current, false);
+    current = li;
+    if (li.classList.contains('chap')) { delete li.dataset.manual; setOpen(li, true); }
+  });
+  obs.observe(document.querySelector('.rail'), { subtree: true, attributes: true, attributeFilter: ['class'] });
+})();
+</script>
+</body>
+</html>
