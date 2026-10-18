@@ -70,7 +70,7 @@
         <dependency>
             <groupId>com.leads</groupId>
             <artifactId>rule-engine</artifactId>
-            <version>3.0.2</version>
+            <version>3.0.3</version>
         </dependency>
 
         <!-- Test -->
