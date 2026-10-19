@@ -1,0 +1,2 @@
+leads.ruleengine.core.config.RuleEngineAutoConfiguration
+leads.ruleengine.autoconfigure.ChangeboardSupportAutoConfiguration

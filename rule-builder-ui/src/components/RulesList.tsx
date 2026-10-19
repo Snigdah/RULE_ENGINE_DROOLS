@@ -1,0 +1,151 @@
+import { useState } from 'react'
+import type { ReactNode, CSSProperties } from 'react'
+import type { RuleView } from '../api/ruleEngineApi'
+import type { FlowMeta } from '../data/catalog'
+import { prettyFlow, groupColor } from '../data/catalog'
+import { IconRules, IconBuilder, IconFileCode, IconFlows, IconPlus, IconEdit, IconTrash, IconClose } from './icons'
+
+function Stat({ icon, accent, value, label }: { icon: ReactNode; accent: string; value: number; label: string }) {
+  return (
+    <div className="stat2" style={{ '--acc': accent } as CSSProperties}>
+      <div className="s2-ico">{icon}</div>
+      <div className="s2-v">{value}</div>
+      <div className="s2-l">{label}</div>
+    </div>
+  )
+}
+
+function Toggle({ on, onClick, busy }: { on: boolean; onClick: () => void; busy: boolean }) {
+  return (
+    <button
+      type="button" onClick={onClick} disabled={busy} title={on ? 'Active — click to disable' : 'Inactive — click to enable'}
+      style={{
+        border: '1px solid ' + (on ? 'rgba(15,157,108,.4)' : 'var(--line)'),
+        background: on ? 'rgba(15,157,108,.1)' : 'var(--surface-2)',
+        color: on ? '#0f9d6c' : 'var(--text-3)',
+        borderRadius: 999, padding: '2px 10px', fontSize: 11.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer',
+      }}>
+      {on ? 'Active' : 'Off'}
+    </button>
+  )
+}
+
+export default function RulesList({
+  rules, flows, onNew, onEdit, onDelete, onToggle,
+}: {
+  rules: RuleView[]; flows: FlowMeta[]
+  onNew: () => void; onEdit: (r: RuleView) => void
+  onDelete: (r: RuleView) => Promise<void>; onToggle: (r: RuleView) => Promise<void>
+}) {
+  const [confirm, setConfirm] = useState<RuleView | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [delError, setDelError] = useState<string | null>(null)
+  const [togglingId, setTogglingId] = useState<number | null>(null)
+
+  const activeCount = rules.filter(r => r.active).length
+  const builder = rules.filter(r => r.sourceType === 'BUILDER').length
+  const drl = rules.filter(r => r.sourceType === 'DRL').length
+  const labelOf = (flowCode: string | null) =>
+    !flowCode ? '— shared' : (flows.find(f => f.flowCode === flowCode)?.label ?? prettyFlow(flowCode))
+
+  async function doDelete() {
+    if (!confirm) return
+    setDeleting(true); setDelError(null)
+    try { await onDelete(confirm); setConfirm(null) }
+    catch (err: unknown) { setDelError(err instanceof Error ? err.message : String(err)) }
+    finally { setDeleting(false) }
+  }
+  function closeConfirm() { setConfirm(null); setDelError(null) }
+
+  async function toggle(r: RuleView) {
+    setTogglingId(r.id)
+    try { await onToggle(r) } finally { setTogglingId(null) }
+  }
+
+  return (
+    <div className="content-narrow">
+      <div className="stat-row">
+        <Stat icon={<IconRules />}    accent="#2056d6" value={activeCount}   label="Active rules" />
+        <Stat icon={<IconBuilder />}  accent="#6d49d4" value={builder}       label="Visual (Builder)" />
+        <Stat icon={<IconFileCode />} accent="#475069" value={drl}           label="Hand-written DRL" />
+        <Stat icon={<IconFlows />}    accent="#0f9d6c" value={flows.length}  label="Flows wired" />
+      </div>
+
+      <div className="card">
+        <div className="card-head">
+          <div>
+            <h3>Stored Rules</h3>
+            <div className="hint">Rules the engine compiles and fires — toggle a rule off to skip it without deleting</div>
+          </div>
+          <button className="btn btn-primary" onClick={onNew}><IconPlus width={16} height={16} /> New Rule</button>
+        </div>
+
+        {rules.length === 0 ? (
+          <div className="empty">
+            <IconRules width={40} height={40} />
+            <div className="state-title">No rules yet</div>
+            <div className="state-sub">Create your first rule with the visual builder.</div>
+            <button className="btn btn-primary" onClick={onNew} style={{ margin: '0 auto' }}><IconPlus width={16} height={16} /> New Rule</button>
+          </div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr><th>Rule</th><th>Flow</th><th>Group</th><th>Source</th><th>Active</th><th>Ver.</th><th></th></tr>
+            </thead>
+            <tbody>
+              {rules.map(r => {
+                const isBuilder = r.sourceType === 'BUILDER'
+                return (
+                  <tr key={r.id} style={r.active ? undefined : { opacity: .55 }}>
+                    <td>
+                      <div className="rule-name">{r.ruleName}</div>
+                      <div className="rule-desc">group #{r.groupId}</div>
+                    </td>
+                    <td>{labelOf(r.flowCode)}</td>
+                    <td><span className="grp-cell"><span className="gc-dot" style={{ background: groupColor(r.groupCode) }} /><span className={'badge ' + (r.groupCode === 'COMMON' ? 'badge-common' : 'badge-group')}>{r.groupCode}</span></span></td>
+                    <td>
+                      <span className={'badge ' + (isBuilder ? 'badge-builder' : 'badge-drl')}>
+                        {isBuilder ? <IconBuilder width={12} height={12} /> : <IconFileCode width={12} height={12} />}
+                        {isBuilder ? 'Builder' : 'DRL'}
+                      </span>
+                    </td>
+                    <td><Toggle on={r.active} busy={togglingId === r.id} onClick={() => toggle(r)} /></td>
+                    <td className="mono" style={{ color: 'var(--text-3)' }}>v{r.version}</td>
+                    <td className="cell-actions">
+                      <div className="flex" style={{ justifyContent: 'flex-end' }}>
+                        <button className="icon-btn" title={isBuilder ? 'Edit in builder' : 'DRL rules are read-only here'}
+                          onClick={() => onEdit(r)} disabled={!isBuilder}
+                          style={!isBuilder ? { opacity: .4, cursor: 'not-allowed' } : undefined}>
+                          <IconEdit width={16} height={16} />
+                        </button>
+                        <button className="icon-btn danger" title="Delete permanently" onClick={() => setConfirm(r)}>
+                          <IconTrash width={16} height={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {confirm && (
+        <div className="modal-overlay" onClick={() => !deleting && closeConfirm()}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>Delete rule permanently?</h3>
+            <p><b>{confirm.ruleName}</b> will be removed from the database for good. To only disable it, use the <b>Active</b> toggle instead.</p>
+            {delError && <div className="banner banner-err" style={{ marginBottom: 16 }}><IconClose width={16} height={16} /><div>{delError}</div></div>}
+            <div className="row">
+              <button className="btn btn-ghost" onClick={closeConfirm} disabled={deleting}>Cancel</button>
+              <button className="btn btn-danger-ghost" onClick={doDelete} disabled={deleting}>
+                {deleting ? <><span className="spinner sm" /> Deleting…</> : <><IconClose width={15} height={15} /> Delete</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

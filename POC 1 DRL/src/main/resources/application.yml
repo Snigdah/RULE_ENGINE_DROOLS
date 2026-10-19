@@ -4,6 +4,31 @@ server:
 spring:
   application:
     name: drools-transaction-poc
+  threads:
+    virtual:
+      enabled: true   # Java 21 virtual threads for request handling
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ruleengine
+    username: postgres
+    password: 1234
+    hikari:
+      auto-commit: false   # PostgreSQL large objects (CLOB/oid) must be read in a
+                           # transaction; the engine loads rule CLOBs at startup.
+  jpa:
+    hibernate:
+      ddl-auto: update     # Hibernate auto-creates/updates the tables from the entities
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+
+# Rule-engine library (com.leads:rule-engine 3.0.2)
+rule-engine:
+  required-data:
+    enabled: true          # demand-driven loading: needs("root") may answer false (default false)
+    shadow: false          # true = only log what would be skipped, still load everything
+    trust-drl-hints: true  # read "// @requires:" in hand-written DRL rules
 
 management:
   endpoints:
