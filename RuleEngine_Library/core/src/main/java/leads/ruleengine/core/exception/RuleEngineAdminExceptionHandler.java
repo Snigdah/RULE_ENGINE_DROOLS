@@ -3,6 +3,7 @@ package leads.ruleengine.core.exception;
 import com.leads.exceptionHandler.ResourceNotFoundException;
 import leads.ruleengine.core.approval.PendingApprovalException;
 import leads.ruleengine.core.approval.RuleApprovalController;
+import leads.ruleengine.core.approval.UnsupportedApprovalSetException;
 import leads.ruleengine.core.controller.FlowAdminController;
 import leads.ruleengine.core.controller.RuleAdminController;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -53,6 +54,12 @@ public class RuleEngineAdminExceptionHandler {
     /** The rule/group already has a change waiting for approval -> 409. */
     @ExceptionHandler(PendingApprovalException.class)
     public ResponseEntity<Map<String, Object>> handlePendingApproval(PendingApprovalException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    /** The approval set is not a rule-engine Hibernate set, so this service will not process it -> 409. */
+    @ExceptionHandler(UnsupportedApprovalSetException.class)
+    public ResponseEntity<Map<String, Object>> handleUnsupportedApprovalSet(UnsupportedApprovalSetException ex) {
         return build(HttpStatus.CONFLICT, ex.getMessage());
     }
 

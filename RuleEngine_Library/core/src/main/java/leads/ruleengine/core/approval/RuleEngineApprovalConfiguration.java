@@ -1,7 +1,7 @@
 package leads.ruleengine.core.approval;
 
-import com.leads.changeboard.ApprovalRegisterService;
 import com.leads.changeboard.hibernate.ApprovalHibernateService;
+import com.leads.changeboard.hibernate.ApprovalRegisterHibernateService;
 import com.leads.config.EligibleUserApiClient;
 import com.leads.config.NotificationClient;
 import jakarta.persistence.EntityManager;
@@ -50,13 +50,15 @@ public class RuleEngineApprovalConfiguration {
         }
 
         @Bean
-        public RuleApprovalProcessor ruleApprovalProcessor(ApprovalRegisterService approvalRegisterService,
-                                                           RuleDefinitionRepository ruleRepository,
-                                                           RuleBaseProvider ruleBaseProvider,
-                                                           DecisionFlowResolver flowResolver,
-                                                           EntityManager entityManager) {
-            return new RuleApprovalProcessor(approvalRegisterService, ruleRepository, ruleBaseProvider,
-                    flowResolver, entityManager);
+        public RuleApprovalProcessor ruleApprovalProcessor(
+                ApprovalRegisterHibernateService approvalRegisterHibernateService,
+                JdbcTemplate jdbcTemplate,
+                RuleDefinitionRepository ruleRepository,
+                RuleBaseProvider ruleBaseProvider,
+                DecisionFlowResolver flowResolver,
+                EntityManager entityManager) {
+            return new RuleApprovalProcessor(approvalRegisterHibernateService, jdbcTemplate, ruleRepository,
+                    ruleBaseProvider, flowResolver, entityManager);
         }
     }
 }
